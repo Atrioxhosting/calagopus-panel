@@ -2,6 +2,7 @@ use super::State;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 mod _node_;
+mod capacities;
 mod config;
 
 mod get {
@@ -146,6 +147,7 @@ mod post {
 pub fn router(state: &State) -> OpenApiRouter<State> {
     OpenApiRouter::new()
         .nest("/{node}", _node_::router(state))
+        .nest("/capacities", capacities::router(state))
         .nest("/config", config::router(state))
         .routes(routes!(get::route))
         .routes(routes!(post::route))

@@ -22,6 +22,7 @@ const admin = {
     detail: (uuid: string) => ['admin', 'nodes', { uuid }] as const,
     token: (uuid: string) => ['admin', 'nodes', uuid, 'token'] as const,
     capacity: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'capacity'] as const,
+    capacities: () => ['admin', 'nodes', 'capacities'] as const,
     systemOverview: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'system', 'overview'] as const,
     systemDirect: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'system', 'direct'] as const,
     config: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'config'] as const,

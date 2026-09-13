@@ -1,13 +1,63 @@
 import { dump } from 'js-yaml';
 import { z } from 'zod';
 import { getUrlConnectPort, getUrlPortOr } from '@/lib/network/url.ts';
-import { adminNodeSchema, adminNodeTokenSchema } from '@/lib/schemas/admin/nodes.ts';
+import { AdminNodeAllocatedCapacity, adminNodeSchema, adminNodeTokenSchema } from '@/lib/schemas/admin/nodes.ts';
+import { getTranslations } from '@/providers/TranslationProvider.tsx';
 
 export const NODE_AIO_UUID = '7dbbbb63-1734-48c4-e1de-d1a65f62cada';
 export const WINGS_DEFAULT_PORT = 8080;
 export const NODE_TUNNEL_DEFAULT_PORT = 7100;
 
 export const MAX_TRANSFER_MULTIPLEX_CHANNELS = 16;
+
+export const NODE_DEPLOYMENT_NEARLY_FULL_RATIO = 0.9;
+
+export type NodeDeploymentState = 'disabled' | 'full' | 'nearlyFull' | 'available';
+
+export const nodeDeploymentStateInfo: Record<NodeDeploymentState, { badgeColor: string; label: () => string }> = {
+  disabled: {
+    badgeColor: 'red',
+    label: () => getTranslations().t('common.node.deployment.disabled', {}),
+  },
+  full: {
+    badgeColor: 'orange',
+    label: () => getTranslations().t('common.node.deployment.full', {}),
+  },
+  nearlyFull: {
+    badgeColor: 'yellow',
+    label: () => getTranslations().t('common.node.deployment.nearlyFull', {}),
+  },
+  available: {
+    badgeColor: 'green',
+    label: () => getTranslations().t('common.node.deployment.available', {}),
+  },
+};
+
+export const getNodeDeploymentUsage = (
+  node: z.infer<typeof adminNodeSchema>,
+  allocated: AdminNodeAllocatedCapacity,
+) => ({
+  memory: { used: allocated.memory + allocated.memoryOverhead, limit: node.memory },
+  disk: { used: allocated.disk, limit: node.disk },
+});
+
+export const getNodeDeploymentState = (
+  node: z.infer<typeof adminNodeSchema>,
+  allocated?: AdminNodeAllocatedCapacity,
+): NodeDeploymentState => {
+  if (!node.deploymentEnabled) return 'disabled';
+  if (!allocated) return 'available';
+
+  const ratios = Object.values(getNodeDeploymentUsage(node, allocated)).map(({ used, limit }) =>
+    limit === 0 ? 0 : used / limit,
+  );
+  const highest = Math.max(...ratios);
+
+  if (highest >= 1) return 'full';
+  if (highest >= NODE_DEPLOYMENT_NEARLY_FULL_RATIO) return 'nearlyFull';
+
+  return 'available';
+};
 
 export const isNodeAIO = (node: z.infer<typeof adminNodeSchema>) => {
   return node.uuid === NODE_AIO_UUID;

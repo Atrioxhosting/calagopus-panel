@@ -1,6 +1,7 @@
-import { faGlobe, faHeart, faHeartBroken } from '@fortawesome/free-solid-svg-icons';
+import { faHeart, faHeartBroken } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { forwardRef } from 'react';
+import Badge from '@/elements/data-display/Badge.tsx';
 import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
 import TableLink from '@/elements/data-display/TableLink.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
@@ -9,8 +10,10 @@ import { ContextMenuChildrenProps, ContextMenuToggle } from '@/elements/overlays
 import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
-import { isNodeAIO } from '@/lib/domain/node.ts';
+import { isNodeAIO, nodeDeploymentStateInfo } from '@/lib/domain/node.ts';
+import { bytesToString, mbToBytes } from '@/lib/format/size.ts';
 import { AdminNode } from '@/lib/schemas/admin/nodes.ts';
+import { useNodeDeployment } from '@/plugins/nodes/useNodeDeployment.ts';
 import { useNodeVersion } from '@/plugins/nodes/useNodeVersion.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -28,6 +31,7 @@ const NodeRow = forwardRef<HTMLTableRowElement, NodeRowProps>(function NodeRow(
 ) {
   const { t } = useTranslations();
   const { version, unavailable, loading, updateAvailable } = useNodeVersion(node);
+  const { state: deploymentState, usage: deploymentUsage } = useNodeDeployment(node);
 
   return (
     <TableRow
@@ -88,14 +92,44 @@ const NodeRow = forwardRef<HTMLTableRowElement, NodeRowProps>(function NodeRow(
       <TableData>
         <span className='flex gap-2 items-center'>
           {node.name}&nbsp;
-          {node.deploymentEnabled ? (
-            <Tooltip label={t('pages.admin.nodes.tabs.general.page.tooltip.deploymentEnabled', {})}>
-              <FontAwesomeIcon icon={faGlobe} className='text-green-500' />
-            </Tooltip>
-          ) : (
-            <Tooltip label={t('pages.admin.nodes.tabs.general.page.tooltip.deploymentDisabled', {})}>
-              <FontAwesomeIcon icon={faGlobe} className='text-red-500' />
-            </Tooltip>
+          <Tooltip
+            label={
+              deploymentUsage ? (
+                <>
+                  <div>
+                    {deploymentUsage.memory.limit === 0
+                      ? t('common.node.deployment.memoryUsageUnlimited', {
+                          used: bytesToString(mbToBytes(deploymentUsage.memory.used)),
+                        })
+                      : t('common.node.deployment.memoryUsage', {
+                          used: bytesToString(mbToBytes(deploymentUsage.memory.used)),
+                          limit: bytesToString(mbToBytes(deploymentUsage.memory.limit)),
+                        })}
+                  </div>
+                  <div>
+                    {deploymentUsage.disk.limit === 0
+                      ? t('common.node.deployment.diskUsageUnlimited', {
+                          used: bytesToString(mbToBytes(deploymentUsage.disk.used)),
+                        })
+                      : t('common.node.deployment.diskUsage', {
+                          used: bytesToString(mbToBytes(deploymentUsage.disk.used)),
+                          limit: bytesToString(mbToBytes(deploymentUsage.disk.limit)),
+                        })}
+                  </div>
+                </>
+              ) : (
+                nodeDeploymentStateInfo[deploymentState].label()
+              )
+            }
+          >
+            <Badge color={nodeDeploymentStateInfo[deploymentState].badgeColor} variant='light'>
+              {nodeDeploymentStateInfo[deploymentState].label()}
+            </Badge>
+          </Tooltip>
+          {node.maintenanceEnabled && (
+            <Badge color='red' variant='light'>
+              {t('pages.admin.nodes.tabs.capacity.page.status.maintenanceEnabled', {})}
+            </Badge>
           )}
           {isNodeAIO(node) && (
             <Tooltip label={t('pages.admin.nodes.tabs.general.page.tooltip.allInOneNode', {})}>

@@ -1,0 +1,61 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                        nodes.uuid,\n                        COUNT(servers.uuid) as servers,\n                        COALESCE(SUM(servers.cpu), 0)::int8 as cpu,\n                        COALESCE(SUM(servers.memory), 0)::int8 as memory,\n                        COALESCE(SUM(servers.memory_overhead), 0)::int8 as memory_overhead,\n                        COALESCE(SUM(servers.disk), 0)::int8 as disk\n                    FROM nodes\n                    LEFT JOIN servers ON servers.node_uuid = nodes.uuid\n                    GROUP BY nodes.uuid",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uuid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "nodes",
+            "name": "uuid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "servers",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "cpu",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "memory",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "memory_overhead",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "disk",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "6f7b7ae932837431c67397ca0bf19856493b6bf84052719cd7ad11c839637afb"
+}

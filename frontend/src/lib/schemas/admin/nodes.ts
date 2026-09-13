@@ -40,19 +40,23 @@ export const adminNodeTokenSchema = z.object({
   token: z.string(),
 });
 
+export const adminNodeAllocatedCapacitySchema = z.object({
+  servers: z.number(),
+  cpu: z.number(),
+  memory: z.number(),
+  memoryOverhead: z.number(),
+  disk: z.number(),
+});
+
 export const adminNodeCapacitySchema = z.object({
   limits: z.object({
     memory: z.number(),
     disk: z.number(),
   }),
-  allocated: z.object({
-    servers: z.number(),
-    cpu: z.number(),
-    memory: z.number(),
-    memoryOverhead: z.number(),
-    disk: z.number(),
-  }),
+  allocated: adminNodeAllocatedCapacitySchema,
 });
+
+export const adminNodeCapacitiesSchema = z.record(z.string(), adminNodeAllocatedCapacitySchema);
 
 export const adminNodeUpdateSchema = z.lazy(() =>
   adminNodeSchema
@@ -128,6 +132,7 @@ export const adminNodeTransferProgressSchema = z.object({
 export const adminNodeTransfersSchema = z.record(z.string(), adminNodeTransferProgressSchema);
 
 export type AdminNode = z.infer<typeof adminNodeSchema>;
+export type AdminNodeAllocatedCapacity = z.infer<typeof adminNodeAllocatedCapacitySchema>;
 export type AdminNodeToken = z.infer<typeof adminNodeTokenSchema>;
 export type AdminNodeAllocation = z.infer<typeof adminNodeAllocationSchema>;
 export type AdminNodeAllocationFilter = z.infer<typeof adminNodeAllocationFilterSchema>;

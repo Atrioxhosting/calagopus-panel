@@ -492,6 +492,18 @@
         "ignored": "Ignored",
         "showingFirstEntries": "Showing the first {count} entries"
       },
+      "node": {
+        "deployment": {
+          "available": "Deployment Enabled",
+          "nearlyFull": "Nearly Full",
+          "full": "No Capacity",
+          "disabled": "Deployment Disabled",
+          "memoryUsage": "Memory: {used} / {limit}",
+          "memoryUsageUnlimited": "Memory: {used} used, no node limit",
+          "diskUsage": "Disk: {used} / {limit}",
+          "diskUsageUnlimited": "Disk: {used} used, no node limit"
+        }
+      },
       "server": {
         "noAllocation": "No Allocation",
         "state": {
@@ -2729,8 +2741,6 @@
             "general": {
               "page": {
                 "tooltip": {
-                  "deploymentEnabled": "Deployment Enabled",
-                  "deploymentDisabled": "Deployment Disabled",
                   "allInOneNode": "All-in-One Node",
                   "errorWhileFetchingVersion": "Error while fetching version",
                   "updateAvailable": "{version} (Update Available)",

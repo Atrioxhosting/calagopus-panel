@@ -492,6 +492,18 @@
         "ignored": "Ignoriert",
         "showingFirstEntries": "Die ersten {count} Einträge werden angezeigt"
       },
+      "node": {
+        "deployment": {
+          "available": "Bereitstellung aktiviert",
+          "nearlyFull": "Fast voll",
+          "full": "Keine Kapazität",
+          "disabled": "Bereitstellung deaktiviert",
+          "memoryUsage": "Arbeitsspeicher: {used} / {limit}",
+          "memoryUsageUnlimited": "Arbeitsspeicher: {used} belegt, kein Node-Limit",
+          "diskUsage": "Speicherplatz: {used} / {limit}",
+          "diskUsageUnlimited": "Speicherplatz: {used} belegt, kein Node-Limit"
+        }
+      },
       "server": {
         "noAllocation": "Keine Allocation",
         "state": {
@@ -2725,8 +2737,6 @@
             "general": {
               "page": {
                 "tooltip": {
-                  "deploymentEnabled": "Bereitstellung aktiviert",
-                  "deploymentDisabled": "Bereitstellung deaktiviert",
                   "allInOneNode": "All-in-One Node",
                   "errorWhileFetchingVersion": "Fehler beim Abrufen der Version",
                   "updateAvailable": "{version} (Update verfügbar)",
