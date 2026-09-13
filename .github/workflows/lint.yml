@@ -107,3 +107,26 @@ jobs:
 
       - name: Run cargo clippy
         run: cargo clippy
+
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-24.04
+    if: github.ref_name != 'l10n_crowdin_translations' && github.head_ref != 'l10n_crowdin_translations'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache-key: test-backend
+
+      - name: Dummy Frontend Files
+        run: mkdir -p frontend/dist && echo "Dummy file" > frontend/dist/index.html
+
+      - name: Run cargo test
+        run: cargo test --workspace --exclude panel-rs-aio
