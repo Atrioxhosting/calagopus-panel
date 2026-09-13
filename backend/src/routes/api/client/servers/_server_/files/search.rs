@@ -6,7 +6,11 @@ mod post {
     use serde::{Deserialize, Serialize};
     use shared::{
         ApiError, GetState,
-        models::{server::GetServer, user::GetPermissionManager},
+        models::{
+            server::{GetServer, GetServerActivityLogger},
+            server_database::QUERY_ACTIVITY_LENGTH,
+            user::GetPermissionManager,
+        },
         response::{ApiResponse, ApiResponseResult},
     };
     use utoipa::ToSchema;
@@ -54,6 +58,7 @@ mod post {
         state: GetState,
         permissions: GetPermissionManager,
         mut server: GetServer,
+        activity_logger: GetServerActivityLogger,
         shared::Payload(data): shared::Payload<Payload>,
     ) -> ApiResponseResult {
         permissions.has_server_permission("files.read")?;
@@ -148,6 +153,29 @@ mod post {
             }
             Err(err) => return Err(err.into()),
         };
+
+        if extra.match_context.is_some() {
+            activity_logger
+                .log(
+                    "server:file.read-content",
+                    serde_json::json!({
+                        "directory": request_body.root,
+                        "files": response
+                            .content_matches
+                            .iter()
+                            .flatten()
+                            .map(|matches| &matches.file)
+                            .collect::<Vec<_>>(),
+
+                        "query": request_body.content_filter.as_ref().map(|filter| filter
+                            .query
+                            .chars()
+                            .take(QUERY_ACTIVITY_LENGTH)
+                            .collect::<String>()),
+                    }),
+                )
+                .await;
+        }
 
         ApiResponse::new_serialized(Response {
             entries: response.results,
