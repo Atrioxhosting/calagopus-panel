@@ -1,6 +1,7 @@
 import Card from '@/elements/data-display/Card.tsx';
 import Progress from '@/elements/feedback/Progress.tsx';
 import { bytesToString, mbToBytes } from '@/lib/format/size.ts';
+import { usageColor, usagePercent } from '@/lib/format/usage.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
 
@@ -12,8 +13,8 @@ export default function FileDiskUsageBar() {
   if (diskLimit === 0 || diskBytes === null) return null;
 
   const limitBytes = mbToBytes(diskLimit);
-  const percentage = Math.min(100, (diskBytes / limitBytes) * 100);
-  const color = percentage >= 95 ? 'red' : percentage >= 80 ? 'yellow' : 'blue';
+  const percentage = usagePercent(diskBytes, limitBytes) ?? 0;
+  const color = usageColor(diskBytes, limitBytes);
 
   return (
     <Card mb='sm'>

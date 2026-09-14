@@ -9,11 +9,13 @@ import {
   faFolderPlus,
   faMagnifyingGlassChart,
   faSearch,
+  faTriangleExclamation,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { join } from 'pathe';
 import { createSearchParams, useNavigate, useSearchParams } from 'react-router';
 import { handleRawCopyToClipboard } from '@/lib/clipboard/copy.ts';
+import { hasIncompleteUploads } from '@/lib/files/stagingUploads.ts';
 import { CORE_QUICK_ACTION_CATEGORIES } from '@/lib/quickActions/coreQuickActions.tsx';
 import { useQuickActions } from '@/plugins/quick-actions/useQuickActions.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
@@ -110,6 +112,16 @@ export function useFileBrowserQuickActions({
       permission: 'files.read',
       isVisible: () => store.getState().browsingPrimaryFilesystem,
       perform: () => store.getState().doOpenModal('largestDirectories'),
+    },
+    {
+      id: 'files.incompleteUploads',
+      category: page,
+      label: () => t('pages.server.files.quickAction.incompleteUploads', {}),
+      keywords: ['partial', 'unfinished', 'resume'],
+      icon: <FontAwesomeIcon icon={faTriangleExclamation} />,
+      permission: 'files.read',
+      isVisible: () => hasIncompleteUploads(store),
+      perform: () => store.getState().doOpenModal('incompleteUploads'),
     },
     {
       id: 'files.parentDirectory',

@@ -219,6 +219,20 @@ export const serverDirectoryEntrySchema = z.object({
   created: z.coerce.date(),
 });
 
+export const serverDirectoryUploadSchema = z.object({
+  name: z.string(),
+  targetName: z.string(),
+  directory: z.string(),
+  user: z.uuid().nullable(),
+  userName: z.string().nullable(),
+  uploaded: z.number(),
+  total: z.number().nullable(),
+  resumable: z.boolean(),
+  active: z.boolean(),
+  started: z.coerce.date().nullable(),
+  updated: z.coerce.date().nullable(),
+});
+
 export const serverFilesPullQueryResultSchema = z.object({
   fileName: z.string().nullable(),
   fileSize: z.number().nullable(),

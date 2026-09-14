@@ -7,6 +7,7 @@ import { axiosInstance, httpErrorToHuman } from '@/api/axios.ts';
 import getFileUploadUrl from '@/api/server/files/getFileUploadUrl.ts';
 import {
   conflictOffset,
+  discardUpload,
   headUploadOffset,
   patchUploadChunk,
   withFileParam,
@@ -106,6 +107,7 @@ function handlerFor(destination: UploadDestination): DestinationHandler {
 const CHUNK_TARGET_BYTES = 95 * 1024 * 1024; // 95 MiB
 const FOLDER_CONCURRENCY = 2;
 const FILE_CONCURRENCY = 10;
+const DISCARD_CONCURRENCY = 6;
 const MAX_RETRIES = 5;
 const BASE_RETRY_MS = 1_000;
 const MAX_RETRY_MS = 30_000;
@@ -918,6 +920,59 @@ export async function uploadFiles(destination: UploadDestination, files: File[])
   await Promise.allSettled(promises);
 }
 
+function hasStagedUpload(
+  item: UploadItem,
+): item is UploadItem & { destination: Extract<UploadDestination, { type: 'server' }> } {
+  return item.destination.type === 'server' && (item.status !== 'pending' || !!item.detached);
+}
+
+function discardStagedUploads(items: (UploadItem | undefined)[]): void {
+  const grouped = new Map<
+    string,
+    { destination: Extract<UploadDestination, { type: 'server' }>; remotePaths: string[] }
+  >();
+
+  for (const item of items) {
+    if (!item || !hasStagedUpload(item)) continue;
+
+    const scope = uploadScopeKey(item.destination);
+    const remotePath = item.remotePath ?? item.filePath;
+    const group = grouped.get(scope);
+    if (group) group.remotePaths.push(remotePath);
+    else grouped.set(scope, { destination: item.destination, remotePaths: [remotePath] });
+  }
+
+  if (grouped.size === 0) return;
+
+  const semaphore = new Semaphore(DISCARD_CONCURRENCY);
+
+  void Promise.allSettled(
+    Array.from(grouped.values(), async ({ destination, remotePaths }) => {
+      try {
+        const { url } = await getFileUploadUrl(destination.serverUuid, destination.directory);
+
+        await Promise.allSettled(
+          remotePaths.map((remotePath) =>
+            semaphore.acquire().then(async () => {
+              try {
+                await discardUpload(withFileParam(url, remotePath));
+              } catch (error) {
+                console.error('Discard error:', error);
+              } finally {
+                semaphore.release();
+              }
+            }),
+          ),
+        );
+      } catch (error) {
+        console.error('Discard error:', error);
+      }
+
+      handlerFor(destination).onBatchComplete(destination);
+    }),
+  );
+}
+
 export function cancelFileUpload(fileKey: string): void {
   const entry = useUploadsStore.getState().uploads.get(fileKey);
   if (!entry) return;
@@ -928,6 +983,7 @@ export function cancelFileUpload(fileKey: string): void {
   pendingProgress.delete(fileKey);
   heldFiles.delete(fileKey);
   unpersistItem(entry);
+  discardStagedUploads([entry]);
 
   setUploads((prev) => {
     if (!prev.has(fileKey)) return prev;
@@ -975,15 +1031,19 @@ export function cancelFolderUpload(scope: string, folderName: string): void {
   });
   keysToRemove.forEach((key) => pendingProgress.delete(key));
 
+  const cancelled: (UploadItem | undefined)[] = [];
   setUploads((prev) => {
     const next = new Map(prev);
     keysToRemove.forEach((key) => {
-      unpersistItem(next.get(key));
+      const item = next.get(key);
+      unpersistItem(item);
+      cancelled.push(item);
       heldFiles.delete(key);
       next.delete(key);
     });
     return next;
   });
+  discardStagedUploads(cancelled);
 
   if (cancelledCount > 0) {
     const { t, tItem } = getTranslations();
@@ -1033,10 +1093,15 @@ export function cancelAllUploads(scope?: string, options?: { silent?: boolean })
     if (scope === undefined || countKey.startsWith(`${scope}\n`)) folderFileCounts.delete(countKey);
   }
 
+  const cancelled: (UploadItem | undefined)[] = [];
   setUploads((prev) => {
     const next = new Map(prev);
     keysToRemove.forEach((key) => {
-      if (!options?.silent) unpersistItem(next.get(key));
+      const item = next.get(key);
+      if (!options?.silent) {
+        unpersistItem(item);
+        cancelled.push(item);
+      }
       heldFiles.delete(key);
       next.delete(key);
     });
@@ -1044,6 +1109,7 @@ export function cancelAllUploads(scope?: string, options?: { silent?: boolean })
   });
 
   if (!options?.silent) {
+    discardStagedUploads(cancelled);
     destinations.forEach((destination) => handlerFor(destination).onBatchComplete(destination));
 
     const { t } = getTranslations();

@@ -13,6 +13,7 @@ import Spinner from '@/elements/feedback/Spinner.tsx';
 import Title from '@/elements/typography/Title.tsx';
 import { formatBytes, formatBytesRate, formatPercent, useStreamChart } from '@/lib/chart.ts';
 import { bytesToString, mbToBytes } from '@/lib/format/size.ts';
+import { usagePercentColor } from '@/lib/format/usage.ts';
 import { adminSystemStatisticsSchema } from '@/lib/schemas/admin/system.ts';
 import { useWebsocket } from '@/plugins/websocket/useWebsocket.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
@@ -106,7 +107,7 @@ export default function SystemStatistics({ wsPath, labels }: { wsPath: string; l
                   <SemiCircleProgress
                     value={stats.cpu.used}
                     label={<>{stats.cpu.used.toFixed(1)}%</>}
-                    filledSegmentColor={stats.cpu.used >= 90 ? 'red' : undefined}
+                    filledSegmentColor={usagePercentColor(stats.cpu.used)}
                   />
                 </div>
                 <div className='flex flex-col text-center md:text-right flex-1'>
@@ -121,7 +122,7 @@ export default function SystemStatistics({ wsPath, labels }: { wsPath: string; l
                   <SemiCircleProgress
                     value={memoryPercent}
                     label={<>{memoryPercent.toFixed(1)}%</>}
-                    filledSegmentColor={stats.memory.used / stats.memory.total >= 0.9 ? 'red' : undefined}
+                    filledSegmentColor={usagePercentColor(memoryPercent)}
                   />
                 </div>
                 <div className='flex flex-col text-center md:text-right flex-1'>
@@ -139,7 +140,7 @@ export default function SystemStatistics({ wsPath, labels }: { wsPath: string; l
                   <SemiCircleProgress
                     value={diskPercent}
                     label={<>{diskPercent.toFixed(1)}%</>}
-                    filledSegmentColor={stats.disk.used / stats.disk.total >= 0.9 ? 'red' : undefined}
+                    filledSegmentColor={usagePercentColor(diskPercent)}
                   />
                 </div>
                 <div className='flex flex-col text-center md:text-right flex-1'>

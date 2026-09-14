@@ -14,6 +14,7 @@ import {
   bridgeFileManagerUserSettings,
   createFileManagerStore,
   FileManagerStoreContextProvider,
+  StagingUpload,
 } from '@/stores/fileManager.ts';
 import { useServerStore } from '@/stores/server.ts';
 import { UploadDestination } from '@/stores/uploads.ts';
@@ -73,7 +74,13 @@ const FileManagerProvider = ({ children }: { children: ReactNode }) => {
     const [firstPage] = infiniteData.pages;
     const entries = infiniteData.pages.flatMap((p) => p.entries.data);
 
+    const uploads = new Map<string, StagingUpload>();
+    for (const page of infiniteData.pages) {
+      for (const upload of page.uploads) uploads.set(upload.name, upload);
+    }
+
     return {
+      directory: firstPage.directory,
       isFilesystemPrimary: firstPage.isFilesystemPrimary,
       isFilesystemWritable: firstPage.isFilesystemWritable,
       isFilesystemFast: firstPage.isFilesystemFast,
@@ -83,6 +90,7 @@ const FileManagerProvider = ({ children }: { children: ReactNode }) => {
         page: infiniteData.pages.length,
         data: entries,
       },
+      uploads: Array.from(uploads.values()),
     };
   }, [infiniteData]);
 
@@ -184,6 +192,8 @@ const FileManagerProvider = ({ children }: { children: ReactNode }) => {
       browsingWritableDirectory: data.isFilesystemWritable,
       browsingFastDirectory: data.isFilesystemFast,
     });
+
+    store.getState().setDirectoryStagingUploads(data.directory, data.uploads);
   }, [data, directoryError, store]);
 
   useEffect(() => {

@@ -757,6 +757,33 @@ nestify::nest! {
 }
 
 nestify::nest! {
+    #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct UploadEntry {
+        #[schema(inline)]
+        pub name: compact_str::CompactString,
+        #[schema(inline)]
+        pub target_name: compact_str::CompactString,
+        #[schema(inline)]
+        pub directory: compact_str::CompactString,
+        #[schema(inline)]
+        pub user: Option<uuid::Uuid>,
+        #[schema(inline)]
+        pub user_name: Option<compact_str::CompactString>,
+        #[schema(inline)]
+        pub uploaded: u64,
+        #[schema(inline)]
+        pub total: Option<u64>,
+        #[schema(inline)]
+        pub resumable: bool,
+        #[schema(inline)]
+        pub active: bool,
+        #[schema(inline)]
+        pub started: Option<chrono::DateTime<chrono::Local>>,
+        #[schema(inline)]
+        pub updated: Option<chrono::DateTime<chrono::Local>>,
+    }
+}
+
+nestify::nest! {
     #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct UsedPort {
         #[schema(inline)]
         pub port: u32,
@@ -861,6 +888,8 @@ pub enum WebsocketEvent {
     OperationCompleted,
     #[serde(rename = "operation aborted")]
     OperationAborted,
+    #[serde(rename = "file uploads")]
+    FileUploads,
     #[serde(rename = "file collab subscribe")]
     FileCollabSubscribe,
     #[serde(rename = "file collab unsubscribe")]
@@ -1804,6 +1833,9 @@ pub mod servers_server_files_list {
                 pub filesystem_fast: bool,
                 #[schema(inline)]
                 pub entries: Vec<DirectoryEntry>,
+                #[schema(inline)]
+                #[serde(default)]
+                pub uploads: Vec<UploadEntry>,
             }
         }
 

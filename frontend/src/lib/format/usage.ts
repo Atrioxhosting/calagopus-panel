@@ -6,12 +6,21 @@ export function usagePercent(progress?: number | null, total?: number | null): n
     : null;
 }
 
+const WARN_PERCENT = 80;
+const DANGER_PERCENT = 95;
+
+export function usagePercentColor(percent?: number | null): MantineColor | undefined {
+  if (typeof percent !== 'number') return undefined;
+  if (percent >= DANGER_PERCENT) return 'red';
+  if (percent < WARN_PERCENT) return undefined;
+
+  const ramp = ((percent - WARN_PERCENT) / (DANGER_PERCENT - WARN_PERCENT)) * 100;
+
+  return `color-mix(in oklab, var(--mantine-color-red-filled) ${ramp.toFixed(1)}%, var(--mantine-color-yellow-filled))`;
+}
+
 export function usageColor(progress?: number | null, total?: number | null): MantineColor | undefined {
-  const percent = usagePercent(progress, total);
-  if (percent === null) return undefined;
-  if (percent >= 100) return 'red';
-  if (percent >= 80) return 'yellow';
-  return undefined;
+  return usagePercentColor(usagePercent(progress, total));
 }
 
 export function percentString(

@@ -67,3 +67,11 @@ export async function patchUploadChunk(
 
   return parseOffset(res.headers[UPLOAD_OFFSET_HEADER], offset + body.size);
 }
+
+/**
+ * Discard (DELETE) the daemon-side staging file for an upload the user explicitly cancelled,
+ * so a cancel does not leave a partial behind for the file manager to keep reporting.
+ */
+export async function discardUpload(uploadUrl: string): Promise<void> {
+  await axiosInstance.delete(uploadUrl);
+}

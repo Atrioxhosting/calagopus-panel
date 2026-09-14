@@ -32,6 +32,8 @@ import { isOpenableFile } from '@/lib/files/files.ts';
 import { CORE_QUICK_ACTION_CATEGORIES } from '@/lib/quickActions/coreQuickActions.tsx';
 import FileBreadcrumbs from '@/pages/server/files/FileBreadcrumbs.tsx';
 import { useFileBrowserQuickActions } from '@/pages/server/files/hooks/useFileBrowserQuickActions.tsx';
+import useFileUploadSocket from '@/pages/server/files/hooks/useFileUploadSocket.ts';
+import IncompleteUploadsBanner from '@/pages/server/files/IncompleteUploadsBanner.tsx';
 import FileActionBar from '@/pages/server/files/list/FileActionBar.tsx';
 import FileDiskUsageBar from '@/pages/server/files/list/FileDiskUsageBar.tsx';
 import FileInfiniteScrollSentinel from '@/pages/server/files/list/FileInfiniteScrollSentinel.tsx';
@@ -474,6 +476,7 @@ function ServerFilesComponent() {
   const createTreeFile = view === 'tree' ? () => treeWorkspaceRef.current?.createFile() : undefined;
 
   useFileBrowserQuickActions({ treeView: view === 'tree', onCreateFile: createTreeFile });
+  useFileUploadSocket();
 
   useEffect(() => setFileTreeVisible(getStoredFileTreeVisibility(serverUuid)), [serverUuid]);
 
@@ -589,6 +592,8 @@ function ServerFilesComponent() {
           <FileToolbar onCreateFile={createTreeFile} />
         </Group>
       </Group>
+
+      <IncompleteUploadsBanner />
 
       {view === 'list' ? (
         <FileBrowser />

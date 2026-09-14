@@ -886,8 +886,10 @@
         "reselect": "Datei erneut auswählen, um fortzusetzen",
         "badge": {
           "uploading": "Wird hochgeladen",
+          "uploadingPercent": "Wird hochgeladen {percent}%",
           "waiting": "Wartend",
-          "paused": "Pausiert"
+          "paused": "Pausiert",
+          "incomplete": "Unvollständig"
         },
         "rateLimited": "Dein Upload unterliegt einer Ratenbegrenzung. Warten...",
         "cancelAllUploads": "Alle Uploads abbrechen",
@@ -5031,6 +5033,7 @@
             "uploadDirectory": "Verzeichnis hochladen",
             "search": "Dateien suchen",
             "largestDirectories": "Verzeichnisgrößen analysieren",
+            "incompleteUploads": "Unvollständige Uploads ansehen",
             "parentDirectory": "Zum übergeordneten Verzeichnis",
             "copyPath": "Aktuellen Pfad kopieren",
             "exitBackup": "Backup-Ansicht verlassen",
@@ -5067,6 +5070,14 @@
             "oversizedIncluded": "Dateien über {size} werden aufgelistet, aber nicht durchsucht",
             "size": "Größe:",
             "edit": "Suche bearbeiten"
+          },
+          "upload": {
+            "by": "von {user}",
+            "banner": {
+              "title": "Unvollständige Uploads",
+              "content": "Einige Uploads auf diesen Server wurden nie fertiggestellt und ihre unvollständigen Dateien liegen noch auf der Festplatte.",
+              "review": "Uploads ansehen"
+            }
           },
           "operations": {
             "compressing": "Komprimiere {files} von {path}",
@@ -5373,6 +5384,12 @@
             "sftpDetails": {
               "title": "SFTP-Details",
               "launch": "Starten"
+            },
+            "incompleteUploads": {
+              "title": "Unvollständige Uploads",
+              "content": "Die folgenden {files} wurden nie fertig hochgeladen. Ein unvollständiger Upload bleibt auf der Festplatte, ist aber erst nach Abschluss nutzbar.",
+              "hint": "Setze ihn im Upload-Bereich fort, wenn du ihn gestartet hast, oder lösche die unvollständige Datei, wenn du sie nicht mehr brauchst.",
+              "empty": "Alle Uploads auf diesen Server sind abgeschlossen."
             }
           }
         },

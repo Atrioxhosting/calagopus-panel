@@ -46,6 +46,7 @@ mod get {
 
             server_uuid: uuid::Uuid,
             user_uuid: uuid::Uuid,
+            user_name: &'a str,
             unique_id: uuid::Uuid,
 
             ignored_files: &'a [compact_str::CompactString],
@@ -69,6 +70,7 @@ mod get {
                 },
                 server_uuid: server.uuid,
                 user_uuid: user.uuid,
+                user_name: &user.username,
                 unique_id: uuid::Uuid::new_v4(),
                 ignored_files: server.subuser_ignored_files.as_deref().unwrap_or(&[]),
             },

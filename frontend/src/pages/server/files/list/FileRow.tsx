@@ -10,11 +10,13 @@ import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import ScrollingText from '@/elements/ScrollingText.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import { isOpenableFile } from '@/lib/files/files.ts';
-import { bytesToString } from '@/lib/format/size.ts';
+import { bytesProgressString, bytesToString } from '@/lib/format/size.ts';
 import { serverDirectoryEntrySchema } from '@/lib/schemas/server/files.ts';
 import { useDraggedFileMove } from '@/pages/server/files/hooks/useDraggedFileMove.ts';
+import useFileUpload from '@/pages/server/files/hooks/useFileUpload.ts';
 import FileRowContextMenu from '@/pages/server/files/list/FileRowContextMenu.tsx';
 import { canPreviewFile, FileSearchPreviewToggle } from '@/pages/server/files/list/FileSearchPreview.tsx';
+import FileUploadStatus from '@/pages/server/files/list/FileUploadStatus.tsx';
 import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useFileManagerApi, useFileManagerStore } from '@/stores/fileManager.ts';
@@ -75,6 +77,7 @@ const FileRow = forwardRef<HTMLTableRowElement, FileRowProps>(function FileRow(
   const isDraggingSource = useFileManagerStore(
     (state) => state.draggingFiles.has(file) && state.draggingFilesSource === state.browsingDirectory,
   );
+  const upload = useFileUpload(searchInfo?.root ?? browsingDirectory, file.name);
 
   const searchPath = searchInfo ? join('/', searchInfo.root, file.name) : null;
   const targetDirectory = file.directory ? join(browsingDirectory, file.name) : null;
@@ -156,11 +159,14 @@ const FileRow = forwardRef<HTMLTableRowElement, FileRowProps>(function FileRow(
     if (isSelected) {
       return 'var(--mantine-color-blue-light)';
     }
+    if (upload) {
+      return upload.active ? 'var(--mantine-color-green-light)' : 'var(--mantine-color-yellow-light)';
+    }
     return undefined;
   };
 
   return (
-    <FileRowContextMenu file={file} openMode={openMode}>
+    <FileRowContextMenu file={file} openMode={openMode} upload={upload}>
       {({ items, openMenu }) => (
         <TableRow
           ref={ref}
@@ -216,7 +222,8 @@ const FileRow = forwardRef<HTMLTableRowElement, FileRowProps>(function FileRow(
                   onDragEnd={() => store.getState().clearDraggingFiles()}
                 >
                   <FileRowIcon className='shrink-0 text-(--mantine-color-dimmed)' file={file} />
-                  <ScrollingText>{file.name}</ScrollingText>
+                  <ScrollingText>{upload ? upload.targetName : file.name}</ScrollingText>
+                  {upload && <FileUploadStatus upload={upload} size='sm' />}
                 </span>
               </Tooltip>
             </div>
@@ -224,7 +231,9 @@ const FileRow = forwardRef<HTMLTableRowElement, FileRowProps>(function FileRow(
 
           <TableData>
             <span className='flex items-center gap-4 min-w-fit text-nowrap'>
-              {bytesToString(preferPhysicalSize ? file.sizePhysical : file.size)}
+              {upload
+                ? bytesProgressString(upload.uploaded, upload.total ?? 0)
+                : bytesToString(preferPhysicalSize ? file.sizePhysical : file.size)}
             </span>
           </TableData>
 

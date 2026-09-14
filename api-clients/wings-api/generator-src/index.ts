@@ -66,6 +66,11 @@ const serdeDefaultProperties: Record<string, string[]> = {
     QueryResultSet: ['truncated'],
 }
 
+/** The same, for properties of a route's inline response bodies. */
+const serdeDefaultResponseProperties: Record<string, string[]> = {
+    'get /api/servers/{server}/files/list': ['uploads'],
+}
+
 const openapi: oas31.OpenAPIObject = JSON.parse(fs.readFileSync('../openapi.json', 'utf-8'))
 const output = fs.createWriteStream('../src/lib.rs', { flags: 'w' })
 
@@ -409,7 +414,7 @@ for (const [path, route] of Object.entries(openapi.paths ?? {})) {
                 if ((schema as oas31.SchemaObject).type !== 'object') {
                     output.write(`        pub type Response${code} = ${convertType(schema as any)};\n\n`.replace('compact_str::CompactString', 'String').replace('String', 'AsyncResponseReader'))
                 } else {
-                    generateSchemaObject(output, 8, null, `Response${code}`, schema as any)
+                    generateSchemaObject(output, 8, null, `Response${code}`, schema as any, false, { serdeDefault: serdeDefaultResponseProperties[`${method} ${path}`] })
                 }
             }
         }

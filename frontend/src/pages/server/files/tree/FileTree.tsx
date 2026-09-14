@@ -194,6 +194,7 @@ function FileTree({
       try {
         let response = await loadDirectory(requestServerUuid, directory, page, 'name_asc');
         const refreshedEntries = [...response.entries.data];
+        const refreshedUploads = new Map(response.uploads.map((upload) => [upload.name, upload]));
 
         // Keep the displayed rows until every previously loaded page has been refreshed.
         for (let nextPage = page + 1; nextPage <= lastPage; nextPage++) {
@@ -201,9 +202,14 @@ function FileTree({
           if (refreshedEntries.length >= response.entries.total) break;
           response = await loadDirectory(requestServerUuid, directory, nextPage, 'name_asc');
           refreshedEntries.push(...response.entries.data);
+          for (const upload of response.uploads) refreshedUploads.set(upload.name, upload);
         }
 
         if (activeServerRef.current === requestServerUuid) {
+          if (page === 1) {
+            store.getState().setDirectoryStagingUploads(directory, Array.from(refreshedUploads.values()));
+          }
+
           setDirectories((current) => {
             const existingEntries = page === 1 ? [] : (current[directory]?.entries ?? []);
             const entriesByName = new Map(existingEntries.map((entry) => [entry.name, entry]));
@@ -241,7 +247,7 @@ function FileTree({
         loadingDirectoriesRef.current.delete(loadingKey);
       }
     },
-    [server.uuid, addToast],
+    [server.uuid, addToast, store],
   );
 
   useEffect(() => {
@@ -282,6 +288,15 @@ function FileTree({
   }, [initialDirectory, loadPage]);
 
   useEffect(() => store.getState().registerRefreshListener(() => reloadTreeRef.current()), [store]);
+  useEffect(
+    () =>
+      store.getState().registerDirectoryRefreshListener((directories) => {
+        for (const directory of directories) {
+          if (directoriesRef.current[directory]) void loadPage(directory, 1);
+        }
+      }),
+    [store, loadPage],
+  );
   useEffect(
     () => () => {
       syncingStoreSelectionRef.current = true;

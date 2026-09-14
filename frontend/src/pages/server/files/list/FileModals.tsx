@@ -9,6 +9,7 @@ import FileFingerprintModal from '@/pages/server/files/modals/FileFingerprintMod
 import FilePermissionsModal from '@/pages/server/files/modals/FilePermissionsModal.tsx';
 import FileRenameModal from '@/pages/server/files/modals/FileRenameModal.tsx';
 import FileSearchModal from '@/pages/server/files/modals/FileSearchModal.tsx';
+import IncompleteUploadsModal from '@/pages/server/files/modals/IncompleteUploadsModal.tsx';
 import LargestDirectoriesModal from '@/pages/server/files/modals/LargestDirectoriesModal.tsx';
 import MassRenameModal from '@/pages/server/files/modals/MassRenameModal.tsx';
 import PullFileModal from '@/pages/server/files/modals/PullFileModal.tsx';
@@ -57,6 +58,8 @@ export default function FileModals({ treeView = false }: { treeView?: boolean })
       <FileSearchModal treeView={treeView} opened={openModal === 'search'} onClose={doCloseModal} />
 
       <LargestDirectoriesModal opened={openModal === 'largestDirectories'} onClose={doCloseModal} />
+
+      <IncompleteUploadsModal opened={openModal === 'incompleteUploads'} onClose={doCloseModal} />
     </>
   );
 }

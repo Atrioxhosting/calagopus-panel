@@ -3,6 +3,7 @@ import Card from '@/elements/data-display/Card.tsx';
 import SemiCircleProgress from '@/elements/feedback/SemiCircleProgress.tsx';
 import Title from '@/elements/typography/Title.tsx';
 import { bytesToString, mbToBytes } from '@/lib/format/size.ts';
+import { usageColor } from '@/lib/format/usage.ts';
 
 const defaultFormatValue = (value: number) => bytesToString(mbToBytes(value));
 
@@ -33,7 +34,7 @@ export default function CapacityCard({
           <SemiCircleProgress
             value={unlimited ? 100 : Math.min(percent, 100)}
             label={unlimited ? '--' : <>{percent.toFixed(1)}%</>}
-            filledSegmentColor={unlimited ? 'gray' : percent >= 90 ? 'red' : undefined}
+            filledSegmentColor={unlimited ? 'gray' : usageColor(allocated, limit)}
           />
         </div>
         <div className='flex flex-col text-center md:text-right flex-1'>

@@ -13,6 +13,7 @@ import { serverBackupSchema } from '@/lib/schemas/server/backups.ts';
 import {
   serverDirectoryEntrySchema,
   serverDirectorySortingModeSchema,
+  serverDirectoryUploadSchema,
   serverFilesContentMatchesSchema,
   serverFilesSearchSchema,
 } from '@/lib/schemas/server/files.ts';
@@ -42,6 +43,7 @@ export type ModalType =
   | 'pullFile'
   | 'search'
   | 'largestDirectories'
+  | 'incompleteUploads'
   | 'sftp'
   | null;
 
@@ -69,6 +71,8 @@ export interface FileManagerBrowsingContext {
   fast?: boolean;
 }
 
+export type StagingUpload = z.infer<typeof serverDirectoryUploadSchema>;
+
 export interface FileManagerStore {
   externals: FileManagerExternals;
   setExternals: (externals: FileManagerExternals) => void;
@@ -90,6 +94,11 @@ export interface FileManagerStore {
   setBrowsingContext: (context: FileManagerBrowsingContext) => void;
   browsingEntries: Pagination<z.infer<typeof serverDirectoryEntrySchema>>;
   setBrowsingEntries: (entries: Pagination<z.infer<typeof serverDirectoryEntrySchema>>) => void;
+  stagingUploads: Map<string, StagingUpload>;
+  setStagingUploads: (uploads: StagingUpload[]) => void;
+  setDirectoryStagingUploads: (directory: string, uploads: StagingUpload[]) => void;
+  stagingUploadsNow: number;
+  setStagingUploadsNow: (now: number) => void;
   browsingError: string | null;
   setBrowsingError: (error: string | null) => void;
   hasNextPage: boolean;
@@ -145,6 +154,8 @@ export interface FileManagerStore {
   resetEntries: () => void;
   invalidateFilemanager: (notifyListeners?: boolean) => void;
   registerRefreshListener: (listener: () => void) => () => void;
+  refreshDirectories: (directories: string[]) => void;
+  registerDirectoryRefreshListener: (listener: (directories: string[]) => void) => () => void;
   fileUploader: FileUploader;
   doActFiles: (mode: ActingFileMode | null, files: z.infer<typeof serverDirectoryEntrySchema>[]) => void;
   clearActingFiles: () => void;
@@ -261,6 +272,36 @@ export function bridgeFileManagerUserSettings(store: StoreApi<FileManagerStore>)
   };
 }
 
+export function stagingUploadPath(directory: string, name: string): string {
+  return join('/', directory, name);
+}
+
+function isOrphanedUpload(upload: StagingUpload): boolean {
+  return upload.user === null;
+}
+
+function sameStagingUploads(previous: Map<string, StagingUpload>, next: Map<string, StagingUpload>): boolean {
+  if (previous.size !== next.size) return false;
+
+  for (const [path, upload] of next) {
+    const before = previous.get(path);
+    if (
+      before === undefined ||
+      before.uploaded !== upload.uploaded ||
+      before.total !== upload.total ||
+      before.active !== upload.active ||
+      before.targetName !== upload.targetName ||
+      before.user !== upload.user ||
+      before.userName !== upload.userName ||
+      before.updated?.getTime() !== upload.updated?.getTime()
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export const createFileManagerStore = (
   initialExternals: FileManagerExternals,
   initial: { browsingDirectory: string },
@@ -268,15 +309,20 @@ export const createFileManagerStore = (
   create<FileManagerStore>()((set, get) => {
     let selectionAnchor: z.infer<typeof serverDirectoryEntrySchema> | null = null;
     const refreshListeners = new Set<() => void>();
+    const directoryRefreshListeners = new Set<(directories: string[]) => void>();
 
     return {
       externals: initialExternals,
       setExternals: (externals) =>
-        set((state) => ({
-          externals,
-          collapsedSearchPreviews:
-            state.externals.serverUuid === externals.serverUuid ? state.collapsedSearchPreviews : new Set<string>(),
-        })),
+        set((state) => {
+          const sameServer = state.externals.serverUuid === externals.serverUuid;
+
+          return {
+            externals,
+            collapsedSearchPreviews: sameServer ? state.collapsedSearchPreviews : new Set<string>(),
+            stagingUploads: sameServer ? state.stagingUploads : new Map(),
+          };
+        }),
       isLoading: true,
       fileInputRef: createRef<HTMLInputElement>(),
       folderInputRef: createRef<HTMLInputElement>(),
@@ -316,6 +362,30 @@ export const createFileManagerStore = (
         }),
       browsingEntries: getEmptyPaginationSet<z.infer<typeof serverDirectoryEntrySchema>>(),
       setBrowsingEntries: (entries) => set({ browsingEntries: entries }),
+      stagingUploads: new Map(),
+      setStagingUploads: (uploads) =>
+        set((state) => {
+          const next = new Map<string, StagingUpload>();
+          for (const [path, upload] of state.stagingUploads) {
+            if (isOrphanedUpload(upload)) next.set(path, upload);
+          }
+          for (const upload of uploads) next.set(stagingUploadPath(upload.directory, upload.name), upload);
+
+          return sameStagingUploads(state.stagingUploads, next) ? state : { stagingUploads: next };
+        }),
+      setDirectoryStagingUploads: (directory, uploads) =>
+        set((state) => {
+          const replaced = join('/', directory);
+          const next = new Map<string, StagingUpload>();
+          for (const [path, upload] of state.stagingUploads) {
+            if (join('/', upload.directory) !== replaced) next.set(path, upload);
+          }
+          for (const upload of uploads) next.set(stagingUploadPath(upload.directory, upload.name), upload);
+
+          return sameStagingUploads(state.stagingUploads, next) ? state : { stagingUploads: next };
+        }),
+      stagingUploadsNow: Date.now(),
+      setStagingUploadsNow: (now) => set({ stagingUploadsNow: now }),
       browsingError: null,
       setBrowsingError: (error) => set({ browsingError: error }),
       hasNextPage: false,
@@ -427,6 +497,7 @@ export const createFileManagerStore = (
         if (!directoryData) return;
 
         set({ browsingEntries: directoryData.entries });
+        get().setDirectoryStagingUploads(directoryData.directory, directoryData.uploads);
       },
       invalidateFilemanager: (notifyListeners = true) => {
         if (notifyListeners) refreshListeners.forEach((listener) => listener());
@@ -476,6 +547,16 @@ export const createFileManagerStore = (
       registerRefreshListener: (listener) => {
         refreshListeners.add(listener);
         return () => refreshListeners.delete(listener);
+      },
+      refreshDirectories: (directories) => {
+        if (directories.length === 0) return;
+
+        directoryRefreshListeners.forEach((listener) => listener(directories));
+        if (directories.includes(join('/', get().browsingDirectory))) get().invalidateFilemanager(false);
+      },
+      registerDirectoryRefreshListener: (listener) => {
+        directoryRefreshListeners.add(listener);
+        return () => directoryRefreshListeners.delete(listener);
       },
       fileUploader: noopFileUploader,
       doActFiles: (mode, files) =>

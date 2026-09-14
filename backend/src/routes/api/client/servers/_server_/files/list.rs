@@ -27,6 +27,7 @@ mod get {
 
         #[schema(inline)]
         entries: Pagination<wings_api::DirectoryEntry>,
+        uploads: Vec<wings_api::UploadEntry>,
     }
 
     #[utoipa::path(get, path = "/", responses(
@@ -120,6 +121,7 @@ mod get {
                 page: pagination.page,
                 data: entries.entries,
             },
+            uploads: entries.uploads,
         })
         .ok()
     }

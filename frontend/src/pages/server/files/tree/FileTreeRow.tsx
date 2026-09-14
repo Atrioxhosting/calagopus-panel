@@ -6,13 +6,15 @@ import ActionIcon from '@/elements/buttons/ActionIcon.tsx';
 import Checkbox from '@/elements/input/Checkbox.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import { isOpenableFile } from '@/lib/files/files.ts';
-import { bytesToString } from '@/lib/format/size.ts';
+import { bytesProgressString, bytesToString } from '@/lib/format/size.ts';
+import useFileUpload from '@/pages/server/files/hooks/useFileUpload.ts';
 import FileRowContextMenu from '@/pages/server/files/list/FileRowContextMenu.tsx';
 import FileRowIcon from '@/pages/server/files/list/FileRowIcon.tsx';
 import FileSearchPreview, {
   canPreviewFile,
   FileSearchPreviewToggle,
 } from '@/pages/server/files/list/FileSearchPreview.tsx';
+import FileUploadStatus from '@/pages/server/files/list/FileUploadStatus.tsx';
 import FileTreeName from '@/pages/server/files/tree/FileTreeName.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useFileManagerApi, useFileManagerStore } from '@/stores/fileManager.ts';
@@ -86,6 +88,7 @@ function FileTreeRow({
   const store = useFileManagerApi();
   const anyActing = useFileManagerStore((state) => state.actingFiles.size > 0);
   const clickOnce = useFileManagerStore((state) => state.clickOnce);
+  const upload = useFileUpload(row.parent, row.entry.name);
   const clickCount = useRef(0);
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -179,7 +182,11 @@ function FileTreeRow({
             ? 'var(--mantine-color-default-hover)'
             : selected
               ? 'var(--mantine-color-blue-light)'
-              : undefined,
+              : upload
+                ? upload.active
+                  ? 'var(--mantine-color-green-light)'
+                  : 'var(--mantine-color-yellow-light)'
+                : undefined,
           boxShadow: active
             ? 'inset 3px 0 0 var(--mantine-primary-color-filled)'
             : selected
@@ -247,12 +254,19 @@ function FileTreeRow({
               archive={row.expandable && !row.entry.directory}
               className='w-4 shrink-0 [--fa-width:1rem]'
             />
-            <FileTreeName name={row.entry.name} directory={row.entry.directory} className='flex-1' />
+            <FileTreeName
+              name={upload ? upload.targetName : row.entry.name}
+              directory={row.entry.directory}
+              className='flex-1'
+            />
+            {upload && <FileUploadStatus upload={upload} size='xs' />}
           </span>
         </div>
 
         <span data-file-manager-tree-size className='truncate text-xs text-(--mantine-color-dimmed)'>
-          {bytesToString(preferPhysicalSize ? row.entry.sizePhysical : row.entry.size)}
+          {upload
+            ? bytesProgressString(upload.uploaded, upload.total ?? 0)
+            : bytesToString(preferPhysicalSize ? row.entry.sizePhysical : row.entry.size)}
         </span>
 
         <span data-file-manager-tree-modified className='min-w-0 truncate text-xs text-(--mantine-color-dimmed)'>
@@ -295,6 +309,7 @@ function FileTreeRow({
           openMode={openMode}
           directory={row.parent}
           writableDirectory={parentWritable}
+          upload={upload}
           surface='tree'
         >
           {({ openMenu }) => <ContextMenuOpener {...menuPosition} openMenu={openMenu} />}
