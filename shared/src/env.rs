@@ -2,7 +2,10 @@ use anyhow::Context;
 use axum::{extract::ConnectInfo, http::HeaderMap};
 use colored::Colorize;
 use dotenvy::dotenv;
-use std::sync::{Arc, atomic::AtomicBool};
+use std::{
+    io::{BufWriter, IsTerminal},
+    sync::{Arc, atomic::AtomicBool},
+};
 use tracing_subscriber::{
     Layer,
     filter::{LevelFilter, Targets},
@@ -38,6 +41,8 @@ pub struct EnvGuard(
 
 type ReloadHandle =
     tracing_subscriber::reload::Handle<Targets, Layered<LevelFilter, tracing_subscriber::Registry>>;
+
+const LOG_CHANNEL_LINES: usize = 4096;
 
 fn log_filter(debug: bool) -> Targets {
     let crate_level = if debug {
@@ -109,6 +114,7 @@ pub struct Env {
     pub app_trusted_proxies: Vec<cidr::IpCidr>,
     pub app_blocked_cidrs: Vec<cidr::IpCidr>,
     pub app_log_directory: Option<String>,
+    pub app_request_log_limit: usize,
     pub app_encryption_key: String,
     pub server_name: Option<String>,
 }
@@ -167,7 +173,10 @@ impl Env {
             .ok()
             .map(|s| s.trim_matches('"').to_string());
 
-        let (stdout_writer, stdout_guard) = tracing_appender::non_blocking(std::io::stdout());
+        let (stdout_writer, stdout_guard) =
+            tracing_appender::non_blocking::NonBlockingBuilder::default()
+                .buffered_lines_limit(LOG_CHANNEL_LINES)
+                .finish(BufWriter::new(std::io::stdout()));
 
         let (appender, file_guard) = if let Some(app_log_directory) = &app_log_directory {
             if !std::path::Path::new(app_log_directory).exists() {
@@ -191,8 +200,8 @@ impl Env {
                 .context("failed to create rolling log file appender")?;
 
             let (appender, guard) = tracing_appender::non_blocking::NonBlockingBuilder::default()
-                .buffered_lines_limit(50)
-                .finish(latest_file.and(rolling_appender));
+                .buffered_lines_limit(LOG_CHANNEL_LINES)
+                .finish(BufWriter::new(latest_file.and(rolling_appender)));
 
             (Some(appender), Some(guard))
         } else {
@@ -207,6 +216,7 @@ impl Env {
             .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new(
                 "%Y-%m-%d %H:%M:%S %z".to_string(),
             ))
+            .with_ansi(std::io::stdout().is_terminal())
             .with_target(false)
             .with_level(true)
             .with_file(true)
@@ -312,6 +322,11 @@ impl Env {
                 Err(_) => default_blocked_cidrs(),
             },
             app_log_directory,
+            app_request_log_limit: std::env::var("APP_REQUEST_LOG_LIMIT")
+                .unwrap_or("250".to_string())
+                .trim_matches('"')
+                .parse()
+                .context("Invalid APP_REQUEST_LOG_LIMIT value")?,
             app_encryption_key,
             server_name: std::env::var("SERVER_NAME")
                 .ok()

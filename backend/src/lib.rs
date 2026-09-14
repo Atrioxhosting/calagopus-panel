@@ -20,7 +20,11 @@ use shared::{
 use std::{
     borrow::Cow,
     net::SocketAddr,
-    sync::{Arc, OnceLock},
+    sync::{
+        Arc, LazyLock, OnceLock,
+        atomic::{AtomicU64, AtomicUsize, Ordering},
+    },
+    time::Instant,
 };
 use tokio::sync::RwLock;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
@@ -36,6 +40,45 @@ pub mod commands;
 pub mod routes;
 pub mod tasks;
 
+struct RequestLogBudget {
+    second: AtomicU64,
+    logged: AtomicUsize,
+    suppressed: AtomicU64,
+}
+
+impl RequestLogBudget {
+    fn take(&self, limit: usize) -> (bool, u64) {
+        static START: LazyLock<Instant> = LazyLock::new(Instant::now);
+
+        let now = START.elapsed().as_secs();
+        let second = self.second.load(Ordering::Relaxed);
+        let suppressed = if second != now
+            && self
+                .second
+                .compare_exchange(second, now, Ordering::AcqRel, Ordering::Relaxed)
+                .is_ok()
+        {
+            self.logged.store(0, Ordering::Relaxed);
+            self.suppressed.swap(0, Ordering::Relaxed)
+        } else {
+            0
+        };
+
+        if self.logged.fetch_add(1, Ordering::Relaxed) < limit {
+            (true, suppressed)
+        } else {
+            self.suppressed.fetch_add(1, Ordering::Relaxed);
+            (false, suppressed)
+        }
+    }
+}
+
+static REQUEST_LOG_BUDGET: RequestLogBudget = RequestLogBudget {
+    second: AtomicU64::new(0),
+    logged: AtomicUsize::new(0),
+    suppressed: AtomicU64::new(0),
+};
+
 pub async fn handle_request(
     state: GetState,
     connect_info: ConnectInfo<SocketAddr>,
@@ -46,12 +89,29 @@ pub async fn handle_request(
 
     req.extensions_mut().insert(ip);
 
-    tracing::info!(
-        path = req.uri().path(),
-        query = %shared::utils::redact_query(req.uri().query().unwrap_or_default()),
-        "http {}",
-        req.method().to_string().to_lowercase(),
-    );
+    let limit = state.env.app_request_log_limit;
+    let (log, suppressed) = if limit == 0 {
+        (true, 0)
+    } else {
+        REQUEST_LOG_BUDGET.take(limit)
+    };
+
+    if suppressed > 0 {
+        tracing::info!(
+            "suppressed {} http request log lines (APP_REQUEST_LOG_LIMIT = {})",
+            suppressed,
+            limit
+        );
+    }
+
+    if log {
+        tracing::info!(
+            path = req.uri().path(),
+            query = %shared::utils::redact_query(req.uri().query().unwrap_or_default()),
+            "http {}",
+            req.method().to_string().to_lowercase(),
+        );
+    }
 
     Ok(shared::response::APP_DEBUG
         .scope(state.env.is_debug(), async {
