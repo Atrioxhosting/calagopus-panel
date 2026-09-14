@@ -2659,8 +2659,6 @@ pub mod system_config {
                     #[schema(inline)]
                     pub file_search_context: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200ApiFileSearchContext {
                         #[schema(inline)]
-                        pub max_search_size: u64,
-                        #[schema(inline)]
                         pub max_matches: u64,
                         #[schema(inline)]
                         pub max_response_size: u64,
@@ -2668,6 +2666,8 @@ pub mod system_config {
 
                     #[schema(inline)]
                     pub file_copy_threads: u64,
+                    #[schema(inline)]
+                    pub file_delete_threads: u64,
                     #[schema(inline)]
                     pub file_decompression_threads: u64,
                     #[schema(inline)]
