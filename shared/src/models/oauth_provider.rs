@@ -32,6 +32,8 @@ pub struct OAuthProvider {
     pub username_path: Option<String>,
     pub name_first_path: Option<String>,
     pub name_last_path: Option<String>,
+    pub avatar_url_template: Option<String>,
+    pub avatar_overwrite: bool,
 
     pub enabled: bool,
     pub login_only: bool,
@@ -121,6 +123,14 @@ impl BaseModel for OAuthProvider {
                 compact_str::format_compact!("{prefix}name_last_path"),
             ),
             (
+                "oauth_providers.avatar_url_template",
+                compact_str::format_compact!("{prefix}avatar_url_template"),
+            ),
+            (
+                "oauth_providers.avatar_overwrite",
+                compact_str::format_compact!("{prefix}avatar_overwrite"),
+            ),
+            (
                 "oauth_providers.enabled",
                 compact_str::format_compact!("{prefix}enabled"),
             ),
@@ -176,6 +186,10 @@ impl BaseModel for OAuthProvider {
                 .try_get(compact_str::format_compact!("{prefix}name_first_path").as_str())?,
             name_last_path: row
                 .try_get(compact_str::format_compact!("{prefix}name_last_path").as_str())?,
+            avatar_url_template: row
+                .try_get(compact_str::format_compact!("{prefix}avatar_url_template").as_str())?,
+            avatar_overwrite: row
+                .try_get(compact_str::format_compact!("{prefix}avatar_overwrite").as_str())?,
             enabled: row.try_get(compact_str::format_compact!("{prefix}enabled").as_str())?,
             login_only: row.try_get(compact_str::format_compact!("{prefix}login_only").as_str())?,
             login_bypass_two_factor: row.try_get(
@@ -193,6 +207,8 @@ impl BaseModel for OAuthProvider {
 }
 
 impl OAuthProvider {
+    const MAX_AVATAR_URL_LENGTH: usize = 2048;
+
     pub async fn all_with_pagination(
         database: &crate::database::Database,
         page: i64,
@@ -353,6 +369,87 @@ impl OAuthProvider {
     ) -> Result<Option<String>, anyhow::Error> {
         Self::extract_optional_name(self.name_last_path.as_ref(), value)
     }
+
+    /// Resolves `avatar_url_template` against a provider's user info response, substituting every
+    /// `{$.json.path}` placeholder with the value found at that path.
+    ///
+    /// A template that is nothing but a single placeholder yields that value verbatim, for the
+    /// providers that hand back a whole avatar url (`{$.picture}`). Anywhere else the placeholder
+    /// stands for one path or query component and its value is percent-encoded, so that a provider
+    /// returning a crafted value cannot rewrite the rest of the url
+    /// (`https://cdn.discordapp.com/avatars/{$.id}/{$.avatar}.png`).
+    ///
+    /// Yields `None` when no template is configured or when any placeholder resolves to nothing,
+    /// which is the ordinary "this user has no avatar" case rather than an error.
+    pub fn extract_avatar_url(
+        &self,
+        value: &serde_json::Value,
+    ) -> Result<Option<String>, anyhow::Error> {
+        match &self.avatar_url_template {
+            Some(template) => Self::resolve_avatar_url_template(template, value),
+            None => Ok(None),
+        }
+    }
+
+    fn resolve_avatar_url_template(
+        template: &str,
+        value: &serde_json::Value,
+    ) -> Result<Option<String>, anyhow::Error> {
+        let verbatim = template.starts_with('{')
+            && template.ends_with('}')
+            && template.matches('{').count() == 1;
+
+        let mut url = String::new();
+        let mut rest = template;
+
+        while let Some(start) = rest.find('{') {
+            let Some(end) = rest[start..].find('}').map(|end| start + end) else {
+                return Err(crate::response::DisplayError::new(
+                    "unterminated placeholder in avatar url template",
+                )
+                .into());
+            };
+
+            url.push_str(&rest[..start]);
+
+            let resolved = match serde_json_path::JsonPath::parse(&rest[start + 1..end])?
+                .query(value)
+                .first()
+            {
+                None | Some(serde_json::Value::Null) => return Ok(None),
+                Some(serde_json::Value::String(string)) if string.is_empty() => return Ok(None),
+                Some(serde_json::Value::String(string)) => string.clone(),
+                Some(val) => val.to_string(),
+            };
+
+            if verbatim {
+                url.push_str(&resolved);
+            } else {
+                url.push_str(&urlencoding::encode(&resolved));
+            }
+
+            rest = &rest[end + 1..];
+        }
+
+        url.push_str(rest);
+
+        if url.len() > Self::MAX_AVATAR_URL_LENGTH {
+            return Err(
+                crate::response::DisplayError::new("resolved avatar url is too long").into(),
+            );
+        }
+
+        let url = reqwest::Url::parse(&url)?;
+        if !matches!(url.scheme(), "http" | "https") {
+            return Err(crate::response::DisplayError::new(format!(
+                "avatar url scheme {} is not http or https",
+                url.scheme()
+            ))
+            .into());
+        }
+
+        Ok(Some(url.into()))
+    }
 }
 
 #[async_trait::async_trait]
@@ -383,6 +480,8 @@ impl IntoAdminApiObject for OAuthProvider {
                 username_path: self.username_path,
                 name_first_path: self.name_first_path,
                 name_last_path: self.name_last_path,
+                avatar_url_template: self.avatar_url_template,
+                avatar_overwrite: self.avatar_overwrite,
                 enabled: self.enabled,
                 login_only: self.login_only,
                 login_bypass_two_factor: self.login_bypass_two_factor,
@@ -538,6 +637,14 @@ pub struct CreateOAuthProviderOptions {
     )]
     #[schema(min_length = 1, max_length = 255)]
     pub name_last_path: Option<String>,
+    #[garde(
+        length(chars, min = 1, max = 255),
+        inner(custom(crate::utils::validate_avatar_url_template))
+    )]
+    #[schema(min_length = 1, max_length = 255)]
+    pub avatar_url_template: Option<String>,
+    #[garde(skip)]
+    pub avatar_overwrite: bool,
 }
 
 #[async_trait::async_trait]
@@ -582,6 +689,8 @@ impl CreatableModel for OAuthProvider {
             .set("username_path", &options.username_path)
             .set("name_first_path", &options.name_first_path)
             .set("name_last_path", &options.name_last_path)
+            .set("avatar_url_template", &options.avatar_url_template)
+            .set("avatar_overwrite", options.avatar_overwrite)
             .set("enabled", options.enabled)
             .set("login_only", options.login_only)
             .set("login_bypass_two_factor", options.login_bypass_two_factor)
@@ -697,6 +806,19 @@ pub struct UpdateOAuthProviderOptions {
         with = "::serde_with::rust::double_option"
     )]
     pub name_last_path: Option<Option<String>>,
+    #[garde(
+        length(chars, min = 1, max = 255),
+        inner(inner(custom(crate::utils::validate_avatar_url_template)))
+    )]
+    #[schema(min_length = 1, max_length = 255)]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub avatar_url_template: Option<Option<String>>,
+    #[garde(skip)]
+    pub avatar_overwrite: Option<bool>,
 }
 
 #[async_trait::async_trait]
@@ -762,6 +884,11 @@ impl UpdatableModel for OAuthProvider {
                 "name_last_path",
                 options.name_last_path.as_ref().map(|n| n.as_ref()),
             )
+            .set(
+                "avatar_url_template",
+                options.avatar_url_template.as_ref().map(|a| a.as_ref()),
+            )
+            .set("avatar_overwrite", options.avatar_overwrite)
             .set("enabled", options.enabled)
             .set("login_only", options.login_only)
             .set("login_bypass_two_factor", options.login_bypass_two_factor)
@@ -830,6 +957,12 @@ impl UpdatableModel for OAuthProvider {
         }
         if let Some(name_last_path) = options.name_last_path {
             self.name_last_path = name_last_path;
+        }
+        if let Some(avatar_url_template) = options.avatar_url_template {
+            self.avatar_url_template = avatar_url_template;
+        }
+        if let Some(avatar_overwrite) = options.avatar_overwrite {
+            self.avatar_overwrite = avatar_overwrite;
         }
 
         self.run_after_update_handlers(state, transaction).await?;
@@ -919,6 +1052,8 @@ impl DuplicableModel for OAuthProvider {
             .set("username_path", &self.username_path)
             .set("name_first_path", &self.name_first_path)
             .set("name_last_path", &self.name_last_path)
+            .set("avatar_url_template", &self.avatar_url_template)
+            .set("avatar_overwrite", self.avatar_overwrite)
             .set("enabled", self.enabled)
             .set("login_only", self.login_only)
             .set("login_bypass_two_factor", self.login_bypass_two_factor)
@@ -973,6 +1108,8 @@ pub struct AdminApiOAuthProvider {
     pub username_path: Option<String>,
     pub name_first_path: Option<String>,
     pub name_last_path: Option<String>,
+    pub avatar_url_template: Option<String>,
+    pub avatar_overwrite: bool,
 
     pub enabled: bool,
     pub login_only: bool,

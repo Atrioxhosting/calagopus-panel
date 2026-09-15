@@ -66,6 +66,50 @@ async fn apply_oauth_provider_mappings(
     }
 }
 
+fn import_oauth_avatar(
+    state: &shared::State,
+    oauth_provider: &OAuthProvider,
+    user: &User,
+    info: &serde_json::Value,
+) {
+    if user.frozen || (user.avatar.is_some() && !oauth_provider.avatar_overwrite) {
+        return;
+    }
+
+    let source_url = match oauth_provider.extract_avatar_url(info) {
+        Ok(Some(source_url)) => source_url,
+        Ok(None) => return,
+        Err(err) => {
+            tracing::warn!(
+                user = %user.uuid,
+                oauth_provider = %oauth_provider.uuid,
+                "failed to resolve oauth avatar url: {:#?}",
+                err
+            );
+
+            return;
+        }
+    };
+
+    let state = std::sync::Arc::clone(state);
+    let oauth_provider_uuid = oauth_provider.uuid;
+    let user_uuid = user.uuid;
+    let previous = user.avatar.clone();
+
+    tokio::spawn(async move {
+        if let Err(err) =
+            User::import_avatar_by_uuid(&state, user_uuid, previous.as_deref(), &source_url).await
+        {
+            tracing::warn!(
+                user = %user_uuid,
+                oauth_provider = %oauth_provider_uuid,
+                "failed to import oauth avatar: {:#?}",
+                err
+            );
+        }
+    });
+}
+
 pub fn router(state: &State) -> OpenApiRouter<State> {
     OpenApiRouter::new()
         .route("/", get(|state: GetState,
@@ -223,6 +267,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                 }
 
                 apply_oauth_provider_mappings(&state, &oauth_provider, user.uuid, &token, &info).await;
+                import_oauth_avatar(&state, &oauth_provider, &user, &info);
 
                 if let Err(err) = UserActivity::create(
                     &state,
@@ -280,6 +325,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                         let user = oauth_link.user.fetch(&state.database).await?;
 
                         apply_oauth_provider_mappings(&state, &oauth_provider, user.uuid, &token, &info).await;
+                        import_oauth_avatar(&state, &oauth_provider, &user, &info);
 
                         let settings = state.settings.get().await?;
                         let methods = available_methods(&user, &settings);
@@ -471,6 +517,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                         }
 
                         apply_oauth_provider_mappings(&state, &oauth_provider, user.uuid, &token, &info).await;
+                        import_oauth_avatar(&state, &oauth_provider, &user, &info);
 
                         let key = UserSession::create(
                             &state,

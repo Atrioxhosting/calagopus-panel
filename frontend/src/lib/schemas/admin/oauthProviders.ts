@@ -17,6 +17,8 @@ export const adminOAuthProviderSchema = z.looseObject({
   usernamePath: z.preprocess(nullableString, z.string().min(3).max(255).nullable()),
   nameFirstPath: z.preprocess(nullableString, z.string().min(3).max(255).nullable()),
   nameLastPath: z.preprocess(nullableString, z.string().min(3).max(255).nullable()),
+  avatarUrlTemplate: z.preprocess(nullableString, z.string().min(1).max(255).nullable()),
+  avatarOverwrite: z.boolean(),
   enabled: z.boolean(),
   loginOnly: z.boolean(),
   loginBypassTwoFactor: z.boolean(),

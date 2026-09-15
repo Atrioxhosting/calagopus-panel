@@ -34,6 +34,7 @@ lettre = { version = "0.11.17", default-features = false, features = [
 	"sendmail-transport",
 	"file-transport",
 ] }
+image = "0.25.5"
 zip = { version = "8.0.0", default-features = false, features = ["deflate"] }
 toml = "1.0.1"
 serde = { workspace = true }

@@ -205,6 +205,7 @@ impl AppState {
             client: reqwest::ClientBuilder::new()
                 .user_agent(format!("github.com/calagopus/panel {}", VERSION))
                 .connect_timeout(std::time::Duration::from_secs(10))
+                .read_timeout(std::time::Duration::from_secs(60))
                 .build()
                 .unwrap(),
             app_router: RwLock::new(None),

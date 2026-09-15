@@ -215,6 +215,8 @@ mod patch {
                     "username_path": oauth_provider.username_path,
                     "name_first_path": oauth_provider.name_first_path,
                     "name_last_path": oauth_provider.name_last_path,
+                    "avatar_url_template": oauth_provider.avatar_url_template,
+                    "avatar_overwrite": oauth_provider.avatar_overwrite,
                 }),
             )
             .await;

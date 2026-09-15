@@ -153,6 +153,22 @@ pub fn validate_json_path(path: &str, _context: &()) -> Result<(), garde::Error>
     Ok(())
 }
 
+pub fn validate_avatar_url_template(template: &str, _context: &()) -> Result<(), garde::Error> {
+    let mut rest = template;
+
+    while let Some(start) = rest.find('{') {
+        let Some(end) = rest[start..].find('}').map(|end| start + end) else {
+            return Err(garde::Error::new("has an unterminated { placeholder"));
+        };
+
+        validate_json_path(&rest[start + 1..end], &())?;
+
+        rest = &rest[end + 1..];
+    }
+
+    Ok(())
+}
+
 pub fn validate_ignored_files(
     patterns: &[compact_str::CompactString],
     _context: &(),

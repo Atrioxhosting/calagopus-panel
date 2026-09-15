@@ -17,6 +17,7 @@ use webauthn_rs::prelude::CredentialID;
 mod auth;
 pub use auth::*;
 
+pub mod avatar;
 pub mod settings;
 
 #[derive(Serialize, Deserialize, Clone)]

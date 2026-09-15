@@ -159,7 +159,7 @@ pub fn outbound_client(env: &Arc<crate::env::Env>) -> &'static reqwest::Client {
         reqwest::Client::builder()
             .user_agent(format!("github.com/calagopus/panel {}", crate::VERSION))
             .connect_timeout(std::time::Duration::from_secs(10))
-            .timeout(std::time::Duration::from_secs(30))
+            .read_timeout(std::time::Duration::from_secs(30))
             .no_proxy()
             .dns_resolver(Arc::new(BlockedIpResolver::new(env, "outbound request")))
             .redirect(reqwest::redirect::Policy::custom(move |attempt| {

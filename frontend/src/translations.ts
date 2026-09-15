@@ -4339,6 +4339,12 @@ const baseTranslations = defineTranslations({
                   nameLastPath: 'Last Name Path',
                   nameLastPathDescription:
                     'The path used to extract the last name from the Info URL response (https://serdejsonpath.live).',
+                  avatarUrlTemplate: 'Avatar URL Template',
+                  avatarUrlTemplateDescription:
+                    'The URL to import the avatar from, with {placeholder} placeholders filled in from the Info URL response (https://serdejsonpath.live). Leave empty to never import avatars. Providers that return a whole avatar URL only need the placeholder on its own, such as {example}.',
+                  avatarOverwrite: 'Overwrite Existing Avatars',
+                  avatarOverwriteDescription:
+                    'Re-imports the avatar on every login, replacing one the user set themselves. Off, the avatar is only imported for users that do not have one.',
                   loginOnly: 'Only allow Login',
                   loginBypassTwoFactor: 'Bypass 2FA on Login',
                   loginBypassTwoFactorDescription:
