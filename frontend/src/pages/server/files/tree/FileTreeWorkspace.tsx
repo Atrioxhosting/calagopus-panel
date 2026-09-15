@@ -1,4 +1,3 @@
-import { useMediaQuery } from '@mantine/hooks';
 import { join } from 'pathe';
 import { Ref, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useBeforeUnload, useNavigate, useSearchParams } from 'react-router';
@@ -40,6 +39,7 @@ import useFileTreeFileCreation from '@/pages/server/files/tree/useFileTreeFileCr
 import { useBlocker } from '@/plugins/useBlocker.ts';
 import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useContainerAutoHeight } from '@/plugins/viewport/useContainerAutoHeight.ts';
+import { usePageBreakpoint } from '@/plugins/viewport/usePageBreakpoint.ts';
 import { useCurrentWindow } from '@/providers/CurrentWindowProvider.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -66,7 +66,7 @@ export default function FileTreeWorkspace({
   onDirtyStateChange,
 }: FileTreeWorkspaceProps) {
   const { t } = useTranslations();
-  const mobile = useMediaQuery('(max-width: 47.999rem)');
+  const wide = usePageBreakpoint('md');
   const { addToast } = useToast();
   const navigate = useNavigate();
   const [, setSearchParams] = useSearchParams();
@@ -395,7 +395,7 @@ export default function FileTreeWorkspace({
     const tab = createNewFile(directory, capabilities);
     if (!tab) return;
     requestOpenTab(tab);
-    if (mobile && fileTreeVisible) onToggleFileTree();
+    if (!wide && fileTreeVisible) onToggleFileTree();
   };
 
   useImperativeHandle(ref, () => ({
@@ -692,7 +692,7 @@ export default function FileTreeWorkspace({
                 onToggleCollapsed={onToggleFileTree}
                 onOpenFile={(...args) => {
                   openFile(...args);
-                  if (mobile && fileTreeVisible) onToggleFileTree();
+                  if (!wide && fileTreeVisible) onToggleFileTree();
                 }}
               />
             </div>

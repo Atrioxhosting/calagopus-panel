@@ -47,7 +47,7 @@ function AllServersView({ getServerTo }: { getServerTo: (server: z.infer<typeof 
         placeholder={t('common.input.search', {})}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        w={{ base: '100%', sm: 250 }}
+        className='w-full md:w-65.5'
       />
       {servers.total > servers.perPage && (
         <>

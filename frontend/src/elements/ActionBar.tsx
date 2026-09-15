@@ -8,7 +8,7 @@ function ActionBar({ opened = false, children }: { opened?: boolean; children: R
     <AnimatePresence>
       {opened && (
         <motion.div
-          className='pointer-events-none fixed bottom-0 mb-2 flex justify-center w-screen z-90'
+          className='pointer-events-none fixed inset-x-0 bottom-0 mb-2 flex justify-center z-90'
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

@@ -20,7 +20,7 @@ const CurrentWindowProvider: FC<{ children: ReactNode; id: number | null }> = ({
 
   return (
     <CurrentWindowContext.Provider value={contextValue}>
-      <div id={`window_${id}_inner`} className='h-full'>
+      <div id={`window_${id}_inner`} className='page-container h-full'>
         {children}
       </div>
     </CurrentWindowContext.Provider>

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "highlight.js/styles/a11y-light.min.css";
+@import "./breakpoints.css";
 
 @custom-variant dark (&:where([data-mantine-color-scheme="dark"], [data-mantine-color-scheme="dark"] *));
 @custom-variant light (&:where([data-mantine-color-scheme="light"], [data-mantine-color-scheme="light"] *));
@@ -98,6 +99,9 @@
 }
 
 :root {
+  /* Fallback until useContainerAutoHeight measures the real room in AuthWrapper. */
+  --auth-page-height: 100dvh;
+
   /* Leave room for the normal page header and global Calagopus copyright footer. */
   --file-manager-workspace-height: calc(100dvh - 8rem);
   --file-manager-workspace-min-height: 42rem;
@@ -192,13 +196,13 @@
   background-color: var(--mantine-color-dimmed);
 }
 
-@media (min-width: 48rem) {
+@container page (width >= 48rem) {
   [data-file-manager-editor-split]:has([data-file-manager-editor-tabs] [data-mantine-scrollbar][data-state="visible"]) {
     --file-manager-editor-tab-gutter: 10px;
   }
 }
 
-@media (max-width: 47.999rem) {
+@container page (width < 48rem) {
   [data-file-manager-editor-tabs]:has([data-mantine-scrollbar][data-state="visible"]) {
     --file-manager-editor-tab-gutter: 10px;
   }
@@ -389,14 +393,24 @@
   --chart-series-4: #4ade80;
 }
 
+/* containment on body stops its background propagating to the canvas, so html paints it */
 html {
   scrollbar-gutter: stable;
+  background-color: var(--mantine-color-body);
 }
 
 body {
   @apply font-sans;
   background-color: var(--mantine-color-body);
   color: var(--mantine-color-text);
+  container-type: inline-size;
+  container-name: page;
+}
+
+/* fallback container for portaled content; .page-container nests inside it per window */
+.page-container {
+  container-type: inline-size;
+  container-name: page;
 }
 
 h1,

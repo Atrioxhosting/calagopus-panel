@@ -8,7 +8,6 @@ import {
   faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { SimpleGrid } from '@mantine/core';
 import { useState } from 'react';
 import { z } from 'zod';
 import getNodeTunnelMetrics from '@/api/admin/nodes/tunnel/getNodeTunnelMetrics.ts';
@@ -173,7 +172,7 @@ export default function AdminNodeTunnelMetrics({ nodeUuid }: { nodeUuid: string 
 
   return (
     <Stack>
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 5 }}>
+      <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4'>
         <StatCard
           icon={faDiagramProject}
           label={t('pages.admin.nodes.tabs.tunnel.page.metrics.stat.peers', {})}
@@ -205,7 +204,7 @@ export default function AdminNodeTunnelMetrics({ nodeUuid }: { nodeUuid: string 
           value={String(data.node.localDrops)}
           details={t('pages.admin.nodes.tabs.tunnel.page.metrics.stat.frozenFlows', { count: data.node.frozenFlows })}
         />
-      </SimpleGrid>
+      </div>
 
       <TitleCard
         title={t('pages.admin.nodes.tabs.tunnel.page.metrics.title', {})}

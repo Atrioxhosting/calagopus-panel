@@ -1,5 +1,4 @@
 import { useComputedColorScheme } from '@mantine/core';
-import { useMediaQuery } from '@mantine/hooks';
 import {
   type BaseCodeOptions,
   DEFAULT_VIRTUAL_FILE_METRICS,
@@ -22,6 +21,7 @@ import {
 } from '@pierre/diffs/edit';
 import { EditProvider, File, FileDiff, Virtualizer } from '@pierre/diffs/react';
 import { type CSSProperties, forwardRef, memo, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { usePageBreakpoint } from '@/plugins/viewport/usePageBreakpoint.ts';
 
 export interface PierreCaretMetadata {
   name: string;
@@ -349,7 +349,7 @@ export const PierreDiffEditor = memo(
   ) {
     const colorScheme = useComputedColorScheme('dark', { getInitialValueInEffect: false });
     const isDark = colorScheme === 'dark';
-    const isMobile = useMediaQuery('(max-width: 768px)', false, { getInitialValueInEffect: false });
+    const isWide = usePageBreakpoint('md');
     const style = usePierreStyle(height, width, fontSize, isDark);
     const metrics = useMemo(
       () => ({ ...DEFAULT_VIRTUAL_FILE_METRICS, lineHeight: Math.ceil(fontSize * 1.5) }),
@@ -393,11 +393,11 @@ export const PierreDiffEditor = memo(
     const diffOptions = useMemo<FileDiffOptions<undefined, undefined>>(
       () => ({
         ...baseOptions,
-        diffStyle: isMobile ? 'unified' : 'split',
+        diffStyle: isWide ? 'split' : 'unified',
         diffIndicators: 'bars',
         expandUnchanged: true,
       }),
-      [baseOptions, isMobile],
+      [baseOptions, isWide],
     );
 
     const fileDiff = useMemo<FileDiffMetadata>(() => parseDiffFromFile(oldFile, newFile), [oldFile, newFile]);

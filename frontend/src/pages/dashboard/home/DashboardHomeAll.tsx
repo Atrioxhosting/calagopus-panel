@@ -120,7 +120,7 @@ export default function DashboardHomeAll() {
           placeholder={t('common.input.search', {})}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          w={{ base: '100%', sm: 250 }}
+          className='w-full md:w-62.5'
         />
         <AdminCan action='servers.read'>
           <Switch

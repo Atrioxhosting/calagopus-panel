@@ -257,7 +257,7 @@ function FileRevisionDiffComponent() {
       </div>
 
       {loading ? (
-        <div className='w-full h-screen flex items-center justify-center'>
+        <div className='w-full h-full flex items-center justify-center'>
           <Spinner size={75} />
         </div>
       ) : (

@@ -11,7 +11,7 @@ import {
   faUser,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { SimpleGrid, Text } from '@mantine/core';
+import { Text } from '@mantine/core';
 import AdminSubContentContainer from '@/elements/containers/AdminSubContentContainer.tsx';
 import Badge from '@/elements/data-display/Badge.tsx';
 import Card from '@/elements/data-display/Card.tsx';
@@ -131,7 +131,7 @@ export default function ServerOverview({ server }: { server: Server }) {
       )}
 
       <Stack gap='md'>
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing='md'>
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
           <TitleCard
             title={t('pages.admin.servers.tabs.overview.page.card.owner', {})}
             icon={<FontAwesomeIcon icon={faUser} />}
@@ -212,13 +212,13 @@ export default function ServerOverview({ server }: { server: Server }) {
               />
             </Stack>
           </TitleCard>
-        </SimpleGrid>
+        </div>
 
         <TitleCard
           title={t('pages.admin.servers.tabs.overview.page.card.serverDetails', {})}
           icon={<FontAwesomeIcon icon={faServer} />}
         >
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing={0}>
+          <div className='grid grid-cols-1 md:grid-cols-2'>
             <Stack gap={0} className='md:pr-4 md:border-r md:border-(--mantine-color-default-border)'>
               <InfoRow label={t('pages.admin.servers.tabs.overview.page.label.uuid', {})}>
                 <Text size='sm' ff='monospace'>
@@ -274,7 +274,7 @@ export default function ServerOverview({ server }: { server: Server }) {
                 <Text size='sm'>{formatDateTime(server.created)}</Text>
               </InfoRow>
             </Stack>
-          </SimpleGrid>
+          </div>
           <ExtensionSlot
             components={
               window.extensionContext.extensionRegistry.pages.admin.servers.view.overview.serverDetails
@@ -289,7 +289,7 @@ export default function ServerOverview({ server }: { server: Server }) {
           title={t('pages.admin.servers.tabs.overview.page.card.resourceLimits', {})}
           icon={<FontAwesomeIcon icon={faMicrochip} />}
         >
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing='sm'>
+          <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3'>
             <StatBox
               label={t('common.stat.cpu', {})}
               icon={<FontAwesomeIcon icon={faMicrochip} />}
@@ -334,14 +334,14 @@ export default function ServerOverview({ server }: { server: Server }) {
               name='resource-limits-ext'
               props={{ server }}
             />
-          </SimpleGrid>
+          </div>
         </TitleCard>
 
         <TitleCard
           title={t('pages.admin.servers.tabs.overview.page.card.featureLimits', {})}
           icon={<FontAwesomeIcon icon={faLayerGroup} />}
         >
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing='sm'>
+          <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3'>
             <StatBox
               label={t('pages.admin.servers.tabs.overview.page.label.allocations', {})}
               icon={<FontAwesomeIcon icon={faNetworkWired} />}
@@ -370,7 +370,7 @@ export default function ServerOverview({ server }: { server: Server }) {
               name='feature-limit-ext'
               props={{ server }}
             />
-          </SimpleGrid>
+          </div>
         </TitleCard>
         <ExtensionSlot
           components={

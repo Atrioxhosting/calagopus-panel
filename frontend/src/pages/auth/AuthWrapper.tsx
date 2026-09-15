@@ -1,9 +1,11 @@
-import { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo, useRef } from 'react';
 import { ContainerRegistry, makeComponentHookable } from 'shared';
 import AppIcon from '@/elements/AppIcon.tsx';
 import Copyright from '@/elements/Copyright.tsx';
 import ContentContainer from '@/elements/containers/ContentContainer.tsx';
 import ExtensionSlot from '@/elements/ExtensionSlot.tsx';
+import { useContainerAutoHeight } from '@/plugins/viewport/useContainerAutoHeight.ts';
+import { useCurrentWindow } from '@/providers/CurrentWindowProvider.tsx';
 import { useGlobalStore } from '@/stores/global.ts';
 
 export interface Props {
@@ -29,11 +31,23 @@ function AuthWrapper(props: Props) {
 
   const settings = useGlobalStore((state) => state.settings);
   const authRegistry = window.extensionContext.extensionRegistry.pages.auth;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { getParent } = useCurrentWindow();
+
+  useContainerAutoHeight({
+    containerRef,
+    loading: false,
+    getParent,
+    layout: () => undefined,
+    cssVariable: '--auth-page-height',
+    useVisualViewportInset: true,
+    deps: [getParent],
+  });
 
   return (
     <ContentContainer title={settings.app.name}>
-      <div className='flex items-center justify-center h-screen'>
-        <div className='flex flex-col items-center justify-center h-full px-2 md:px-0 max-w-100 w-full'>
+      <div ref={containerRef} className='flex flex-col overflow-auto h-(--auth-page-height)'>
+        <div className='m-auto flex flex-col items-center px-2 md:px-0 max-w-100 w-full'>
           <ExtensionSlot components={authRegistry.prependedComponents} name='auth-prepended' />
           <ExtensionSlot components={registry?.prependedComponents ?? []} name='prepended' props={modifiedProps} />
 

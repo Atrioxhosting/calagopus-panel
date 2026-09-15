@@ -123,11 +123,11 @@ export default function FileTreeToolbar({
   return (
     <div
       data-file-manager-tree-toolbar
-      className={`shrink-0 ${collapsed ? 'h-[2.625rem]' : 'border-b border-(--mantine-color-default-border)'}`}
+      className={`shrink-0 ${collapsed ? 'h-10.5' : 'border-b border-(--mantine-color-default-border)'}`}
     >
       <div className={`flex items-center ${collapsed ? 'h-full' : 'h-11 justify-between px-2'}`}>
         <div
-          className={`flex shrink-0 items-center ${collapsed ? 'h-full w-[2.625rem] justify-center max-[47.999rem]:w-full' : 'gap-1'}`}
+          className={`flex shrink-0 items-center ${collapsed ? 'h-full w-10.5 justify-center max-md:w-full' : 'gap-1'}`}
         >
           <ActionIcon
             type='button'

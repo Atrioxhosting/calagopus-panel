@@ -7,7 +7,6 @@ import {
   faSignal,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { SimpleGrid } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import createNodeTunnel from '@/api/admin/nodes/tunnel/createNodeTunnel.ts';
@@ -164,7 +163,7 @@ export default function AdminNodeTunnel({ node }: { node: z.infer<typeof adminNo
                   {t('pages.admin.nodes.tabs.tunnel.page.description', {}).md()}
                 </Text>
 
-                <SimpleGrid cols={{ base: 1, md: 2 }} spacing='md'>
+                <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
                   <TextInput
                     label={t('pages.admin.nodes.tabs.tunnel.page.form.host', {})}
                     description={t('pages.admin.nodes.tabs.tunnel.page.form.hostDescription', {})}
@@ -180,7 +179,7 @@ export default function AdminNodeTunnel({ node }: { node: z.infer<typeof adminNo
                     value={port}
                     onChange={(value) => setPort(Number(value))}
                   />
-                </SimpleGrid>
+                </div>
 
                 <Group justify='space-between'>
                   <Button loading={saving} onClick={() => doSave(data.tunnel !== null)}>

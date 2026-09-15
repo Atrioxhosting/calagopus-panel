@@ -10,6 +10,7 @@
       "*.mts",
       "public/translations/**",
       "extensions/*/public/translations/**",
+      "!src/breakpoints.css",
       "!!**/dist"
     ]
   },
@@ -80,7 +81,18 @@
         "useArrayLiterals": "error",
         "useAsConstAssertion": "error",
         "useConsistentCurlyBraces": "warn",
-        "useComponentExportOnlyModules": "off"
+        "useComponentExportOnlyModules": "off",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "@mantine/hooks": {
+                "importNames": ["useMediaQuery"],
+                "message": "useMediaQuery measures the viewport, which is wrong inside a virtual window. Use usePageBreakpoint from @/plugins/viewport/usePageBreakpoint.ts."
+              }
+            }
+          }
+        }
       },
       "suspicious": {
         "noAsyncPromiseExecutor": "error",

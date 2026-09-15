@@ -7,7 +7,6 @@ import {
   faServer,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { SimpleGrid } from '@mantine/core';
 import { z } from 'zod';
 import getDatabaseAgentHostCapacity from '@/api/admin/database-agent-hosts/getDatabaseAgentHostCapacity.ts';
 import getDatabaseAgentHostSystemOverview from '@/api/admin/database-agent-hosts/getDatabaseAgentHostSystemOverview.ts';
@@ -73,7 +72,7 @@ export default function DatabaseAgentHostOverview({ databaseAgentHost }: { datab
       </Group>
 
       <Stack gap='md'>
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing='md'>
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
           <TitleCard
             title={t('pages.admin.databaseAgentHosts.tabs.overview.page.card.hostDetails', {})}
             icon={<FontAwesomeIcon icon={faServer} />}
@@ -155,7 +154,7 @@ export default function DatabaseAgentHostOverview({ databaseAgentHost }: { datab
               </Stack>
             )}
           </TitleCard>
-        </SimpleGrid>
+        </div>
 
         <TitleCard
           title={t('pages.admin.databaseAgentHosts.tabs.overview.page.card.resources', {})}

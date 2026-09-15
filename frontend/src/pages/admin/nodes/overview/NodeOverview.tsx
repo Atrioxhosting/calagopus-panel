@@ -7,7 +7,7 @@ import {
   faServer,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { SimpleGrid, Text } from '@mantine/core';
+import { Text } from '@mantine/core';
 import { z } from 'zod';
 import getNodeCapacity from '@/api/admin/nodes/getNodeCapacity.ts';
 import getNodeSystemOverview from '@/api/admin/nodes/system/getNodeSystemOverview.ts';
@@ -64,7 +64,7 @@ export default function NodeOverview({ node }: { node: Node }) {
       </Group>
 
       <Stack gap='md'>
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing='md'>
+        <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
           <TitleCard
             title={t('pages.admin.nodes.tabs.overview.page.card.nodeDetails', {})}
             icon={<FontAwesomeIcon icon={faServer} />}
@@ -192,7 +192,7 @@ export default function NodeOverview({ node }: { node: Node }) {
               props={{ node }}
             />
           </TitleCard>
-        </SimpleGrid>
+        </div>
 
         <TitleCard
           title={t('pages.admin.nodes.tabs.capacity.page.card.resources', {})}

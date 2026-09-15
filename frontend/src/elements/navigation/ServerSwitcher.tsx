@@ -1,5 +1,4 @@
 import { SelectProps } from '@mantine/core';
-import { useMediaQuery } from '@mantine/hooks';
 import classNames from 'classnames';
 import { useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -11,6 +10,7 @@ import { queryKeys } from '@/lib/queryKeys.ts';
 import { serverPowerState, serverSchema, serverStatus } from '@/lib/schemas/server/server.ts';
 import { useSearchableResource } from '@/plugins/resource/useSearchableResource.ts';
 import { useServerStats } from '@/plugins/server/useServerStats.ts';
+import { usePageBreakpoint } from '@/plugins/viewport/usePageBreakpoint.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
 
@@ -57,7 +57,7 @@ export default function ServerSwitcher({ className, isServer }: { className?: st
   const currentServer = useServerStore((state) => state.server);
   const location = useLocation();
   const navigate = useNavigate();
-  const isMobile = useMediaQuery('(max-width: 768px)');
+  const wide = usePageBreakpoint('md');
 
   const servers = useSearchableResource<z.infer<typeof serverSchema>>({
     queryKey: queryKeys.user.servers.all(),
@@ -101,7 +101,7 @@ export default function ServerSwitcher({ className, isServer }: { className?: st
       onSearchChange={servers.setSearch}
       loading={servers.loading}
       renderOption={renderOption}
-      comboboxProps={{ withinPortal: !isMobile }}
+      comboboxProps={{ withinPortal: wide }}
     />
   );
 }

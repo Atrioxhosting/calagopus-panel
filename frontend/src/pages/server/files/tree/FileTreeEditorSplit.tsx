@@ -185,7 +185,7 @@ export default function FileTreeEditorSplit({
     >
       {panes.length > 1 && (
         <Select
-          className='mb-2 shrink-0 min-[48rem]:hidden'
+          className='mb-2 shrink-0 md:hidden'
           aria-label={t('pages.server.files.tree.selectPane', {})}
           value={activePaneId}
           allowDeselect={false}
