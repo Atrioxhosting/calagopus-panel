@@ -34,6 +34,7 @@ tracing-appender = "0.2.3"
 sentry = { version = "0.49.0", default-features = false, features = ["rustls", "reqwest", "backtrace", "contexts", "debug-images", "panic"] }
 sentry-tower = { version = "0.49.0", default-features = false, features = ["http", "axum-matched-path"] }
 sentry-anyhow = "0.49.0"
+sentry-tracing = "0.49.0"
 tower = "0.5.2"
 tower-cookies = "0.11.0"
 tower-http = { version = "0.7.0", features = ["normalize-path", "catch-panic"] }

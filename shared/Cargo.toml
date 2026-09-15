@@ -64,6 +64,7 @@ indexmap = { workspace = true }
 regex = { workspace = true }
 sentry = { workspace = true }
 sentry-anyhow = { workspace = true }
+sentry-tracing = { workspace = true }
 russh = { workspace = true }
 rand = { workspace = true }
 constant_time_eq = "0.6.0"

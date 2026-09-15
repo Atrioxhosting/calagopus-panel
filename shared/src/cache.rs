@@ -87,6 +87,32 @@ const OUTCOME_COALESCED: u8 = 0;
 const OUTCOME_REMOTE_HIT: u8 = 1;
 const OUTCOME_MISS: u8 = 2;
 
+fn is_dynamic_key_segment(segment: &str) -> bool {
+    uuid::Uuid::try_parse(segment).is_ok()
+        || (!segment.is_empty() && segment.bytes().all(|byte| byte.is_ascii_digit()))
+}
+
+fn key_prefix(key: &str) -> compact_str::CompactString {
+    if !key.split("::").any(is_dynamic_key_segment) {
+        return key.to_compact_string();
+    }
+
+    let mut prefix = compact_str::CompactString::const_new("");
+    for (index, segment) in key.split("::").enumerate() {
+        if index > 0 {
+            prefix.push_str("::");
+        }
+
+        prefix.push_str(if is_dynamic_key_segment(segment) {
+            "*"
+        } else {
+            segment
+        });
+    }
+
+    prefix
+}
+
 #[derive(Default)]
 struct CacheBucket {
     calls: AtomicU64,
@@ -492,7 +518,10 @@ impl Cache {
         }
     }
 
-    #[tracing::instrument(skip(self, fn_compute))]
+    #[tracing::instrument(
+        skip(self, fn_compute),
+        fields(cache.prefix = %key_prefix(key), cache.outcome = tracing::field::Empty)
+    )]
     pub async fn cached<
         T: Serialize + DeserializeOwned + Send,
         F: FnOnce() -> Fut,
@@ -514,6 +543,7 @@ impl Cache {
 
         if let Some(entry) = self.local.get(key).await {
             let value = rmp_serde::from_slice::<T>(&entry.data);
+            tracing::Span::current().record("cache.outcome", "local_hit");
             self.record_call(&self.cache_local_hits, start_time.elapsed());
 
             return Ok(value?);
@@ -586,14 +616,14 @@ impl Cache {
             Err(arc_error) => Err(anyhow::Error::new(SharedComputeError(arc_error))),
         };
 
-        self.record_call(
-            match outcome.load(Ordering::Relaxed) {
-                OUTCOME_REMOTE_HIT => &self.cache_remote_hits,
-                OUTCOME_MISS => &self.cache_misses,
-                _ => &self.cache_coalesced_waits,
-            },
-            start_time.elapsed(),
-        );
+        let (bucket, outcome_label) = match outcome.load(Ordering::Relaxed) {
+            OUTCOME_REMOTE_HIT => (&self.cache_remote_hits, "remote_hit"),
+            OUTCOME_MISS => (&self.cache_misses, "miss"),
+            _ => (&self.cache_coalesced_waits, "coalesced_wait"),
+        };
+
+        tracing::Span::current().record("cache.outcome", outcome_label);
+        self.record_call(bucket, start_time.elapsed());
 
         value
     }

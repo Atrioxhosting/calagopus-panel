@@ -234,6 +234,7 @@ impl Env {
             .with(LevelFilter::DEBUG)
             .with(reload_layer)
             .with(fmt_layer)
+            .with(sentry_tracing::layer().enable_span_attributes())
             .try_init()
             .context("failed to install tracing subscriber")?;
 

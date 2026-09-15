@@ -389,7 +389,17 @@ pub async fn handle_startup() -> Result<
                     .clone()
                     .map_or(Cow::Borrowed("calagopus"), |s| s.into()),
             )
-            .traces_sample_rate(env.sentry_tracing_sample_rate)
+            .traces_sampler({
+                let sample_rate = env.sentry_tracing_sample_rate;
+
+                move |context| {
+                    if context.operation().starts_with("shared::cache::") {
+                        0.0
+                    } else {
+                        sample_rate
+                    }
+                }
+            })
             .release(shared::full_version())
             .before_send(|mut event| {
                 if let Some(request) = event.request.as_mut() {
