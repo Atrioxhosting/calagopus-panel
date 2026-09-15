@@ -1,5 +1,5 @@
 use crate::{
-    crypt::BcryptString,
+    crypt::{BcryptString, EncryptedString},
     models::{InsertQueryBuilder, UpdateQueryBuilder},
     prelude::*,
     storage::StorageUrlRetriever,
@@ -38,7 +38,7 @@ pub struct User {
 
     pub totp_enabled: bool,
     pub totp_last_used: Option<chrono::NaiveDateTime>,
-    pub totp_secret: Option<String>,
+    pub totp_secret: Option<EncryptedString>,
     pub email_two_factor_enabled: bool,
     pub has_security_key: bool,
 
@@ -438,6 +438,76 @@ impl User {
         user.rehash_password(database, password, &hash).await?;
 
         Ok(Some(user))
+    }
+
+    /// Seeds written before encryption at rest are the bare base32 value; an encrypted blob is
+    /// binary and far longer than any base32 seed.
+    fn totp_secret_is_legacy(secret: &EncryptedString) -> bool {
+        let bytes = secret.as_ref();
+
+        !bytes.is_empty()
+            && bytes.len() <= 32
+            && bytes
+                .iter()
+                .all(|b| matches!(b, b'A'..=b'Z' | b'2'..=b'7' | b'='))
+    }
+
+    pub async fn totp(
+        &self,
+        database: &crate::database::Database,
+    ) -> Result<Option<totp_rs::Totp>, anyhow::Error> {
+        let Some(secret) = &self.totp_secret else {
+            return Ok(None);
+        };
+
+        let base32 = if Self::totp_secret_is_legacy(secret) {
+            compact_str::CompactString::from_utf8_lossy(secret.as_ref())
+        } else {
+            secret.decrypt(database).await?
+        };
+
+        Ok(Some(
+            totp_rs::Builder::new()
+                .with_algorithm(totp_rs::Algorithm::SHA1)
+                .with_digits(6)
+                .with_skew(1)
+                .with_step_duration(30)
+                .with_secret(totp_rs::Secret::try_from_base32(base32)?)
+                .build()?,
+        ))
+    }
+
+    /// Rewrites a legacy plaintext seed encrypted once a code has verified against it, so every
+    /// active account converges on encryption at rest.
+    pub async fn reencrypt_totp_secret(
+        &self,
+        database: &crate::database::Database,
+    ) -> Result<(), anyhow::Error> {
+        let Some(secret) = &self.totp_secret else {
+            return Ok(());
+        };
+        if !Self::totp_secret_is_legacy(secret) {
+            return Ok(());
+        }
+
+        let encrypted = EncryptedString::from_plaintext(secret.as_ref().to_vec(), database).await?;
+
+        sqlx::query(
+            r#"
+            UPDATE users
+            SET totp_secret = $2
+            WHERE users.uuid = $1 AND users.totp_secret = $3
+            "#,
+        )
+        .bind(self.uuid)
+        .bind(encrypted)
+        .bind(secret)
+        .execute(database.write())
+        .await?;
+
+        Self::invalidate_cached(database, self.uuid).await;
+
+        Ok(())
     }
 
     /// Rewrites a matching hash that was produced at a different cost or format (imports, older

@@ -6,6 +6,7 @@ import { getImpersonatedUser, httpErrorToHuman, setImpersonatedUser } from '@/ap
 import getMe from '@/api/me/getMe.ts';
 import logout from '@/api/me/logout.ts';
 import Spinner from '@/elements/feedback/Spinner.tsx';
+import { clearFileDrafts } from '@/lib/files/fileDrafts.ts';
 import { fullUserSchema } from '@/lib/schemas/user.ts';
 import { flushUserSettings, loadUserSettings, unloadUserSettings } from '@/lib/userSettings.ts';
 import { AuthContext } from '@/providers/contexts/authContext.ts';
@@ -24,6 +25,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
   const clearIdentityData = () => {
     queryClient.clear();
     useUserStore.getState().reset();
+    clearFileDrafts();
   };
 
   const [loading, setLoading] = useState(true);

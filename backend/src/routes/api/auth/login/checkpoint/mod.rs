@@ -113,6 +113,15 @@ mod post {
                 ip.to_string(),
             )
             .await?;
+        state
+            .cache
+            .ratelimit(
+                "auth/login/checkpoint:user",
+                ratelimit.hits,
+                ratelimit.window_seconds,
+                payload.user_uuid.to_string(),
+            )
+            .await?;
 
         let user = User::by_uuid(&state.database, payload.user_uuid).await?;
 
@@ -149,22 +158,11 @@ mod post {
                         .ok();
                 }
 
-                let user_totp_secret = match &user.totp_secret {
-                    Some(secret) => secret.clone(),
-                    None => {
-                        return ApiResponse::error("invalid confirmation code")
-                            .with_status(StatusCode::BAD_REQUEST)
-                            .ok();
-                    }
+                let Some(totp) = user.totp(&state.database).await? else {
+                    return ApiResponse::error("invalid confirmation code")
+                        .with_status(StatusCode::BAD_REQUEST)
+                        .ok();
                 };
-
-                let totp = totp_rs::Builder::new()
-                    .with_algorithm(totp_rs::Algorithm::SHA1)
-                    .with_digits(6)
-                    .with_skew(1)
-                    .with_step_duration(30)
-                    .with_secret(totp_rs::Secret::try_from_base32(user_totp_secret)?)
-                    .build()?;
 
                 let matched_step_idx = match totp.check_current(&data.code) {
                     Some(idx) => idx,
@@ -195,6 +193,7 @@ mod post {
                 .execute(state.database.write())
                 .await?;
 
+                user.reencrypt_totp_secret(&state.database).await?;
                 User::invalidate_cached(&state.database, user.uuid).await;
 
                 "two-factor"

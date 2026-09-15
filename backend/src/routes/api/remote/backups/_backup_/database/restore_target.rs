@@ -9,7 +9,8 @@ mod post {
     use shared::{
         ApiError, GetState,
         models::{
-            server_backup::ServerBackupKind, server_database_instance::ServerDatabaseInstance,
+            node::GetNode, server::Server, server_backup::ServerBackupKind,
+            server_database_instance::ServerDatabaseInstance,
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -43,6 +44,7 @@ mod post {
     ), request_body = String)]
     pub async fn route(
         state: GetState,
+        node: GetNode,
         backup: GetBackup,
         Query(params): Query<Params>,
         body: axum::body::Body,
@@ -58,6 +60,15 @@ mod post {
                 .with_status(StatusCode::EXPECTATION_FAILED)
                 .ok();
         };
+
+        if Server::by_node_uuid_uuid(&state.database, node.uuid, server.uuid)
+            .await?
+            .is_none()
+        {
+            return ApiResponse::error("server not found")
+                .with_status(StatusCode::NOT_FOUND)
+                .ok();
+        }
 
         let Some(database_instance) = ServerDatabaseInstance::by_server_uuid_uuid(
             &state.database,

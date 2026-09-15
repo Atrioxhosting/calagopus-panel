@@ -160,7 +160,7 @@ export const usersTable = pgTable(
     suspended: boolean().default(false).notNull(),
     totp_enabled: boolean().default(false).notNull(),
     totp_last_used: timestamp(),
-    totp_secret: char({ length: 32 }),
+    totp_secret: bytea(),
     email_two_factor_enabled: boolean().default(false).notNull(),
     email_verified: boolean().default(false).notNull(),
     password_login_disabled: boolean().default(false).notNull(),

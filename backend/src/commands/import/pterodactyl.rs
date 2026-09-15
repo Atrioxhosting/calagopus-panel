@@ -8,7 +8,10 @@ use base64::Engine;
 use clap::{Args, FromArgMatches};
 use colored::Colorize;
 use compact_str::ToCompactString;
-use shared::models::{OrderedJson, database_host::DatabaseCredentials};
+use shared::{
+    crypt::EncryptedString,
+    models::{OrderedJson, database_host::DatabaseCredentials},
+};
 use sqlx::Row;
 use std::{
     collections::{HashMap, HashSet},
@@ -235,8 +238,12 @@ impl shared::extensions::commands::CliCommand<PterodactylArgs> for PterodactylCo
                                 let password = source_text(&row, "password")?;
                                 let admin = source_bool(&row, "root_admin")?;
                                 let totp_enabled = source_bool(&row, "use_totp")?;
-                                let totp_secret = source_optional_text(&row, "totp_secret")?
-                                    .and_then(|s| decrypt_laravel_value(&s, &source_app_key).ok());
+                                let totp_secret = match source_optional_text(&row, "totp_secret")?
+                                    .and_then(|s| decrypt_laravel_value(&s, &source_app_key).ok())
+                                {
+                                    Some(secret) => Some(EncryptedString::from_plaintext(secret, &database).await?),
+                                    None => None,
+                                };
                                 let created = source_datetime(&row, "created_at")?;
 
                                 sqlx::query(

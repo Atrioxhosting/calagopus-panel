@@ -194,6 +194,20 @@ mod patch {
                 .map(|r| r.server_permissions.as_slice())
                 .unwrap_or(&[]);
 
+            if !role
+                .admin_permissions
+                .iter()
+                .all(|p| caller_admin.contains(p))
+                || !role
+                    .server_permissions
+                    .iter()
+                    .all(|p| caller_server.contains(p))
+            {
+                return ApiResponse::error("permissions: more permissions than self")
+                    .with_status(StatusCode::FORBIDDEN)
+                    .ok();
+            }
+
             if data
                 .admin_permissions
                 .as_deref()

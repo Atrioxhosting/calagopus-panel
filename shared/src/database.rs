@@ -20,7 +20,7 @@ pub struct Database {
     read: Option<sqlx::PgPool>,
 
     encryption_key: Arc<str>,
-    use_decryption_cache: bool,
+    decryption_cache: Option<moka::future::Cache<[u8; 32], Arc<Vec<u8>>>>,
     batch_actions: Arc<Mutex<HashMap<(&'static str, uuid::Uuid), BatchFuture>>>,
 }
 
@@ -53,7 +53,12 @@ impl Database {
             },
 
             encryption_key: env.app_encryption_key.clone().into(),
-            use_decryption_cache: env.app_use_decryption_cache,
+            decryption_cache: env.app_use_decryption_cache.then(|| {
+                moka::future::Cache::builder()
+                    .max_capacity(16384)
+                    .time_to_live(std::time::Duration::from_secs(30))
+                    .build()
+            }),
             batch_actions: Arc::new(Mutex::new(HashMap::new())),
         };
 
@@ -194,68 +199,37 @@ impl Database {
         &self,
         data: impl AsRef<[u8]> + Send + 'static,
     ) -> Result<compact_str::CompactString, anyhow::Error> {
-        if self.use_decryption_cache {
-            self.cache
-                .cached(
-                    &format!(
-                        "decryption_cache::{}",
-                        hex::encode(sha2::Sha256::digest(data.as_ref()))
-                    ),
-                    30,
-                    || async {
-                        let encryption_key = self.encryption_key.clone();
-                        let data = data.as_ref().to_vec();
+        let decrypted = self.decrypt_raw(data).await?;
 
-                        tokio::task::spawn_blocking(move || {
-                            simple_crypt::decrypt(&data, encryption_key.as_bytes())
-                                .map(|s| compact_str::CompactString::from_utf8_lossy(&s))
-                        })
-                        .await?
-                    },
-                )
-                .await
-        } else {
-            let encryption_key = self.encryption_key.clone();
-
-            tokio::task::spawn_blocking(move || {
-                simple_crypt::decrypt(data.as_ref(), encryption_key.as_bytes())
-                    .map(|s| compact_str::CompactString::from_utf8_lossy(&s))
-            })
-            .await?
-        }
+        Ok(compact_str::CompactString::from_utf8_lossy(&decrypted))
     }
 
     pub async fn decrypt_raw(
         &self,
         data: impl AsRef<[u8]> + Send + 'static,
     ) -> Result<Vec<u8>, anyhow::Error> {
-        if self.use_decryption_cache {
-            self.cache
-                .cached(
-                    &format!(
-                        "decryption_cache::{}::raw",
-                        hex::encode(sha2::Sha256::digest(data.as_ref()))
-                    ),
-                    30,
-                    || async {
-                        let encryption_key = self.encryption_key.clone();
-                        let data = data.as_ref().to_vec();
+        let Some(decryption_cache) = &self.decryption_cache else {
+            return self.decrypt_uncached(data.as_ref().to_vec()).await;
+        };
 
-                        tokio::task::spawn_blocking(move || {
-                            simple_crypt::decrypt(&data, encryption_key.as_bytes())
-                        })
-                        .await?
-                    },
-                )
-                .await
-        } else {
-            let encryption_key = self.encryption_key.clone();
-
-            tokio::task::spawn_blocking(move || {
-                simple_crypt::decrypt(data.as_ref(), encryption_key.as_bytes())
+        let digest: [u8; 32] = sha2::Sha256::digest(data.as_ref()).into();
+        let decrypted = decryption_cache
+            .try_get_with(digest, async {
+                self.decrypt_uncached(data.as_ref().to_vec())
+                    .await
+                    .map(Arc::new)
             })
+            .await
+            .map_err(crate::cache::SharedComputeError)?;
+
+        Ok(decrypted.as_ref().clone())
+    }
+
+    async fn decrypt_uncached(&self, data: Vec<u8>) -> Result<Vec<u8>, anyhow::Error> {
+        let encryption_key = self.encryption_key.clone();
+
+        tokio::task::spawn_blocking(move || simple_crypt::decrypt(&data, encryption_key.as_bytes()))
             .await?
-        }
     }
 
     pub async fn decrypt_base64(

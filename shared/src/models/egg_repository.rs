@@ -365,7 +365,8 @@ impl EggRepository {
                     temp_dir.path(),
                     gix::create::Kind::WithWorktree,
                     Default::default(),
-                    gix::open::Options::default().config_overrides(["credential.helper="]),
+                    gix::open::Options::default()
+                        .config_overrides(["credential.helper=", "http.followRedirects=false"]),
                 )?
                 .configure_connection(
                     crate::git::GitCredentials::from(credentials)

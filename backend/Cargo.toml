@@ -38,7 +38,7 @@ futures-util = { workspace = true }
 tokio-tungstenite = { workspace = true }
 include_dir = { workspace = true }
 uuid = { workspace = true }
-totp-rs = { version = "6.0.0", default-features = false, features = ["std", "gen_secret"] }
+totp-rs = { workspace = true }
 garde = { workspace = true }
 russh = { workspace = true }
 urlencoding = { workspace = true }

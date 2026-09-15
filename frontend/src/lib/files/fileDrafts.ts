@@ -77,6 +77,19 @@ export function removeFileDraft(serverUuid: string, filePath: string): void {
   }
 }
 
+export function clearFileDrafts(): void {
+  for (const pending of pendingWrites.values()) clearTimeout(pending.timer);
+  pendingWrites.clear();
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(DRAFT_KEY_PREFIX)) localStorage.removeItem(key);
+    }
+  } catch {
+    return;
+  }
+}
+
 export function purgeExpiredDrafts(): void {
   const now = Date.now();
   for (let i = localStorage.length - 1; i >= 0; i--) {

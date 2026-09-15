@@ -238,11 +238,38 @@ async fn handle_aio_wings(
     }
 
     let mut options = tokio::fs::OpenOptions::new();
-    options.write(true).create(true).truncate(true);
+    options.write(true).truncate(true);
+    if state.env.aio_base_wings_configuration.is_some() {
+        options.create(true);
+    } else {
+        match tokio::fs::remove_file(&path).await {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => return Err(err.into()),
+        }
+
+        options.create_new(true);
+    }
     #[cfg(unix)]
-    options.mode(0o600);
+    {
+        options.mode(0o600);
+        options.custom_flags(rustix::fs::OFlags::NOFOLLOW.bits() as i32);
+    }
 
     let mut file = options.open(&path).await?;
+    if !file.metadata().await?.is_file() {
+        return Err(anyhow::anyhow!(
+            "wings configuration path {} is not a regular file",
+            path.display()
+        ));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        file.set_permissions(std::fs::Permissions::from_mode(0o600))
+            .await?;
+    }
+
     file.write_all(serde_norway::to_string(&wings_configuration)?.as_bytes())
         .await?;
     file.flush().await?;

@@ -1,0 +1,1 @@
+ALTER TABLE "users" ALTER COLUMN "totp_secret" SET DATA TYPE bytea USING convert_to("totp_secret"::text, 'UTF8');

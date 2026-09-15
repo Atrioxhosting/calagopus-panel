@@ -4,8 +4,9 @@ export function ansiRegex({ onlyFirst = false } = {}) {
   // Valid string terminator sequences are BEL, ESC\, and 0x9c
   const ST = '(?:\\u0007|\\u001B\\u005C|\\u009C)';
 
-  // OSC sequences only: ESC ] ... ST (non-greedy until the first ST)
-  const osc = `(?:\\u001B\\][\\s\\S]*?${ST})`;
+  // OSC sequences only: ESC ] ... ST. The body excludes every terminator byte and is bounded, so an
+  // unterminated introducer in attacker-controlled log output fails in constant time.
+  const osc = `(?:\\u001B\\][^\\u0007\\u001B\\u009C]{0,512}${ST})`;
 
   // CSI and related: ESC/C1, optional intermediates, optional params (supports ; and :) then final byte
   const csi = '[\\u001B\\u009B][[\\]()#;?]*(?:\\d{1,4}(?:[;:]\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]';

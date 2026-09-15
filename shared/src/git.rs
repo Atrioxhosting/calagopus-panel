@@ -139,7 +139,10 @@ async fn ssh_upload_pack(
         .inspect_err(|err| tracing::debug!("failed to request GIT_PROTOCOL over ssh: {err:#}"));
 
     channel
-        .exec(true, format!("git-upload-pack '{path}'"))
+        .exec(
+            true,
+            format!("git-upload-pack '{}'", path.replace('\'', "'\\''")),
+        )
         .await?;
 
     let (read, write) = tokio::io::split(channel.into_stream());

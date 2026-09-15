@@ -21,6 +21,7 @@ zstd = { workspace = true }
 serde_norway = { workspace = true }
 sysinfo = { workspace = true }
 futures-util = { workspace = true }
+rustix = { workspace = true, features = ["fs"] }
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 mimalloc = "0.1.52"

@@ -75,7 +75,7 @@ mod patch {
             UpdatableModel,
             admin_activity::GetAdminActivityLogger,
             oauth_provider_mapping::{OAuthProviderMapping, UpdateOAuthProviderMappingOptions},
-            user::GetPermissionManager,
+            user::{GetPermissionManager, GetUser},
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -103,6 +103,7 @@ mod patch {
     pub async fn route(
         state: GetState,
         permissions: GetPermissionManager,
+        caller: GetUser,
         oauth_provider: GetOAuthProvider,
         activity_logger: GetAdminActivityLogger,
         Path((_oauth_provider, oauth_mapping)): Path<(uuid::Uuid, uuid::Uuid)>,
@@ -113,6 +114,16 @@ mod patch {
         if let Err(errors) = shared::utils::validate_data(&data) {
             return ApiResponse::new_serialized(ApiError::new_strings_value(errors))
                 .with_status(StatusCode::BAD_REQUEST)
+                .ok();
+        }
+
+        if let Some(mapping) = &data.mapping
+            && !mapping
+                .is_within_permissions_of(&state.database, &caller)
+                .await?
+        {
+            return ApiResponse::error("permissions: more permissions than self")
+                .with_status(StatusCode::FORBIDDEN)
                 .ok();
         }
 

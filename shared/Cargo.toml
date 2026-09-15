@@ -79,6 +79,7 @@ gix = { version = "0.87.1", features = [
 	"blocking-http-transport-reqwest-rust-tls",
 ] }
 tempfile = { workspace = true }
+totp-rs = { workspace = true }
 compact_str = { workspace = true }
 nestify = { workspace = true }
 sysinfo = { workspace = true }

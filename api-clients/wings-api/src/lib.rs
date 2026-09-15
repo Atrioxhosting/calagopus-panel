@@ -2709,6 +2709,8 @@ pub mod system_config {
                     #[schema(inline)]
                     pub max_jwt_uses: u64,
                     #[schema(inline)]
+                    pub request_log_limit: u64,
+                    #[schema(inline)]
                     pub trusted_proxies: Vec<compact_str::CompactString>,
                     #[schema(inline)]
                     pub schedule: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200ApiSchedule {

@@ -69,7 +69,12 @@ mod post {
 
         let ssh_keys = UserSshKey::count_by_user_uuid(&state.database, user.uuid).await?;
         let ssh_keys_take =
-            (state.settings.get().await?.user.max_ssh_key_count as i64 - ssh_keys) as usize;
+            (state.settings.get().await?.user.max_ssh_key_count as i64 - ssh_keys).max(0) as usize;
+        if ssh_keys_take == 0 {
+            return ApiResponse::error("maximum number of ssh keys reached")
+                .with_status(StatusCode::EXPECTATION_FAILED)
+                .ok();
+        }
 
         fn limit_string(string: &str, limit: usize) -> String {
             string.chars().take(limit).collect::<String>()

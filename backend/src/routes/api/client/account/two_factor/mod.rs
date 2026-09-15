@@ -8,6 +8,7 @@ mod get {
     use serde::Serialize;
     use shared::{
         ApiError, GetState,
+        crypt::EncryptedString,
         models::{
             ByUuid,
             user::{GetPermissionManager, GetUser, User},
@@ -46,12 +47,14 @@ mod get {
         }
 
         let secret = totp_rs::Secret::generate().to_base32();
+        let encrypted_secret =
+            EncryptedString::from_plaintext(secret.clone(), &state.database).await?;
 
         sqlx::query!(
             "UPDATE users
             SET totp_secret = $1
             WHERE users.uuid = $2",
-            secret,
+            encrypted_secret as _,
             user.uuid
         )
         .execute(state.database.write())
@@ -132,13 +135,10 @@ mod post {
                 .ok();
         }
 
-        let totp_secret = match &user.totp_secret {
-            Some(secret) => secret,
-            None => {
-                return ApiResponse::error("two-factor authentication has not been configured")
-                    .with_status(StatusCode::UNAUTHORIZED)
-                    .ok();
-            }
+        let Some(totp) = user.totp(&state.database).await? else {
+            return ApiResponse::error("two-factor authentication has not been configured")
+                .with_status(StatusCode::UNAUTHORIZED)
+                .ok();
         };
 
         if let Err(errors) = shared::utils::validate_data(&data) {
@@ -155,14 +155,6 @@ mod post {
                 .with_status(StatusCode::FORBIDDEN)
                 .ok();
         }
-
-        let totp = totp_rs::Builder::new()
-            .with_algorithm(totp_rs::Algorithm::SHA1)
-            .with_digits(6)
-            .with_skew(1)
-            .with_step_duration(30)
-            .with_secret(totp_rs::Secret::try_from_base32(totp_secret)?)
-            .build()?;
 
         if totp.check_current(&data.code).is_none() {
             return ApiResponse::error("invalid confirmation code")
@@ -230,7 +222,7 @@ mod delete {
     pub async fn route(
         state: GetState,
         permissions: GetPermissionManager,
-        mut user: GetUser,
+        user: GetUser,
         activity_logger: GetUserActivityLogger,
         shared::Payload(data): shared::Payload<Payload>,
     ) -> ApiResponseResult {
@@ -259,15 +251,11 @@ mod delete {
 
         match data.code.len() {
             6 => {
-                let totp = totp_rs::Builder::new()
-                    .with_algorithm(totp_rs::Algorithm::SHA1)
-                    .with_digits(6)
-                    .with_skew(1)
-                    .with_step_duration(30)
-                    .with_secret(totp_rs::Secret::try_from_base32(
-                        user.0.totp_secret.take().unwrap(),
-                    )?)
-                    .build()?;
+                let Some(totp) = user.totp(&state.database).await? else {
+                    return ApiResponse::error("two-factor authentication is not enabled")
+                        .with_status(StatusCode::CONFLICT)
+                        .ok();
+                };
 
                 if totp.check_current(&data.code).is_none() {
                     return ApiResponse::error("invalid confirmation code")

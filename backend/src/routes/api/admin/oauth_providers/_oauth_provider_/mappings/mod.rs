@@ -89,7 +89,7 @@ mod post {
                 CreateOAuthProviderMappingOptions, OAuthProviderMapping,
                 OAuthProviderMappingMatcher, OAuthProviderMappingType,
             },
-            user::GetPermissionManager,
+            user::{GetPermissionManager, GetUser},
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -122,6 +122,7 @@ mod post {
     pub async fn route(
         state: GetState,
         permissions: GetPermissionManager,
+        caller: GetUser,
         oauth_provider: GetOAuthProvider,
         activity_logger: GetAdminActivityLogger,
         shared::Payload(data): shared::Payload<Payload>,
@@ -131,6 +132,16 @@ mod post {
         if let Err(errors) = shared::utils::validate_data(&data) {
             return ApiResponse::new_serialized(ApiError::new_strings_value(errors))
                 .with_status(StatusCode::BAD_REQUEST)
+                .ok();
+        }
+
+        if !data
+            .mapping
+            .is_within_permissions_of(&state.database, &caller)
+            .await?
+        {
+            return ApiResponse::error("permissions: more permissions than self")
+                .with_status(StatusCode::FORBIDDEN)
                 .ok();
         }
 

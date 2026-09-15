@@ -10,7 +10,10 @@ use clap::{Args, FromArgMatches};
 use colored::Colorize;
 use compact_str::ToCompactString;
 use indexmap::IndexMap;
-use shared::models::{OrderedJson, database_host::DatabaseCredentials};
+use shared::{
+    crypt::EncryptedString,
+    models::{OrderedJson, database_host::DatabaseCredentials},
+};
 use sqlx::Row;
 use std::{
     collections::{HashMap, HashSet},
@@ -270,7 +273,10 @@ impl shared::extensions::commands::CliCommand<PelicanArgs> for PelicanCommand {
                                 let mfa_app_secret: Option<String> = source_optional_text(&row, "mfa_app_secret")?;
                                 let created = source_datetime(&row, "created_at")?;
                                 let admin = admin_user_ids.contains(&id);
-                                let totp_secret = mfa_app_secret.and_then(|s| decrypt_laravel_value(&s, &source_app_key).ok());
+                                let totp_secret = match mfa_app_secret.and_then(|s| decrypt_laravel_value(&s, &source_app_key).ok()) {
+                                    Some(secret) => Some(EncryptedString::from_plaintext(secret, &database).await?),
+                                    None => None,
+                                };
                                 let totp_enabled = totp_secret.is_some();
 
                                 sqlx::query(
