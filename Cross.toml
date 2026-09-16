@@ -3,3 +3,15 @@ passthrough = [
     "WINGS_RELEASE",
     "WINGS_BINARY_PATH",
 ]
+
+# cross has no ppc64le-musl image (cross-rs/cross#1776); its ppc64le-gnu one defaults to
+# -mcpu=power9 and silently emits binaries that SIGILL on POWER8.
+[target.powerpc64le-unknown-linux-musl]
+image = "ghcr.io/rust-cross/rust-musl-cross:powerpc64le-musl"
+
+# The image sets its linker in /root/.cargo/config.toml, which cross shadows by mounting
+# the host CARGO_HOME. Target-level passthrough merges with build.env above.
+[target.powerpc64le-unknown-linux-musl.env]
+passthrough = [
+    "CARGO_TARGET_POWERPC64LE_UNKNOWN_LINUX_MUSL_LINKER=powerpc64le-unknown-linux-musl-gcc",
+]

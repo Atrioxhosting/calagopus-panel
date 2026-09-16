@@ -80,12 +80,12 @@ jobs:
             wings_platform: linux/arm64
           - build: riscv64-linux
             os: ubuntu-24.04
-            target: riscv64gc-unknown-linux-gnu
+            target: riscv64gc-unknown-linux-musl
             binary_suffix: ""
             wings_platform: linux/riscv64
           - build: ppc64le-linux
             os: ubuntu-24.04
-            target: powerpc64le-unknown-linux-gnu
+            target: powerpc64le-unknown-linux-musl
             binary_suffix: ""
             wings_platform: linux/ppc64le
           #- build: x86_64-windows
@@ -126,8 +126,9 @@ jobs:
         env:
           WINGS_RELEASE: nightly
           WINGS_BINARY_PATH: bins/wings-nightly-bin
+          # riscv64gc musl is not crt-static by default
+          RUSTFLAGS: "-C target-feature=+crt-static"
         run: |
-          RUSTFLAGS="-C target-feature=+crt-static" \
           cross build --release --target ${{ matrix.target }} -p $BIN_NAME
           cross build --release --target ${{ matrix.target }} -p $AIO_BIN_NAME
 

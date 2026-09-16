@@ -144,12 +144,12 @@ jobs:
             wings_platform: linux/arm64
           - build: riscv64-linux
             os: ubuntu-24.04
-            target: riscv64gc-unknown-linux-gnu
+            target: riscv64gc-unknown-linux-musl
             binary_suffix: ""
             wings_platform: linux/riscv64
           - build: ppc64le-linux
             os: ubuntu-24.04
-            target: powerpc64le-unknown-linux-gnu
+            target: powerpc64le-unknown-linux-musl
             binary_suffix: ""
             wings_platform: linux/ppc64le
           - build: x86_64-windows
@@ -182,7 +182,7 @@ jobs:
 
       - name: Install cross
         if: contains(matrix.target, 'linux')
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        run: cargo install cross --git https://github.com/cross-rs/cross --rev 8c1a8aa4b661711f4b7b6ac07c2e8929ce2f7d27 --locked
 
       - name: Extract wings binary
         if: contains(matrix.target, 'linux')
@@ -199,8 +199,9 @@ jobs:
         env:
           WINGS_RELEASE: ${{ github.ref_name }}
           WINGS_BINARY_PATH: bins/wings-release-bin
+          # riscv64gc musl is not crt-static by default
+          RUSTFLAGS: "-C target-feature=+crt-static"
         run: |
-          RUSTFLAGS="-C target-feature=+crt-static" \
           cross build --release --target ${{ matrix.target }} -p $BIN_NAME
           cross build --release --target ${{ matrix.target }} -p $AIO_BIN_NAME
 
