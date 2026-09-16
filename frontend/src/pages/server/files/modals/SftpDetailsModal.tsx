@@ -6,6 +6,7 @@ import CopyOnClick from '@/elements/CopyOnClick.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import { Modal, ModalFooter } from '@/elements/modals/Modal.tsx';
 import Anchor from '@/elements/typography/Anchor.tsx';
+import { useRedactedAddress } from '@/plugins/privacy/useRedactAddresses.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
@@ -14,6 +15,7 @@ export default function SftpDetailsModal({ ...props }: ModalProps) {
   const { t } = useTranslations();
   const { user } = useAuth();
   const server = useServerStore((state) => state.server);
+  const displayHost = useRedactedAddress(server.sftpHost);
 
   return (
     <Modal title={t('pages.server.files.modal.sftpDetails.title', {})} {...props}>
@@ -30,12 +32,7 @@ export default function SftpDetailsModal({ ...props }: ModalProps) {
           />
         </CopyOnClick>
         <CopyOnClick content={server.sftpHost} className='col-span-2 text-left'>
-          <TextInput
-            label={t('common.form.host', {})}
-            value={server.sftpHost}
-            className='pointer-events-none'
-            readOnly
-          />
+          <TextInput label={t('common.form.host', {})} value={displayHost} className='pointer-events-none' readOnly />
         </CopyOnClick>
 
         <CopyOnClick content={`${user!.username}.${server.uuidShort}`} className='col-span-4 text-left'>

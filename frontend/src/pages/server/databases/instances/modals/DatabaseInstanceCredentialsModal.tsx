@@ -16,6 +16,7 @@ import {
   serverDatabaseInstanceSchema,
   serverDatabaseInstanceUserSchema,
 } from '@/lib/schemas/server/databaseInstances.ts';
+import { useRedactedAddress } from '@/plugins/privacy/useRedactAddresses.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
@@ -40,12 +41,13 @@ export default function DatabaseInstanceCredentialsModal({ instance, user, datab
   const database = databases.find((entry) => entry.uuid === selectedDatabase) ?? databases[0] ?? null;
 
   const host = instance.host ? `${instance.host}${instance.port ? `:${instance.port}` : ''}` : null;
+  const displayHost = useRedactedAddress(host);
   const jdbcConnectionString = host
     ? getJdbcConnectionString({
         type: instance.type,
         username: user.username,
         password: user.password,
-        host,
+        host: displayHost,
         database: database?.name ?? null,
       })
     : null;
@@ -67,7 +69,7 @@ export default function DatabaseInstanceCredentialsModal({ instance, user, datab
   return (
     <Modal title={t('pages.server.databases.instance.modal.credentials.title', {})} {...props}>
       <Stack>
-        {host && <TextInput label={t('common.table.columns.address', {})} value={host} readOnly />}
+        {host && <TextInput label={t('common.table.columns.address', {})} value={displayHost} readOnly />}
         <TextInput label={t('common.form.username', {})} value={user.username} readOnly />
         <TextInput label={t('common.form.password', {})} value={user.password} readOnly />
         {databases.length > 1 && (

@@ -4,6 +4,7 @@ import {
   faCheck,
   faCircleHalfStroke,
   faEllipsisVertical,
+  faEyeSlash,
   faGraduationCap,
   faMoon,
   faRotateLeft,
@@ -32,6 +33,7 @@ import { isAdmin } from '@/lib/auth/permissions.ts';
 import { openUrl } from '@/lib/network/url.ts';
 import { isNamedRoutePathAccessible } from '@/lib/routes.ts';
 import { resetAllDeviceOverrides, useDeviceOverrideCount } from '@/lib/userSettings.ts';
+import { useRedactAddresses } from '@/plugins/privacy/useRedactAddresses.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useWindows } from '@/providers/WindowProvider.tsx';
@@ -198,6 +200,7 @@ function Footer() {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme('dark');
   const deviceOverrideCount = useDeviceOverrideCount();
+  const [redactAddresses, setRedactAddresses] = useRedactAddresses();
   const routeOrder = useGlobalStore((state) => state.settings.user?.routeOrder);
 
   const { confirmLogout, logoutModal } = useLogoutConfirmation();
@@ -300,6 +303,13 @@ function Footer() {
       },
       {
         type: 'action' as const,
+        icon: faEyeSlash,
+        label: t('elements.sidebar.button.redactAddresses', {}),
+        rightSection: redactAddresses && <FontAwesomeIcon icon={faCheck} size='sm' />,
+        onClick: () => setRedactAddresses(!redactAddresses),
+      },
+      {
+        type: 'action' as const,
         icon: faRotateLeft,
         label: t('elements.sidebar.button.resetDeviceOverrides', { count: deviceOverrideCount }),
         hidden: deviceOverrideCount === 0,
@@ -327,6 +337,8 @@ function Footer() {
       adminHidden,
       colorScheme,
       deviceOverrideCount,
+      redactAddresses,
+      setRedactAddresses,
       impersonating,
     ],
   );

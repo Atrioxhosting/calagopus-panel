@@ -11,8 +11,10 @@ import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import BooleanText from '@/elements/typography/BooleanText.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { userSessionSchema } from '@/lib/schemas/user/sessions.ts';
+import { useRedactedAddress } from '@/plugins/privacy/useRedactAddresses.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -22,6 +24,7 @@ export default function SessionRow({ session }: { session: z.infer<typeof userSe
   const queryClient = useQueryClient();
 
   const [openModal, setOpenModal] = useState<'delete' | null>(null);
+  const displayIp = useRedactedAddress(session.ip);
 
   const doDelete = async () => {
     await deleteSession(session.uuid)
@@ -45,7 +48,7 @@ export default function SessionRow({ session }: { session: z.infer<typeof userSe
         onConfirmed={doDelete}
       >
         {t('pages.account.sessions.modal.deleteSession.content', {
-          ip: session.ip,
+          ip: displayIp,
         }).md()}
       </ConfirmationModal>
 
@@ -72,7 +75,9 @@ export default function SessionRow({ session }: { session: z.infer<typeof userSe
           >
             <TableData>
               <CopyOnClick content={session.ip}>
-                <Code>{session.ip}</Code>
+                <Code>
+                  <RedactedText value={session.ip} />
+                </Code>
               </CopyOnClick>
             </TableData>
             <TableData>

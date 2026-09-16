@@ -683,6 +683,7 @@
           "themeAuto": "Automatisch",
           "themeDark": "Dunkel",
           "themeLight": "Hell",
+          "redactAddresses": "Adressen verbergen",
           "resetDeviceOverrides": "Geräte-Überschreibungen zurücksetzen ({count})"
         },
         "modal": {
@@ -1465,7 +1466,8 @@
               "title": "Einstellungen",
               "form": {
                 "toastPosition": "Toast-Position",
-                "startOnGroupedServers": "Auf der Seite 'Gruppierte Server' starten"
+                "startOnGroupedServers": "Auf der Seite 'Gruppierte Server' starten",
+                "redactAddresses": "Serveradressen verbergen (bestmöglich, für Bildschirmfreigabe)"
               }
             },
             "avatar": {

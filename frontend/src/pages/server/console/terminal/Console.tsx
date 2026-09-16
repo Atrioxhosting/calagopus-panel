@@ -16,8 +16,10 @@ import Button from '@/elements/buttons/Button.tsx';
 import Card from '@/elements/data-display/Card.tsx';
 import Progress from '@/elements/feedback/Progress.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
+import { redactConsoleLine } from '@/lib/network/redact.ts';
 import { CORE_QUICK_ACTION_CATEGORIES } from '@/lib/quickActions/coreQuickActions.tsx';
 import { useUserSetting } from '@/lib/userSettings.ts';
+import { useRedactAddresses } from '@/plugins/privacy/useRedactAddresses.ts';
 import { matchesShortcut, useKeyboardShortcut } from '@/plugins/quick-actions/useKeyboardShortcuts.ts';
 import { useQuickActions } from '@/plugins/quick-actions/useQuickActions.ts';
 import { SocketEvent, SocketRequest } from '@/plugins/websocket/useWebsocketEvent.ts';
@@ -59,6 +61,7 @@ export default function Terminal({ popout = false }: { popout?: boolean }) {
   const [websocketPing, setWebsocketPing] = useState(0);
   const [consoleFontSize, setConsoleFontSize] = useUserSetting(CONSOLE_FONT_SIZE_KEY, consoleFontSizeSchema, 14);
   const [openModal, setOpenModal] = useState<'search' | 'commandHistory' | 'sshDetails' | null>(null);
+  const [redactAddresses] = useRedactAddresses();
 
   const inputValueRef = useRef(inputValue);
   const inputValueUpdatedRef = useRef(false);
@@ -144,9 +147,26 @@ export default function Terminal({ popout = false }: { popout?: boolean }) {
     containerPreludeRef.current = settings.server.containerPrelude;
   }, [settings.server.containerPrelude]);
 
+  const redactAddressesRef = useRef(redactAddresses);
+  useEffect(() => {
+    if (redactAddressesRef.current === redactAddresses) return;
+    redactAddressesRef.current = redactAddresses;
+
+    if (!resetTerminal()) return;
+
+    setIsAtBottom(true);
+    isFirstLine.current = true;
+
+    if (socketConnected && socketInstance) socketInstance.send(SocketRequest.SEND_LOGS);
+  }, [redactAddresses, socketConnected, socketInstance, resetTerminal]);
+
   const addLine = useCallback(
     (text: string, prelude = false) => {
       let processed = text.replaceAll('\x1b[?25h', '').replaceAll('\x1b[?25l', '');
+
+      if (redactAddressesRef.current) {
+        processed = redactConsoleLine(processed);
+      }
 
       if (processed.includes('container@pterodactyl~')) {
         processed = processed.replace('container@pterodactyl~', containerPreludeRef.current);

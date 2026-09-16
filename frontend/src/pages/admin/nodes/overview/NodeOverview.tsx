@@ -21,6 +21,7 @@ import ExtensionSlot from '@/elements/ExtensionSlot.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { bytesToString, mbToBytes } from '@/lib/format/size.ts';
 import { formatDateTime } from '@/lib/format/time.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
@@ -84,12 +85,14 @@ export default function NodeOverview({ node }: { node: Node }) {
               </InfoRow>
               <InfoRow label={t('pages.admin.nodes.tabs.overview.page.label.url', {})}>
                 <Text size='sm' ff='monospace' className='break-all'>
-                  {node.url}
+                  <RedactedText value={node.url} />
                 </Text>
               </InfoRow>
               <InfoRow label={t('common.form.publicUrl', {})}>
                 <Text size='sm' ff='monospace' className='break-all'>
-                  {node.publicUrl ?? (
+                  {node.publicUrl ? (
+                    <RedactedText value={node.publicUrl} />
+                  ) : (
                     <Text span c='dimmed' size='sm'>
                       {t('common.na', {})}
                     </Text>
@@ -98,7 +101,7 @@ export default function NodeOverview({ node }: { node: Node }) {
               </InfoRow>
               <InfoRow label={t('pages.admin.nodes.tabs.overview.page.label.sftpAddress', {})}>
                 <Text size='sm' ff='monospace'>
-                  {node.sftpHost ?? new URL(node.url).hostname}:{node.sftpPort}
+                  <RedactedText value={node.sftpHost ?? new URL(node.url).hostname} suffix={`:${node.sftpPort}`} />
                 </Text>
               </InfoRow>
               <InfoRow label={t('common.form.backupConfiguration', {})}>

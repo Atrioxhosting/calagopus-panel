@@ -14,6 +14,7 @@ import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.
 import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { formatAllocation } from '@/lib/domain/server.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { AdminServer } from '@/lib/schemas/admin/servers.ts';
@@ -146,11 +147,13 @@ export default function ServerAllocationRow({
             </TableData>
 
             <TableData>
-              <Code>{allocation.ip}</Code>
+              <Code>
+                <RedactedText value={allocation.ip} />
+              </Code>
             </TableData>
 
             <TableData>
-              <Code>{allocation.ipAlias ?? t('common.na', {})}</Code>
+              <Code>{allocation.ipAlias ? <RedactedText value={allocation.ipAlias} /> : t('common.na', {})}</Code>
             </TableData>
 
             <TableData>

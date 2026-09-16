@@ -7,6 +7,7 @@ import TableLink from '@/elements/data-display/TableLink.tsx';
 import Checkbox from '@/elements/input/Checkbox.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { statusToColor } from '@/lib/domain/server.ts';
 import { AdminServer } from '@/lib/schemas/admin/servers.ts';
 import { useServerStats } from '@/plugins/server/useServerStats.ts';
@@ -91,7 +92,13 @@ const ServerRow = memo(
         </TableData>
 
         <TableData>
-          <Code>{server.allocation ? `${server.allocation.ip}:${server.allocation.port}` : t('common.na', {})}</Code>
+          <Code>
+            {server.allocation ? (
+              <RedactedText value={`${server.allocation.ip}:${server.allocation.port}`} />
+            ) : (
+              t('common.na', {})
+            )}
+          </Code>
         </TableData>
 
         <TableData>

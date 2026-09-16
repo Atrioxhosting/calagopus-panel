@@ -5,6 +5,7 @@ import TableLink from '@/elements/data-display/TableLink.tsx';
 import Checkbox from '@/elements/input/Checkbox.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { ObjectSet } from '@/lib/objectSet.ts';
 import { adminNodeAllocationSchema } from '@/lib/schemas/admin/nodes.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -76,11 +77,13 @@ const NodeAllocationRow = memo(
         </TableData>
 
         <TableData>
-          <Code>{allocation.ip}</Code>
+          <Code>
+            <RedactedText value={allocation.ip} />
+          </Code>
         </TableData>
 
         <TableData>
-          <Code>{allocation.ipAlias ?? t('common.na', {})}</Code>
+          <Code>{allocation.ipAlias ? <RedactedText value={allocation.ipAlias} /> : t('common.na', {})}</Code>
         </TableData>
 
         <TableData>

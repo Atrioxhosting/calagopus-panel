@@ -29,6 +29,7 @@ import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuItem } from '@/elements/overlays/ContextMenu.tsx';
 import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import ScrollingText from '@/elements/ScrollingText.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { formatAllocation, serverStatusInfo, statusToColor } from '@/lib/domain/server.ts';
 import { bytesToString, mbToBytes } from '@/lib/format/size.ts';
 import { serverPowerAction, serverSchema } from '@/lib/schemas/server/server.ts';
@@ -235,7 +236,9 @@ export default function ServerItem({
                             >
                               <Card p='xs' hoverable className='leading-[100%] min-w-0 rounded-lg!'>
                                 <p className='text-sm text-(--mantine-color-dimmed)'>
-                                  <ScrollingText>{server.allocation.ipAlias ?? server.allocation.ip}</ScrollingText>
+                                  <ScrollingText>
+                                    <RedactedText value={server.allocation.ipAlias ?? server.allocation.ip} />
+                                  </ScrollingText>
                                 </p>
                               </Card>
                             </CopyOnClick>
@@ -251,7 +254,9 @@ export default function ServerItem({
                           <CopyOnClick content={formatAllocation(server.allocation)} className='min-w-0'>
                             <Card p='xs' hoverable className='leading-[100%] min-w-0 rounded-lg!'>
                               <p className='text-sm text-(--mantine-color-dimmed)'>
-                                <ScrollingText>{formatAllocation(server.allocation)}</ScrollingText>
+                                <ScrollingText>
+                                  <RedactedText value={formatAllocation(server.allocation)} />
+                                </ScrollingText>
                               </p>
                             </Card>
                           </CopyOnClick>

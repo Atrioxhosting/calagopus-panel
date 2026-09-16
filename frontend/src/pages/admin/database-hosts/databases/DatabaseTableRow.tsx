@@ -8,6 +8,7 @@ import Spinner from '@/elements/feedback/Spinner.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { databaseTypeLabelMapping } from '@/lib/enums.ts';
 import { bytesToString } from '@/lib/format/size.ts';
 import { adminServerDatabaseBaseSchema } from '@/lib/schemas/admin/servers.ts';
@@ -68,7 +69,9 @@ export default function DatabaseTableRow<P>({ database, serverUuid, hostUuid, li
 
             <TableData>
               <CopyOnClick content={host}>
-                <Code>{host}</Code>
+                <Code>
+                  <RedactedText value={host} />
+                </Code>
               </CopyOnClick>
             </TableData>
 

@@ -101,6 +101,7 @@ export default function ServerDetails() {
         label={t('pages.server.console.details.address', {})}
         order={10}
         copyOnClick={!!server.allocation}
+        redact={!!server.allocation}
         value={server.allocation ? formatAllocation(server.allocation, server.egg.separatePort) : t('common.na', {})}
       />
       {server.egg.separatePort && server.allocation && (

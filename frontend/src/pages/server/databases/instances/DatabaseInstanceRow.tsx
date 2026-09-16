@@ -22,6 +22,7 @@ import Group from '@/elements/layout/Group.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { databaseAgentTypeLabelMapping } from '@/lib/enums.ts';
 import { bytesToString, mbToBytes } from '@/lib/format/size.ts';
 import { serverDatabaseInstanceSchema } from '@/lib/schemas/server/databaseInstances.ts';
@@ -131,7 +132,9 @@ export default function DatabaseInstanceRow({ instance }: { instance: z.infer<ty
             <TableData>
               {host ? (
                 <CopyOnClick content={host}>
-                  <Code>{host}</Code>
+                  <Code>
+                    <RedactedText value={host} />
+                  </Code>
                 </CopyOnClick>
               ) : null}
             </TableData>

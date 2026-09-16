@@ -8,6 +8,7 @@ import TableLink from '@/elements/data-display/TableLink.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { activitySchema } from '@/lib/schemas/activity.ts';
 import { serverActivitySchema } from '@/lib/schemas/server/activity.ts';
 import { userActivitySchema } from '@/lib/schemas/user/activity.ts';
@@ -90,7 +91,7 @@ export default function ActivityRow({
       </TableData>
 
       <TableData>
-        <Code>{activity.ip ? activity.ip : t('common.na', {})}</Code>
+        <Code>{activity.ip ? <RedactedText value={activity.ip} /> : t('common.na', {})}</Code>
       </TableData>
 
       <TableData>

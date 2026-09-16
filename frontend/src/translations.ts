@@ -574,6 +574,7 @@ const baseTranslations = defineTranslations({
           themeAuto: 'Auto',
           themeDark: 'Dark',
           themeLight: 'Light',
+          redactAddresses: 'Hide Addresses',
           resetDeviceOverrides: 'Reset Device Overrides ({count})',
         },
         modal: {
@@ -1383,6 +1384,7 @@ const baseTranslations = defineTranslations({
               form: {
                 toastPosition: 'Toast Position',
                 startOnGroupedServers: 'Start on the Grouped Servers page',
+                redactAddresses: 'Hide server addresses (best effort, for screen sharing)',
               },
             },
             avatar: {

@@ -7,6 +7,7 @@ import TableLink from '@/elements/data-display/TableLink.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { databaseAgentTypeLabelMapping } from '@/lib/enums.ts';
 import { adminDatabaseAgentHostSchema } from '@/lib/schemas/admin/databaseAgentHosts.ts';
 import { adminServerDatabaseAgentSchema } from '@/lib/schemas/admin/servers.ts';
@@ -86,7 +87,9 @@ export default function DatabaseAgentRow({
             <TableData>
               {host ? (
                 <CopyOnClick content={host}>
-                  <Code>{host}</Code>
+                  <Code>
+                    <RedactedText value={host} />
+                  </Code>
                 </CopyOnClick>
               ) : null}
             </TableData>

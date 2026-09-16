@@ -8,6 +8,7 @@ import Switch from '@/elements/input/Switch.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import UserSettingScopeMenu from '@/elements/UserSettingScopeMenu.tsx';
 import { userToastPosition } from '@/lib/schemas/user.ts';
+import { REDACT_ADDRESSES_KEY, useRedactAddresses } from '@/plugins/privacy/useRedactAddresses.ts';
 import { START_ON_GROUPED_SERVERS_KEY, useStartOnGroupedServers } from '@/plugins/server/useStartOnGroupedServers.ts';
 import { TOAST_POSITION_KEY, useToastPosition } from '@/plugins/toast/useToastPosition.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -18,6 +19,7 @@ export default function PreferencesContainer({ requireTwoFactorActivation }: Acc
 
   const [toastPosition, setToastPosition] = useToastPosition();
   const [startOnGroupedServers, setStartOnGroupedServers] = useStartOnGroupedServers();
+  const [redactAddresses, setRedactAddresses] = useRedactAddresses();
 
   return (
     <TitleCard
@@ -71,6 +73,16 @@ export default function PreferencesContainer({ requireTwoFactorActivation }: Acc
           }
           checked={startOnGroupedServers}
           onChange={(e) => setStartOnGroupedServers(e.target.checked)}
+        />
+        <Switch
+          label={
+            <>
+              {t('pages.account.account.containers.preferences.form.redactAddresses', {})}&nbsp;
+              <UserSettingScopeMenu settingKey={REDACT_ADDRESSES_KEY} value={redactAddresses} />
+            </>
+          }
+          checked={redactAddresses}
+          onChange={(e) => setRedactAddresses(e.target.checked)}
         />
       </Stack>
     </TitleCard>

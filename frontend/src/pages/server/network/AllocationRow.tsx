@@ -14,8 +14,10 @@ import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.
 import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { serverAllocationSchema } from '@/lib/schemas/server/allocations.ts';
+import { useRedactedAddress } from '@/plugins/privacy/useRedactAddresses.ts';
 import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -28,6 +30,7 @@ export default function AllocationRow({ allocation }: { allocation: z.infer<type
   const queryClient = useQueryClient();
 
   const [openModal, setOpenModal] = useState<'remove' | null>(null);
+  const displayAllocation = useRedactedAddress(`${allocation.ipAlias ?? allocation.ip}:${allocation.port}`);
   const [notes, setNotes] = useState(allocation.notes ?? '');
   const canUpdate = useServerCan('allocations.update');
   const canUnsetPrimary = !server.eggConfiguration?.allocationSelfAssignRequirePrimary;
@@ -103,7 +106,7 @@ export default function AllocationRow({ allocation }: { allocation: z.infer<type
         onConfirmed={doRemove}
       >
         {t('pages.server.network.modal.removeAllocation.content', {
-          allocation: `${allocation.ipAlias ?? allocation.ip}:${allocation.port}`,
+          allocation: displayAllocation,
         }).md()}
       </ConfirmationModal>
 
@@ -156,7 +159,9 @@ export default function AllocationRow({ allocation }: { allocation: z.infer<type
             </td>
 
             <TableData>
-              <Code>{allocation.ipAlias ?? allocation.ip}</Code>
+              <Code>
+                <RedactedText value={allocation.ipAlias ?? allocation.ip} />
+              </Code>
             </TableData>
 
             <TableData>

@@ -12,6 +12,7 @@ import { Modal, ModalFooter } from '@/elements/modals/Modal.tsx';
 import { getJdbcConnectionString } from '@/lib/domain/database.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { serverDatabaseSchema } from '@/lib/schemas/server/databases.ts';
+import { useRedactedAddress } from '@/plugins/privacy/useRedactAddresses.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
@@ -28,11 +29,12 @@ export default function DatabaseDetailsModal({ database, ...props }: Props) {
   const [loading, setLoading] = useState(false);
 
   const host = `${database.host}:${database.port}`;
+  const displayHost = useRedactedAddress(host);
   const jdbcConnectionString = getJdbcConnectionString({
     type: database.type,
     username: database.username,
     password: database.password,
-    host,
+    host: displayHost,
     database: database.name,
   });
 
@@ -54,7 +56,12 @@ export default function DatabaseDetailsModal({ database, ...props }: Props) {
     <Modal title={t('pages.server.databases.modal.databaseDetails.title', {})} {...props}>
       <Stack>
         <TextInput label={t('pages.server.databases.form.databaseName', {})} value={database.name} readOnly />
-        <TextInput label={t('common.form.host', {})} placeholder={t('common.form.host', {})} value={host} readOnly />
+        <TextInput
+          label={t('common.form.host', {})}
+          placeholder={t('common.form.host', {})}
+          value={displayHost}
+          readOnly
+        />
         <TextInput label={t('common.form.username', {})} value={database.username} readOnly />
         <TextInput label={t('common.form.password', {})} value={database.password ?? ''} readOnly />
         <TextInput

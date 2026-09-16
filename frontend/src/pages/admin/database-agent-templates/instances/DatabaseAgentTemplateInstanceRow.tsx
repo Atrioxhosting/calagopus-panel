@@ -8,6 +8,7 @@ import Checkbox from '@/elements/input/Checkbox.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { databaseAgentTypeLabelMapping } from '@/lib/enums.ts';
 import { adminServerDatabaseAgentSchema } from '@/lib/schemas/admin/servers.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -63,7 +64,9 @@ const DatabaseAgentTemplateInstanceRow = forwardRef<HTMLTableRowElement, Databas
         <TableData>
           {host ? (
             <CopyOnClick content={host}>
-              <Code>{host}</Code>
+              <Code>
+                <RedactedText value={host} />
+              </Code>
             </CopyOnClick>
           ) : null}
         </TableData>

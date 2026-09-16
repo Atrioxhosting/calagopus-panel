@@ -6,6 +6,7 @@ import TableLink from '@/elements/data-display/TableLink.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { databaseAgentTypeLabelMapping } from '@/lib/enums.ts';
 import { AdminServer, AdminServerServerDatabaseAgent } from '@/lib/schemas/admin/servers.ts';
 import DatabaseAgentHostInstanceDeleteModal from '@/pages/admin/database-agent-hosts/modals/DatabaseAgentHostInstanceDeleteModal.tsx';
@@ -82,7 +83,9 @@ export default function AdminServerDatabaseInstanceRow({
             <TableData>
               {host ? (
                 <CopyOnClick content={host}>
-                  <Code>{host}</Code>
+                  <Code>
+                    <RedactedText value={host} />
+                  </Code>
                 </CopyOnClick>
               ) : null}
             </TableData>

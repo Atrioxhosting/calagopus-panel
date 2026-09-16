@@ -20,6 +20,7 @@ import TitleCard from '@/elements/data-display/TitleCard.tsx';
 import ExtensionSlot from '@/elements/ExtensionSlot.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { serverStatusInfo } from '@/lib/domain/server.ts';
 import { bytesToString, mbToBytes } from '@/lib/format/size.ts';
 import { formatDateTime } from '@/lib/format/time.ts';
@@ -189,7 +190,10 @@ export default function ServerOverview({ server }: { server: Server }) {
               </InfoRow>
               <InfoRow label={t('pages.admin.servers.tabs.overview.page.label.sftpAddress', {})}>
                 <Text size='sm' ff='monospace'>
-                  {server.node.sftpHost ?? new URL(server.node.url).hostname}:{server.node.sftpPort}
+                  <RedactedText
+                    value={server.node.sftpHost ?? new URL(server.node.url).hostname}
+                    suffix={`:${server.node.sftpPort}`}
+                  />
                 </Text>
               </InfoRow>
               <InfoRow label={t('pages.admin.servers.tabs.overview.page.label.memoryLimit', {})}>
@@ -236,7 +240,7 @@ export default function ServerOverview({ server }: { server: Server }) {
               </InfoRow>
               <InfoRow label={t('common.form.primaryAllocation', {})}>
                 <Text size='sm' ff='monospace'>
-                  {allocationLabel}
+                  {allocation ? <RedactedText value={allocationLabel} /> : allocationLabel}
                 </Text>
               </InfoRow>
               <InfoRow label={t('common.form.nest', {})}>

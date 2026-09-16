@@ -8,6 +8,7 @@ import CopyOnClick from '@/elements/CopyOnClick.tsx';
 import Card from '@/elements/data-display/Card.tsx';
 import ThemeIcon from '@/elements/data-display/ThemeIcon.tsx';
 import ScrollingText from '@/elements/ScrollingText.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { usageColor } from '@/lib/format/usage.ts';
 
 export default function StatCard({
@@ -24,6 +25,7 @@ export default function StatCard({
   progress,
   total,
   valueColor,
+  redact,
 }: {
   icon?: IconDefinition;
   label: string;
@@ -38,7 +40,9 @@ export default function StatCard({
   progress?: number | null;
   total?: number | null;
   valueColor?: MantineColor;
+  redact?: boolean;
 }) {
+  const displayValue = redact ? <RedactedText value={value} /> : value;
   const color = usageColor(progress, total);
 
   return (
@@ -70,13 +74,13 @@ export default function StatCard({
             {copyOnClick ? (
               <ScrollingText>
                 <CopyOnClick content={value} className='text-left block'>
-                  {value} {limit && <span className='text-sm text-(--mantine-color-dimmed)'>/ {limit}</span>}{' '}
+                  {displayValue} {limit && <span className='text-sm text-(--mantine-color-dimmed)'>/ {limit}</span>}{' '}
                   {details && <span className='text-sm text-(--mantine-color-dimmed)'>({details})</span>}
                 </CopyOnClick>
               </ScrollingText>
             ) : (
               <ScrollingText>
-                {value} {limit && <span className='text-sm text-(--mantine-color-dimmed)'>/ {limit}</span>}{' '}
+                {displayValue} {limit && <span className='text-sm text-(--mantine-color-dimmed)'>/ {limit}</span>}{' '}
                 {details && <span className='text-sm text-(--mantine-color-dimmed)'>({details})</span>}
               </ScrollingText>
             )}

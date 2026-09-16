@@ -24,6 +24,7 @@ export default function DatabaseInstanceDetails({
         icon={faEthernet}
         label={t('common.table.columns.address', {})}
         copyOnClick={!!host}
+        redact={!!host}
         value={host ?? t('common.na', {})}
       />
       <StatCard

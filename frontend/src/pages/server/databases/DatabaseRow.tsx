@@ -17,6 +17,7 @@ import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { databaseTypeLabelMapping } from '@/lib/enums.ts';
 import { bytesToString } from '@/lib/format/size.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
@@ -120,7 +121,9 @@ export default function DatabaseRow({ database }: { database: z.infer<typeof ser
 
             <TableData>
               <CopyOnClick content={host}>
-                <Code>{host}</Code>
+                <Code>
+                  <RedactedText value={host} />
+                </Code>
               </CopyOnClick>
             </TableData>
 
