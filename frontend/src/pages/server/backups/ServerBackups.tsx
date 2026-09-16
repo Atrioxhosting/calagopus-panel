@@ -1,4 +1,4 @@
-import { faChevronDown, faLayerGroup, faPlus, faSearch } from '@fortawesome/free-solid-svg-icons';
+import { faBoxArchive, faChevronDown, faLayerGroup, faPlus, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ComponentProps, memo, ReactNode, startTransition, useCallback, useMemo, useState } from 'react';
@@ -13,6 +13,7 @@ import ServerContentContainer from '@/elements/containers/ServerContentContainer
 import Badge from '@/elements/data-display/Badge.tsx';
 import Table from '@/elements/data-display/Table.tsx';
 import { DndContainer, DndItem, SortableItem } from '@/elements/dnd/DragAndDrop.tsx';
+import EmptyState from '@/elements/feedback/EmptyState.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
@@ -99,7 +100,7 @@ export default function ServerBackups({
 
   const groupsQueryKey = useMemo(() => queryKeys.server(server.uuid).backups.groups.all(), [server.uuid]);
 
-  const { loading, error, search, setSearch, setPage } = useSearchablePaginatedTable({
+  const { loading, error, search, debouncedSearch, setSearch, setPage } = useSearchablePaginatedTable({
     queryKey: queryKeys.server(server.uuid).backups.all(),
     fetcher: (page, search) => getBackups(server.uuid, page, search, showGroups && canReadGroups, filter),
     deps: [filter],
@@ -164,6 +165,15 @@ export default function ServerBackups({
     : (createBlockedReason ?? '');
 
   const hasGroups = showGroups && sortedGroups.length > 0;
+  const groupsSettled = !canReadGroups || groups !== undefined;
+  const isEmpty =
+    variant === 'page' &&
+    groupsSettled &&
+    !hasGroups &&
+    !loading &&
+    !error &&
+    !debouncedSearch &&
+    totalBackupCount === 0;
   const showCreateGroup = showGroups && canCreateGroup && sortedGroups.length < maxBackupGroupCount;
   const canReorderGroups = canUpdateGroups && sortedGroups.length > 1;
 
@@ -245,6 +255,22 @@ export default function ServerBackups({
       pagination={backups}
       onPageSelect={setPage}
       error={error}
+      empty={
+        isEmpty ? (
+          <EmptyState
+            flush
+            icon={faBoxArchive}
+            title={t('pages.server.backups.empty.title', {})}
+            description={
+              canCreateBackup
+                ? t('pages.server.backups.empty.description', {})
+                : t('pages.server.backups.empty.descriptionReadOnly', {})
+            }
+          >
+            {createControl}
+          </EmptyState>
+        ) : undefined
+      }
     >
       {backups.data.map((backup) => (
         <BackupRow
@@ -368,8 +394,8 @@ export default function ServerBackups({
       title={t('pages.server.backups.title', {})}
       subtitle={subtitle}
       search={search}
-      setSearch={setSearch}
-      contentRight={createControl}
+      setSearch={isEmpty ? undefined : setSearch}
+      contentRight={isEmpty ? undefined : createControl}
       registry={window.extensionContext.extensionRegistry.pages.server.backups.container}
     >
       <BackupsSubNavigation />

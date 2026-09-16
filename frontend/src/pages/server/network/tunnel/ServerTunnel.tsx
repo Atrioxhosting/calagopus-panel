@@ -18,17 +18,14 @@ import leaveTunnel from '@/api/server/tunnel/leaveTunnel.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import { ServerCan } from '@/elements/Can.tsx';
 import ServerContentContainer from '@/elements/containers/ServerContentContainer.tsx';
-import ThemeIcon from '@/elements/data-display/ThemeIcon.tsx';
 import Alert from '@/elements/feedback/Alert.tsx';
+import EmptyState from '@/elements/feedback/EmptyState.tsx';
 import Group from '@/elements/layout/Group.tsx';
-import Paper from '@/elements/layout/Paper.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ConditionalTooltip from '@/elements/overlays/ConditionalTooltip.tsx';
 import { ContextMenuItem, useHideContextMenu } from '@/elements/overlays/ContextMenu.tsx';
 import ResourceView from '@/elements/ResourceView.tsx';
-import Text from '@/elements/typography/Text.tsx';
-import Title from '@/elements/typography/Title.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { serverTunnelPeerSchema } from '@/lib/schemas/server/tunnel.ts';
 import { useResource } from '@/plugins/resource/useResource.ts';
@@ -356,18 +353,15 @@ export default function ServerTunnel() {
             )}
 
             {!view.tunnel ? (
-              <Paper withBorder p='xl' radius='md' style={{ textAlign: 'center' }}>
-                <ThemeIcon size='xl' mb='md' color='gray'>
-                  <FontAwesomeIcon icon={faShareNodes} />
-                </ThemeIcon>
-                <Title order={3} c='dimmed' mb='sm'>
-                  {t('pages.server.tunnel.empty.title', {})}
-                </Title>
-                <Text c='dimmed' mb='md'>
-                  {canCreate
+              <EmptyState
+                icon={faShareNodes}
+                title={t('pages.server.tunnel.empty.title', {})}
+                description={
+                  canCreate
                     ? t('pages.server.tunnel.empty.description', {})
-                    : t('pages.server.tunnel.empty.descriptionReadOnly', {})}
-                </Text>
+                    : t('pages.server.tunnel.empty.descriptionReadOnly', {})
+                }
+              >
                 <ServerCan action='connections.create'>
                   <ConditionalTooltip
                     enabled={!view.supported}
@@ -382,7 +376,7 @@ export default function ServerTunnel() {
                     </Button>
                   </ConditionalTooltip>
                 </ServerCan>
-              </Paper>
+              </EmptyState>
             ) : (
               <>
                 <Alert color='gray'>{t('pages.server.tunnel.alert.bypassesFirewall', {})}</Alert>

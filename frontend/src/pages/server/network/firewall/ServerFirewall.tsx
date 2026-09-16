@@ -8,19 +8,16 @@ import updateFirewall from '@/api/server/firewall/updateFirewall.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import { ServerCan } from '@/elements/Can.tsx';
 import ServerContentContainer from '@/elements/containers/ServerContentContainer.tsx';
-import ThemeIcon from '@/elements/data-display/ThemeIcon.tsx';
 import { DndContainer, DndItem, SortableItem } from '@/elements/dnd/DragAndDrop.tsx';
 import Alert from '@/elements/feedback/Alert.tsx';
+import EmptyState from '@/elements/feedback/EmptyState.tsx';
 import ImportOverlay from '@/elements/ImportOverlay.tsx';
 import Group from '@/elements/layout/Group.tsx';
-import Paper from '@/elements/layout/Paper.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ConditionalTooltip from '@/elements/overlays/ConditionalTooltip.tsx';
 import ResourceExportMenu from '@/elements/ResourceExportMenu.tsx';
 import ResourceView from '@/elements/ResourceView.tsx';
-import Text from '@/elements/typography/Text.tsx';
-import Title from '@/elements/typography/Title.tsx';
 import { downloadResourceFile, ResourceExportFormat } from '@/lib/download/export.ts';
 import { restrictToVerticalAxis } from '@/lib/dragAndDrop.ts';
 import { formatPortRanges } from '@/lib/network/ip.ts';
@@ -337,18 +334,15 @@ export default function ServerFirewall() {
             <Alert color='gray'>{t('pages.server.firewall.alert.limitations', {})}</Alert>
 
             {rules.length === 0 ? (
-              <Paper withBorder p='xl' radius='md' style={{ textAlign: 'center' }}>
-                <ThemeIcon size='xl' mb='md' color='gray'>
-                  <FontAwesomeIcon icon={faShieldHalved} />
-                </ThemeIcon>
-                <Title order={3} c='dimmed' mb='sm'>
-                  {t('pages.server.firewall.empty.title', {})}
-                </Title>
-                <Text c='dimmed' mb='md'>
-                  {canUpdate
+              <EmptyState
+                icon={faShieldHalved}
+                title={t('pages.server.firewall.empty.title', {})}
+                description={
+                  canUpdate
                     ? t('pages.server.firewall.empty.description', {})
-                    : t('pages.server.firewall.empty.descriptionReadOnly', {})}
-                </Text>
+                    : t('pages.server.firewall.empty.descriptionReadOnly', {})
+                }
+              >
                 <ServerCan action='firewall.update'>
                   <ConditionalTooltip
                     enabled={rules.length >= maxRuleCount}
@@ -363,7 +357,7 @@ export default function ServerFirewall() {
                     </Button>
                   </ConditionalTooltip>
                 </ServerCan>
-              </Paper>
+              </EmptyState>
             ) : (
               <DndContainer
                 items={rules}

@@ -5411,6 +5411,12 @@
         "databases": {
           "title": "Datenbanken",
           "subtitle": "{current} von maximal {max} Datenbanken erstellt.",
+          "empty": {
+            "title": "Keine Datenbanken",
+            "description": "Dieser Server hat keine Datenbank, in der er Daten ablegen kann. Erstelle eine, um Adresse, Benutzer und Passwort für die Verbindung zu erhalten.",
+            "descriptionReadOnly": "Dieser Server hat keine Datenbank, in der er Daten ablegen kann.",
+            "descriptionUnavailable": "Dieser Server hat keine Datenbank, in der er Daten ablegen kann. Ihm wurde kein Datenbank-Host zur Verfügung gestellt, daher kann noch keine erstellt werden."
+          },
           "tooltip": {
             "limitReached": "Dieser Server ist auf {max} Datenbanken limitiert."
           },
@@ -5420,7 +5426,8 @@
             }
           },
           "button": {
-            "rotatePassword": "Passwort rotieren"
+            "rotatePassword": "Passwort rotieren",
+            "createFirstDatabase": "Datenbank erstellen"
           },
           "form": {
             "databaseName": "Datenbank Name"
@@ -5587,8 +5594,15 @@
           "instance": {
             "title": "Verwaltete Datenbanken",
             "updateAvailable": "Update verfügbar",
+            "empty": {
+              "title": "Keine verwalteten Datenbanken",
+              "description": "Dieser Server betreibt keine eigene Datenbank. Erstelle eine verwaltete Datenbank, um eine mit eigenen Ressourcen, Benutzern und Backups zu erhalten.",
+              "descriptionReadOnly": "Dieser Server betreibt keine eigene Datenbank.",
+              "descriptionUnavailable": "Dieser Server betreibt keine eigene Datenbank. Ihm wurden keine Vorlagen zur Verfügung gestellt, daher kann noch keine erstellt werden."
+            },
             "button": {
-              "applyUpdate": "Update anwenden"
+              "applyUpdate": "Update anwenden",
+              "createFirstInstance": "Verwaltete Datenbank erstellen"
             },
             "tooltip": {
               "limitReached": "Dieser Server ist auf {max} verwaltete Datenbanken limitiert."
@@ -5885,6 +5899,11 @@
             "title": "Dateien hier ablegen, um sie als Zeitpläne zu importieren",
             "subtitle": "Loslassen, um den Import zu starten"
           },
+          "empty": {
+            "title": "Keine Zeitpläne",
+            "description": "Auf diesem Server läuft nichts automatisch. Füge einen Zeitplan hinzu, um Befehle, Backups und mehr zeitgesteuert oder als Reaktion auf ein Ereignis auszuführen.",
+            "descriptionReadOnly": "Auf diesem Server läuft nichts automatisch."
+          },
           "tooltip": {
             "limitReached": "Dieser Server ist auf {max} Zeitpläne limitiert."
           },
@@ -5907,7 +5926,8 @@
             "addOutput": "Ausgabe hinzufügen",
             "addFile": "Datei hinzufügen",
             "addHeader": "Header hinzufügen",
-            "viewCalendar": "Kalender anzeigen"
+            "viewCalendar": "Kalender anzeigen",
+            "createFirstSchedule": "Zeitplan erstellen"
           },
           "toast": {
             "imported": "Zeitplan importiert.",
@@ -6595,6 +6615,14 @@
         "subusers": {
           "title": "Subuser",
           "subtitle": "{current} von maximal {max} Subusern erstellt.",
+          "empty": {
+            "title": "Keine Subuser",
+            "description": "Niemand sonst hat Zugriff auf diesen Server. Füge einen Subuser hinzu, um ihn zu teilen, mit genau den Berechtigungen, die du auswählst.",
+            "descriptionReadOnly": "Niemand sonst hat Zugriff auf diesen Server."
+          },
+          "button": {
+            "createFirstSubuser": "Subuser erstellen"
+          },
           "tooltip": {
             "limitReached": "Dieser Server ist auf {max} Subuser limitiert."
           },
@@ -6637,6 +6665,11 @@
           "title": "Backups",
           "subtitle": "{current} von maximal {max} Backups erstellt.",
           "subtitleWithDatabase": "{current} von maximal {max} Backups erstellt ({server} Server, {database} Datenbank).",
+          "empty": {
+            "title": "Keine Backups",
+            "description": "Es gibt nichts, worauf dieser Server zurückgesetzt werden kann, wenn etwas schiefgeht. Erstelle ein Backup, um eine Kopie zu behalten, zu der du zurückkehren kannst.",
+            "descriptionReadOnly": "Es gibt nichts, worauf dieser Server zurückgesetzt werden kann, wenn etwas schiefgeht."
+          },
           "tooltip": {
             "limitReached": "Dieser Server ist auf {max} Backups limitiert."
           },

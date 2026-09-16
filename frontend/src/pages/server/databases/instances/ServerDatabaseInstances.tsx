@@ -1,4 +1,4 @@
-import { faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faServer } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useState } from 'react';
 import getDatabaseInstances from '@/api/server/databases/instances/getDatabaseInstances.ts';
@@ -6,9 +6,11 @@ import Button from '@/elements/buttons/Button.tsx';
 import { ServerCan } from '@/elements/Can.tsx';
 import ServerContentContainer from '@/elements/containers/ServerContentContainer.tsx';
 import Table from '@/elements/data-display/Table.tsx';
+import EmptyState from '@/elements/feedback/EmptyState.tsx';
 import ConditionalTooltip from '@/elements/overlays/ConditionalTooltip.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
+import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
 import DatabasesSubNavigation from '../DatabasesSubNavigation.tsx';
@@ -20,17 +22,21 @@ export default function ServerDatabaseInstances() {
   const { t } = useTranslations();
   const server = useServerStore((state) => state.server);
 
+  const canCreate = useServerCan('database-instances.create');
+
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { canReadAgent, used, full, agentTemplates } = useDatabaseRelevance();
+  const { canReadAgent, used, full, agentTemplates, settled } = useDatabaseRelevance();
 
-  const { data, loading, error, search, setSearch, setPage } = useSearchablePaginatedTable({
+  const { data, loading, error, search, debouncedSearch, setSearch, setPage } = useSearchablePaginatedTable({
     queryKey: queryKeys.server(server.uuid).databases.instances.all(),
     fetcher: (page, search) => getDatabaseInstances(server.uuid, page, search),
     canRequest: canReadAgent,
   });
 
   const disabled = full || agentTemplates.length === 0;
+  const noTemplates = !full && agentTemplates.length === 0;
+  const isEmpty = settled && !loading && !error && !debouncedSearch && data?.total === 0;
 
   return (
     <ServerContentContainer
@@ -40,29 +46,31 @@ export default function ServerDatabaseInstances() {
         max: server.featureLimits.databases,
       })}
       search={search}
-      setSearch={setSearch}
+      setSearch={isEmpty ? undefined : setSearch}
       contentRight={
-        <ServerCan action='database-instances.create'>
-          <ConditionalTooltip
-            enabled={disabled}
-            label={
-              full
-                ? t('pages.server.databases.tooltip.limitReached', {
-                    max: server.featureLimits.databases,
-                  })
-                : t('pages.server.databases.instance.modal.createDatabaseInstance.form.noTemplatesFound', {})
-            }
-          >
-            <Button
-              disabled={disabled}
-              onClick={() => setCreateOpen(true)}
-              color='blue'
-              leftSection={<FontAwesomeIcon icon={faPlus} />}
+        isEmpty ? undefined : (
+          <ServerCan action='database-instances.create'>
+            <ConditionalTooltip
+              enabled={disabled}
+              label={
+                full
+                  ? t('pages.server.databases.tooltip.limitReached', {
+                      max: server.featureLimits.databases,
+                    })
+                  : t('pages.server.databases.instance.modal.createDatabaseInstance.form.noTemplatesFound', {})
+              }
             >
-              {t('common.button.create', {})}
-            </Button>
-          </ConditionalTooltip>
-        </ServerCan>
+              <Button
+                disabled={disabled}
+                onClick={() => setCreateOpen(true)}
+                color='blue'
+                leftSection={<FontAwesomeIcon icon={faPlus} />}
+              >
+                {t('common.button.create', {})}
+              </Button>
+            </ConditionalTooltip>
+          </ServerCan>
+        )
       }
       registry={window.extensionContext.extensionRegistry.pages.server.databases.instances.container}
     >
@@ -84,6 +92,40 @@ export default function ServerDatabaseInstances() {
         pagination={data}
         onPageSelect={setPage}
         error={error}
+        empty={
+          debouncedSearch ? undefined : (
+            <EmptyState
+              flush
+              icon={faServer}
+              title={t('pages.server.databases.instance.empty.title', {})}
+              description={
+                !canCreate
+                  ? t('pages.server.databases.instance.empty.descriptionReadOnly', {})
+                  : noTemplates
+                    ? t('pages.server.databases.instance.empty.descriptionUnavailable', {})
+                    : t('pages.server.databases.instance.empty.description', {})
+              }
+            >
+              {noTemplates ? null : (
+                <ServerCan action='database-instances.create'>
+                  <ConditionalTooltip
+                    enabled={full}
+                    label={t('pages.server.databases.tooltip.limitReached', { max: server.featureLimits.databases })}
+                  >
+                    <Button
+                      disabled={full}
+                      onClick={() => setCreateOpen(true)}
+                      color='blue'
+                      leftSection={<FontAwesomeIcon icon={faPlus} />}
+                    >
+                      {t('pages.server.databases.instance.button.createFirstInstance', {})}
+                    </Button>
+                  </ConditionalTooltip>
+                </ServerCan>
+              )}
+            </EmptyState>
+          )
+        }
       >
         {data?.data.map((instance) => (
           <DatabaseInstanceRow instance={instance} key={instance.uuid} />

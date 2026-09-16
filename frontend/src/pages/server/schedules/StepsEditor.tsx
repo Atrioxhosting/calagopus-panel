@@ -7,15 +7,12 @@ import { httpErrorToHuman } from '@/api/axios.ts';
 import createScheduleStep from '@/api/server/schedules/steps/createScheduleStep.ts';
 import updateScheduleStepsOrder from '@/api/server/schedules/steps/updateScheduleStepsOrder.ts';
 import Button from '@/elements/buttons/Button.tsx';
-import ThemeIcon from '@/elements/data-display/ThemeIcon.tsx';
 import { DndContainer, DndItem, SortableItem } from '@/elements/dnd/DragAndDrop.tsx';
 import Alert from '@/elements/feedback/Alert.tsx';
+import EmptyState from '@/elements/feedback/EmptyState.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import Group from '@/elements/layout/Group.tsx';
-import Paper from '@/elements/layout/Paper.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
-import Text from '@/elements/typography/Text.tsx';
-import Title from '@/elements/typography/Title.tsx';
 import { scheduleStepDefaultMapping, scheduleStepLabelMapping } from '@/lib/enums.ts';
 import { serverScheduleSchema, serverScheduleStepSchema } from '@/lib/schemas/server/schedules.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
@@ -268,20 +265,15 @@ export default function StepsEditor({ schedule }: { schedule: z.infer<typeof ser
 
       <Stack>
         {sortedSteps.length === 0 ? (
-          <Paper withBorder p='xl' radius='md' style={{ textAlign: 'center' }}>
-            <ThemeIcon size='xl' mb='md' color='gray'>
-              <FontAwesomeIcon icon={faGear} />
-            </ThemeIcon>
-            <Title order={3} c='dimmed' mb='sm'>
-              {t('pages.server.schedules.steps.empty.title', {})}
-            </Title>
-            <Text c='dimmed' mb='md'>
-              {t('pages.server.schedules.steps.empty.description', {})}
-            </Text>
+          <EmptyState
+            icon={faGear}
+            title={t('pages.server.schedules.steps.empty.title', {})}
+            description={t('pages.server.schedules.steps.empty.description', {})}
+          >
             <Button onClick={() => setOpenModal('create')} leftSection={<FontAwesomeIcon icon={faPlus} />}>
               {t('pages.server.schedules.button.createFirstStep', {})}
             </Button>
-          </Paper>
+          </EmptyState>
         ) : (
           <DndContainer
             items={dndSteps}

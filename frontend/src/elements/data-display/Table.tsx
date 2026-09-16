@@ -201,6 +201,7 @@ interface TableProps {
   onPageSelect?: (page: number) => void;
   allowSelect?: boolean;
   flush?: boolean;
+  empty?: ReactNode;
   verticalSpacing?: MantineSpacing;
   children: ReactNode;
 }
@@ -213,6 +214,7 @@ export default function Table({
   onPageSelect,
   allowSelect = true,
   flush = false,
+  empty,
   verticalSpacing,
   children,
 }: TableProps) {
@@ -258,9 +260,7 @@ export default function Table({
                 </MantineTable.Tr>
               ) : pagination?.total === 0 && !loading ? (
                 <MantineTable.Tr>
-                  <MantineTable.Td colSpan={columns.length}>
-                    <NoItems />
-                  </MantineTable.Td>
+                  <MantineTable.Td colSpan={columns.length}>{empty ?? <NoItems />}</MantineTable.Td>
                 </MantineTable.Tr>
               ) : (
                 children

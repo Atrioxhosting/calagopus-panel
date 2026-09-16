@@ -5482,6 +5482,14 @@ const baseTranslations = defineTranslations({
         databases: {
           title: 'Databases',
           subtitle: '{current} of {max} maximum databases created.',
+          empty: {
+            title: 'No Databases',
+            description:
+              'This server has no database to store data in. Create one to get an address, a user and a password to connect with.',
+            descriptionReadOnly: 'This server has no database to store data in.',
+            descriptionUnavailable:
+              'This server has no database to store data in. No database host has been made available to it, so none can be created yet.',
+          },
           tooltip: {
             limitReached: 'This server is limited to {max} databases.',
           },
@@ -5492,6 +5500,7 @@ const baseTranslations = defineTranslations({
           },
           button: {
             rotatePassword: 'Rotate Password',
+            createFirstDatabase: 'Create Database',
           },
           form: {
             databaseName: 'Database Name',
@@ -5662,8 +5671,17 @@ const baseTranslations = defineTranslations({
           instance: {
             title: 'Managed Databases',
             updateAvailable: 'Update Available',
+            empty: {
+              title: 'No Managed Databases',
+              description:
+                'This server is not running a database of its own. Create a managed database to get one with its own resources, users and backups.',
+              descriptionReadOnly: 'This server is not running a database of its own.',
+              descriptionUnavailable:
+                'This server is not running a database of its own. No templates have been made available to it, so none can be created yet.',
+            },
             button: {
               applyUpdate: 'Apply Update',
+              createFirstInstance: 'Create Managed Database',
             },
             tooltip: {
               limitReached: 'This server is limited to {max} managed databases.',
@@ -5973,6 +5991,12 @@ const baseTranslations = defineTranslations({
             title: 'Drop some files here to import them as Schedules',
             subtitle: 'Release to start importing',
           },
+          empty: {
+            title: 'No Schedules',
+            description:
+              'Nothing runs on this server automatically. Add a schedule to run commands, backups and more on a timer or in reaction to an event.',
+            descriptionReadOnly: 'Nothing runs on this server automatically.',
+          },
           tooltip: {
             limitReached: 'This server is limited to {max} schedules.',
           },
@@ -5996,6 +6020,7 @@ const baseTranslations = defineTranslations({
             addFile: 'Add File',
             addHeader: 'Add Header',
             viewCalendar: 'View Calendar',
+            createFirstSchedule: 'Create Schedule',
           },
           toast: {
             imported: 'Schedule imported.',
@@ -6692,6 +6717,15 @@ const baseTranslations = defineTranslations({
         subusers: {
           title: 'Subusers',
           subtitle: '{current} of {max} maximum subusers created.',
+          empty: {
+            title: 'No Subusers',
+            description:
+              'Nobody else has been given access to this server. Add a subuser to share it, with only the permissions you choose.',
+            descriptionReadOnly: 'Nobody else has been given access to this server.',
+          },
+          button: {
+            createFirstSubuser: 'Create Subuser',
+          },
           tooltip: {
             limitReached: 'This server is limited to {max} subusers.',
           },
@@ -6736,6 +6770,12 @@ const baseTranslations = defineTranslations({
           title: 'Backups',
           subtitle: '{current} of {max} maximum backups created.',
           subtitleWithDatabase: '{current} of {max} maximum backups created ({server} server, {database} database).',
+          empty: {
+            title: 'No Backups',
+            description:
+              'Nothing on this server can be restored if something goes wrong. Create a backup to keep a copy you can return to later.',
+            descriptionReadOnly: 'Nothing on this server can be restored if something goes wrong.',
+          },
           tooltip: {
             limitReached: 'This server is limited to {max} backups.',
           },

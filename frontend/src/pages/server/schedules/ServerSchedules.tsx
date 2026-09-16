@@ -1,4 +1,4 @@
-import { faCalendarDays, faPlus, faUpload } from '@fortawesome/free-solid-svg-icons';
+import { faCalendarDays, faPlus, faStopwatch, faUpload } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { load } from 'js-yaml';
 import { ChangeEvent, useRef, useState } from 'react';
@@ -9,7 +9,9 @@ import Button from '@/elements/buttons/Button.tsx';
 import { ServerCan } from '@/elements/Can.tsx';
 import ServerContentContainer from '@/elements/containers/ServerContentContainer.tsx';
 import Table from '@/elements/data-display/Table.tsx';
+import EmptyState from '@/elements/feedback/EmptyState.tsx';
 import ImportOverlay from '@/elements/ImportOverlay.tsx';
+import Group from '@/elements/layout/Group.tsx';
 import ConditionalTooltip from '@/elements/overlays/ConditionalTooltip.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { useImportDragAndDrop } from '@/plugins/import/useImportDragAndDrop.ts';
@@ -38,6 +40,7 @@ export default function ServerSchedules() {
     loading,
     error,
     search,
+    debouncedSearch,
     setSearch,
     setPage,
     refetch,
@@ -75,6 +78,9 @@ export default function ServerSchedules() {
     enabled: canCreate,
   });
 
+  const atLimit = (schedules?.total ?? 0) >= server.featureLimits.schedules;
+  const isEmpty = !loading && !error && !debouncedSearch && schedules?.total === 0;
+
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -92,55 +98,47 @@ export default function ServerSchedules() {
         max: server.featureLimits.schedules,
       })}
       search={search}
-      setSearch={setSearch}
+      setSearch={isEmpty ? undefined : setSearch}
       contentRight={
-        <>
-          <ServerCan action='schedules.read'>
-            <Button variant='default' onClick={() => setOpenModal('calendar')}>
-              <FontAwesomeIcon icon={faCalendarDays} className='mr-2' />
-              {t('pages.server.schedules.button.viewCalendar', {})}
-            </Button>
-          </ServerCan>
-
-          <ServerCan action='schedules.create'>
-            <ConditionalTooltip
-              enabled={(schedules?.total ?? 0) >= server.featureLimits.schedules}
-              label={t('pages.server.schedules.tooltip.limitReached', { max: server.featureLimits.schedules })}
-            >
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                color='blue'
-                disabled={(schedules?.total ?? 0) >= server.featureLimits.schedules}
-              >
-                <FontAwesomeIcon icon={faUpload} className='mr-2' />
-                {t('common.button.import', {})}
+        isEmpty ? undefined : (
+          <>
+            <ServerCan action='schedules.read'>
+              <Button variant='default' onClick={() => setOpenModal('calendar')}>
+                <FontAwesomeIcon icon={faCalendarDays} className='mr-2' />
+                {t('pages.server.schedules.button.viewCalendar', {})}
               </Button>
-            </ConditionalTooltip>
-            <ConditionalTooltip
-              enabled={(schedules?.total ?? 0) >= server.featureLimits.schedules}
-              label={t('pages.server.schedules.tooltip.limitReached', { max: server.featureLimits.schedules })}
-            >
-              <Button
-                disabled={(schedules?.total ?? 0) >= server.featureLimits.schedules}
-                onClick={() => setOpenModal('create')}
-                color='blue'
-                leftSection={<FontAwesomeIcon icon={faPlus} />}
-              >
-                {t('common.button.create', {})}
-              </Button>
-            </ConditionalTooltip>
-          </ServerCan>
+            </ServerCan>
 
-          <input
-            type='file'
-            accept='.json,.yml,.yaml'
-            ref={fileInputRef}
-            className='hidden'
-            onChange={handleFileUpload}
-          />
-        </>
+            <ServerCan action='schedules.create'>
+              <ConditionalTooltip
+                enabled={atLimit}
+                label={t('pages.server.schedules.tooltip.limitReached', { max: server.featureLimits.schedules })}
+              >
+                <Button onClick={() => fileInputRef.current?.click()} color='blue' disabled={atLimit}>
+                  <FontAwesomeIcon icon={faUpload} className='mr-2' />
+                  {t('common.button.import', {})}
+                </Button>
+              </ConditionalTooltip>
+              <ConditionalTooltip
+                enabled={atLimit}
+                label={t('pages.server.schedules.tooltip.limitReached', { max: server.featureLimits.schedules })}
+              >
+                <Button
+                  disabled={atLimit}
+                  onClick={() => setOpenModal('create')}
+                  color='blue'
+                  leftSection={<FontAwesomeIcon icon={faPlus} />}
+                >
+                  {t('common.button.create', {})}
+                </Button>
+              </ConditionalTooltip>
+            </ServerCan>
+          </>
+        )
       }
     >
+      <input type='file' accept='.json,.yml,.yaml' ref={fileInputRef} className='hidden' onChange={handleFileUpload} />
+
       <ScheduleCreateOrUpdateModal opened={openModal === 'create'} onClose={() => setOpenModal(null)} />
       <ScheduleCalendarModal opened={openModal === 'calendar'} onClose={() => setOpenModal(null)} />
       <ImportOverlay
@@ -162,6 +160,51 @@ export default function ServerSchedules() {
         error={error}
         pagination={schedules}
         onPageSelect={setPage}
+        empty={
+          debouncedSearch ? undefined : (
+            <EmptyState
+              flush
+              icon={faStopwatch}
+              title={t('pages.server.schedules.empty.title', {})}
+              description={
+                canCreate
+                  ? t('pages.server.schedules.empty.description', {})
+                  : t('pages.server.schedules.empty.descriptionReadOnly', {})
+              }
+            >
+              <ServerCan action='schedules.create'>
+                <Group justify='center'>
+                  <ConditionalTooltip
+                    enabled={atLimit}
+                    label={t('pages.server.schedules.tooltip.limitReached', { max: server.featureLimits.schedules })}
+                  >
+                    <Button
+                      variant='default'
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={atLimit}
+                      leftSection={<FontAwesomeIcon icon={faUpload} />}
+                    >
+                      {t('common.button.import', {})}
+                    </Button>
+                  </ConditionalTooltip>
+                  <ConditionalTooltip
+                    enabled={atLimit}
+                    label={t('pages.server.schedules.tooltip.limitReached', { max: server.featureLimits.schedules })}
+                  >
+                    <Button
+                      disabled={atLimit}
+                      onClick={() => setOpenModal('create')}
+                      color='blue'
+                      leftSection={<FontAwesomeIcon icon={faPlus} />}
+                    >
+                      {t('pages.server.schedules.button.createFirstSchedule', {})}
+                    </Button>
+                  </ConditionalTooltip>
+                </Group>
+              </ServerCan>
+            </EmptyState>
+          )
+        }
       >
         {schedules?.data.map((schedule) => (
           <ScheduleRow key={schedule.uuid} schedule={schedule} />
