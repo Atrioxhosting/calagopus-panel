@@ -2256,6 +2256,16 @@ const baseTranslations = defineTranslations({
                   serverLogScheduleActivity: 'Log Server Schedule Activity',
                   serverLogScheduleActivityDescription:
                     'Enable or disable logging of activity done by server schedules.',
+                  serverHideActivityIps: 'Hide Server Activity IPs',
+                  serverHideActivityIpsDescription:
+                    'Hide IP addresses in server activity logs, even from the server owner. Users always see the IP addresses of their own activity.',
+                },
+                enum: {
+                  serverHideActivityIps: {
+                    admins: 'Admins',
+                    allUsers: 'All Users',
+                    none: 'None',
+                  },
                 },
                 toast: {
                   updated: 'Activity settings updated.',

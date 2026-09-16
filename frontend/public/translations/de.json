@@ -2300,7 +2300,16 @@
                   "serverLogAdminActivity": "Server-Admin-Aktivität protokollieren",
                   "serverLogAdminActivityDescription": "Aktiviere oder deaktiviere das Protokollieren der Admin-Aktivität auf Servern, bei denen der Admin weder Besitzer noch Subbenutzer ist.",
                   "serverLogScheduleActivity": "Server-Zeitplan-Aktivität protokollieren",
-                  "serverLogScheduleActivityDescription": "Aktiviere oder deaktiviere das Protokollieren von Aktivitäten, die durch Server-Zeitpläne ausgeführt werden."
+                  "serverLogScheduleActivityDescription": "Aktiviere oder deaktiviere das Protokollieren von Aktivitäten, die durch Server-Zeitpläne ausgeführt werden.",
+                  "serverHideActivityIps": "Server-Aktivitäts-IPs verbergen",
+                  "serverHideActivityIpsDescription": "Verbirgt IP-Adressen in den Server-Aktivitätsprotokollen, auch vor dem Server-Besitzer. Benutzer sehen immer die IP-Adressen ihrer eigenen Aktivität."
+                },
+                "enum": {
+                  "serverHideActivityIps": {
+                    "admins": "Admins",
+                    "allUsers": "Alle Benutzer",
+                    "none": "Keine"
+                  }
                 },
                 "toast": {
                   "updated": "Aktivitätseinstellungen aktualisiert."

@@ -2304,7 +2304,16 @@
                   "serverLogAdminActivity": "Log Server Admin Activity",
                   "serverLogAdminActivityDescription": "Enable or disable logging of admin activity on servers where the admin isn't an owner or subuser.",
                   "serverLogScheduleActivity": "Log Server Schedule Activity",
-                  "serverLogScheduleActivityDescription": "Enable or disable logging of activity done by server schedules."
+                  "serverLogScheduleActivityDescription": "Enable or disable logging of activity done by server schedules.",
+                  "serverHideActivityIps": "Hide Server Activity IPs",
+                  "serverHideActivityIpsDescription": "Hide IP addresses in server activity logs, even from the server owner. Users always see the IP addresses of their own activity."
+                },
+                "enum": {
+                  "serverHideActivityIps": {
+                    "admins": "Admins",
+                    "allUsers": "All Users",
+                    "none": "None"
+                  }
                 },
                 "toast": {
                   "updated": "Activity settings updated."

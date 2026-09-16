@@ -6,6 +6,14 @@ use compact_str::ToCompactString;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+#[derive(ToSchema, Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum ActivityIpHiding {
+    Admins,
+    AllUsers,
+    None,
+}
+
 #[derive(Clone, ToSchema, Serialize, Deserialize)]
 pub struct AppSettingsActivity {
     pub admin_log_retention_days: u16,
@@ -17,6 +25,7 @@ pub struct AppSettingsActivity {
 
     pub server_log_admin_activity: bool,
     pub server_log_schedule_activity: bool,
+    pub server_hide_activity_ips: ActivityIpHiding,
 }
 
 #[async_trait::async_trait]
@@ -60,6 +69,14 @@ impl SettingsSerializeExt for AppSettingsActivity {
             .write_raw_setting(
                 "server_log_schedule_activity",
                 self.server_log_schedule_activity.to_compact_string(),
+            )
+            .write_raw_setting(
+                "server_hide_activity_ips",
+                match self.server_hide_activity_ips {
+                    ActivityIpHiding::Admins => "admins",
+                    ActivityIpHiding::AllUsers => "all_users",
+                    ActivityIpHiding::None => "none",
+                },
             ))
     }
 }
@@ -102,6 +119,14 @@ impl SettingsDeserializeExt for AppSettingsActivityDeserializer {
                 .take_raw_setting("server_log_schedule_activity")
                 .map(|s| s == "true")
                 .unwrap_or(true),
+            server_hide_activity_ips: match deserializer
+                .take_raw_setting("server_hide_activity_ips")
+                .as_deref()
+            {
+                Some("admins") => ActivityIpHiding::Admins,
+                Some("all_users") => ActivityIpHiding::AllUsers,
+                _ => ActivityIpHiding::None,
+            },
         }))
     }
 }

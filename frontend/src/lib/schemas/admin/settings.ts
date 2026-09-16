@@ -190,6 +190,7 @@ export const adminSettingsActivitySchema = z.object({
   serverLogRetentionCount: z.preprocess(nullableNumber, z.number().min(1).nullable()),
   serverLogAdminActivity: z.boolean(),
   serverLogScheduleActivity: z.boolean(),
+  serverHideActivityIps: z.enum(['admins', 'all_users', 'none']),
 });
 
 export const adminSettingsRatelimitConfigurationSchema = z.object({

@@ -95,6 +95,7 @@ export const createSettingsSlice: StateCreator<AdminStore, [], [], SettingsSlice
     serverLogRetentionCount: null,
     serverLogAdminActivity: true,
     serverLogScheduleActivity: true,
+    serverHideActivityIps: 'none',
   },
   ratelimits: {
     authRegister: {

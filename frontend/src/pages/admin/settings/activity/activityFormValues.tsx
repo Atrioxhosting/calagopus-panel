@@ -14,6 +14,7 @@ export const activityEmptyFormValues: ActivityFormValues = {
   serverLogRetentionCount: null,
   serverLogAdminActivity: false,
   serverLogScheduleActivity: false,
+  serverHideActivityIps: 'none',
 };
 
 export const activityToFormValues = (activity: ActivityFormValues): Partial<ActivityFormValues> => ({ ...activity });
@@ -66,6 +67,21 @@ export function useActivityFormFields(): FieldDef<ActivityFormValues>[] {
       name: 'serverLogScheduleActivity',
       label: t('pages.admin.settings.tabs.activity.page.form.serverLogScheduleActivity', {}),
       description: t('pages.admin.settings.tabs.activity.page.form.serverLogScheduleActivityDescription', {}),
+    },
+    {
+      type: 'select',
+      name: 'serverHideActivityIps',
+      label: t('pages.admin.settings.tabs.activity.page.form.serverHideActivityIps', {}),
+      description: t('pages.admin.settings.tabs.activity.page.form.serverHideActivityIpsDescription', {}),
+      required: true,
+      options: [
+        { label: t('pages.admin.settings.tabs.activity.page.enum.serverHideActivityIps.admins', {}), value: 'admins' },
+        {
+          label: t('pages.admin.settings.tabs.activity.page.enum.serverHideActivityIps.allUsers', {}),
+          value: 'all_users',
+        },
+        { label: t('pages.admin.settings.tabs.activity.page.enum.serverHideActivityIps.none', {}), value: 'none' },
+      ],
     },
   ];
 }

@@ -215,6 +215,8 @@ mod put {
         server_log_admin_activity: Option<bool>,
         #[garde(skip)]
         server_log_schedule_activity: Option<bool>,
+        #[garde(skip)]
+        server_hide_activity_ips: Option<shared::settings::activity::ActivityIpHiding>,
     }
 
     #[derive(ToSchema, Validate, Deserialize)]
@@ -540,6 +542,9 @@ mod put {
             }
             if let Some(server_log_schedule_activity) = activity.server_log_schedule_activity {
                 settings.activity.server_log_schedule_activity = server_log_schedule_activity;
+            }
+            if let Some(server_hide_activity_ips) = activity.server_hide_activity_ips {
+                settings.activity.server_hide_activity_ips = server_hide_activity_ips;
             }
         }
         if let Some(ratelimits) = data.ratelimits {

@@ -7,10 +7,13 @@ mod get {
     use shared::{
         ApiError, GetState,
         models::{
-            IntoApiObject, Pagination, PaginationParamsWithSearch, server::GetServer,
-            server_activity::ServerActivity, user::GetPermissionManager,
+            IntoApiObject, Pagination, PaginationParamsWithSearch,
+            server::GetServer,
+            server_activity::ServerActivity,
+            user::{GetPermissionManager, GetUser},
         },
         response::{ApiResponse, ApiResponseResult},
+        settings::activity::ActivityIpHiding,
     };
     use utoipa::ToSchema;
 
@@ -55,6 +58,7 @@ mod get {
     ))]
     pub async fn route(
         state: GetState,
+        user: GetUser,
         permissions: GetPermissionManager,
         server: GetServer,
         Query(pagination): Query<PaginationParamsWithSearch>,
@@ -93,11 +97,28 @@ mod get {
         let can_read_ip = permissions
             .has_server_permission("activity.read-ip")
             .is_ok();
+        let hide_ips = state
+            .settings
+            .get_as(|s| s.activity.server_hide_activity_ips)
+            .await?;
 
         ApiResponse::new_serialized(Response {
             activities: activities
                 .try_async_map(|activity| {
-                    activity.into_api_object(&state, (&storage_url_retriever, can_read_ip))
+                    let is_own_activity = activity.impersonator.is_none()
+                        && activity.user.as_ref().is_some_and(|u| u.uuid == user.uuid);
+                    let show_ip = can_read_ip
+                        && match hide_ips {
+                            ActivityIpHiding::None => true,
+                            ActivityIpHiding::Admins => {
+                                is_own_activity
+                                    || !(activity.impersonator.is_some()
+                                        || activity.user.as_ref().is_some_and(|u| u.admin))
+                            }
+                            ActivityIpHiding::AllUsers => is_own_activity,
+                        };
+
+                    activity.into_api_object(&state, (&storage_url_retriever, show_ip))
                 })
                 .await?,
         })
