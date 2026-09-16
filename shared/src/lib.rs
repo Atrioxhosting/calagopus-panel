@@ -10,6 +10,7 @@ use colored::Colorize;
 use include_dir::{Dir, include_dir};
 use serde::{Deserialize, Serialize};
 use std::{
+    borrow::Cow,
     sync::{Arc, LazyLock},
     time::Instant,
 };
@@ -300,7 +301,47 @@ pub fn unlikely(b: bool) -> bool {
     }
 }
 
-pub const FRONTEND_ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../frontend/dist");
+pub const FRONTEND_ASSETS: Dir<'_> = include_dir!("$OUT_DIR/frontend-dist");
+
+pub struct FrontendAsset {
+    pub path: &'static str,
+    pub contents: &'static [u8],
+    pub gzipped: bool,
+}
+
+impl FrontendAsset {
+    pub fn decompressed(&self) -> Result<Cow<'static, [u8]>, std::io::Error> {
+        if !self.gzipped {
+            return Ok(Cow::Borrowed(self.contents));
+        }
+
+        let mut decompressed = Vec::with_capacity(self.contents.len() * 4);
+        std::io::Read::read_to_end(
+            &mut flate2::read::GzDecoder::new(self.contents),
+            &mut decompressed,
+        )?;
+
+        Ok(Cow::Owned(decompressed))
+    }
+}
+
+pub fn frontend_asset(path: &str) -> Option<FrontendAsset> {
+    if let Some(file) = FRONTEND_ASSETS.get_file(path) {
+        return Some(FrontendAsset {
+            path: file.path().to_str()?,
+            contents: file.contents(),
+            gzipped: false,
+        });
+    }
+
+    let file = FRONTEND_ASSETS.get_file(format!("{path}.gz"))?;
+
+    Some(FrontendAsset {
+        path: file.path().to_str()?.strip_suffix(".gz")?,
+        contents: file.contents(),
+        gzipped: true,
+    })
+}
 
 pub static FRONTEND_LANGUAGES: LazyLock<Vec<compact_str::CompactString>> = LazyLock::new(|| {
     let mut languages = Vec::new();
@@ -314,6 +355,7 @@ pub static FRONTEND_LANGUAGES: LazyLock<Vec<compact_str::CompactString>> = LazyL
             continue;
         };
         let file_name = file_name.to_string_lossy();
+        let file_name = file_name.strip_suffix(".gz").unwrap_or(&file_name);
         let Some(lang) = file_name.strip_suffix(".json") else {
             continue;
         };

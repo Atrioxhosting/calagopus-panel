@@ -108,14 +108,15 @@ impl shared::extensions::commands::CliCommand<MigrateArgs> for MigrateCommand {
                         args.limit
                     })
                 {
+                    let summary = migration.snapshot.summary();
                     tracing::info!(
-                        tables = ?migration.snapshot.tables().len(),
-                        sequences = ?migration.snapshot.sequences().len(),
-                        enums = ?migration.snapshot.enums().len(),
-                        columns = ?migration.snapshot.columns(None).len(),
-                        indexes = ?migration.snapshot.indexes(None).len(),
-                        foreign_keys = ?migration.snapshot.foreign_keys(None).len(),
-                        primary_keys = ?migration.snapshot.primary_keys(None).len(),
+                        tables = summary.tables,
+                        sequences = summary.sequences,
+                        enums = summary.enums,
+                        columns = summary.columns,
+                        indexes = summary.indexes,
+                        foreign_keys = summary.foreign_keys,
+                        primary_keys = summary.primary_keys,
                         name = %migration.name,
                         "applying migration"
                     );

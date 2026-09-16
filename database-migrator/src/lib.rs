@@ -9,115 +9,57 @@ pub mod commands;
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "entityType", rename_all = "camelCase")]
 pub enum DDLEntry {
-    Tables { name: String },
-    Sequences { name: String },
-    Enums { name: String },
-    Checks { name: String },
-    Columns { table: String, name: String },
-    Indexes { table: String, name: String },
-    Fks { table: String, name: String },
-    Pks { table: String, name: String },
+    Tables,
+    Sequences,
+    Enums,
+    Checks,
+    Columns,
+    Indexes,
+    Fks,
+    Pks,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+pub struct MigrationSnapshotSummary {
+    pub tables: usize,
+    pub sequences: usize,
+    pub enums: usize,
+    pub columns: usize,
+    pub indexes: usize,
+    pub foreign_keys: usize,
+    pub primary_keys: usize,
+}
+
+/// Either a full drizzle snapshot (`ddl`) read from disk, or the reduced form
+/// (`summary`) that `build.rs` embeds.
 #[derive(Debug, Clone, Deserialize)]
 pub struct MigrationSnapshot {
     pub id: uuid::Uuid,
-    pub ddl: Vec<DDLEntry>,
+    #[serde(default)]
+    ddl: Vec<DDLEntry>,
+    #[serde(default)]
+    summary: Option<MigrationSnapshotSummary>,
 }
 
 impl MigrationSnapshot {
-    pub fn tables(&self) -> Vec<&String> {
-        self.ddl
-            .iter()
-            .filter_map(|entry| match entry {
-                DDLEntry::Tables { name } => Some(name),
-                _ => None,
-            })
-            .collect()
-    }
-
-    pub fn sequences(&self) -> Vec<&String> {
-        self.ddl
-            .iter()
-            .filter_map(|entry| match entry {
-                DDLEntry::Sequences { name } => Some(name),
-                _ => None,
-            })
-            .collect()
-    }
-
-    pub fn enums(&self) -> Vec<&String> {
-        self.ddl
-            .iter()
-            .filter_map(|entry| match entry {
-                DDLEntry::Enums { name } => Some(name),
-                _ => None,
-            })
-            .collect()
-    }
-
-    pub fn columns(&self, table: Option<&str>) -> Vec<&String> {
-        self.ddl
-            .iter()
-            .filter_map(|entry| match entry {
-                DDLEntry::Columns { table: t, name } => {
-                    if let Some(table) = table {
-                        if t == table { Some(name) } else { None }
-                    } else {
-                        Some(name)
-                    }
+    pub fn summary(&self) -> MigrationSnapshotSummary {
+        self.summary.unwrap_or_else(|| {
+            let mut summary = MigrationSnapshotSummary::default();
+            for entry in &self.ddl {
+                match entry {
+                    DDLEntry::Tables => summary.tables += 1,
+                    DDLEntry::Sequences => summary.sequences += 1,
+                    DDLEntry::Enums => summary.enums += 1,
+                    DDLEntry::Columns => summary.columns += 1,
+                    DDLEntry::Indexes => summary.indexes += 1,
+                    DDLEntry::Fks => summary.foreign_keys += 1,
+                    DDLEntry::Pks => summary.primary_keys += 1,
+                    DDLEntry::Checks => {}
                 }
-                _ => None,
-            })
-            .collect()
-    }
+            }
 
-    pub fn indexes(&self, table: Option<&str>) -> Vec<&String> {
-        self.ddl
-            .iter()
-            .filter_map(|entry| match entry {
-                DDLEntry::Indexes { table: t, name } => {
-                    if let Some(table) = table {
-                        if t == table { Some(name) } else { None }
-                    } else {
-                        Some(name)
-                    }
-                }
-                _ => None,
-            })
-            .collect()
-    }
-
-    pub fn foreign_keys(&self, table: Option<&str>) -> Vec<&String> {
-        self.ddl
-            .iter()
-            .filter_map(|entry| match entry {
-                DDLEntry::Fks { table: t, name } => {
-                    if let Some(table) = table {
-                        if t == table { Some(name) } else { None }
-                    } else {
-                        Some(name)
-                    }
-                }
-                _ => None,
-            })
-            .collect()
-    }
-
-    pub fn primary_keys(&self, table: Option<&str>) -> Vec<&String> {
-        self.ddl
-            .iter()
-            .filter_map(|entry| match entry {
-                DDLEntry::Pks { table: t, name } => {
-                    if let Some(table) = table {
-                        if t == table { Some(name) } else { None }
-                    } else {
-                        Some(name)
-                    }
-                }
-                _ => None,
-            })
-            .collect()
+            summary
+        })
     }
 }
 
@@ -239,8 +181,7 @@ impl Migration {
     }
 }
 
-pub static MIGRATIONS: include_dir::Dir<'_> =
-    include_dir::include_dir!("$CARGO_MANIFEST_DIR/../database/migrations");
+pub static MIGRATIONS: include_dir::Dir<'_> = include_dir::include_dir!("$OUT_DIR/migrations");
 pub static EXTENSION_MIGRATIONS: include_dir::Dir<'_> =
     include_dir::include_dir!("$CARGO_MANIFEST_DIR/../database/extension-migrations");
 
@@ -553,4 +494,36 @@ pub async fn rollback_extension_migration(
     transaction.commit().await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn embedded_snapshots_match_full_drizzle_snapshots() {
+        let migrations_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../database/migrations");
+        let mut checked = 0;
+
+        for entry in MIGRATIONS.dirs() {
+            let embedded: MigrationSnapshot = serde_json::from_slice(
+                MIGRATIONS
+                    .get_file(entry.path().join("snapshot.json"))
+                    .unwrap()
+                    .contents(),
+            )
+            .unwrap();
+            let full: MigrationSnapshot = serde_json::from_slice(
+                &std::fs::read(migrations_dir.join(entry.path()).join("snapshot.json")).unwrap(),
+            )
+            .unwrap();
+
+            assert_eq!(full.id, embedded.id);
+            assert_eq!(full.summary(), embedded.summary());
+            assert!(full.summary().tables > 0);
+            checked += 1;
+        }
+
+        assert!(checked > 0);
+    }
 }

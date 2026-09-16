@@ -12,7 +12,7 @@ use hyper::body::Body as _;
 use sentry_tower::{NewSentryLayer, SentryHttpLayer};
 use sha2::Digest;
 use shared::{
-    ApiError, FRONTEND_ASSETS, GetIp, GetState,
+    ApiError, GetIp, GetState,
     extensions::commands::CliCommandGroupBuilder,
     models::{ByUuid, node::Node},
     response::ApiResponse,
@@ -160,6 +160,24 @@ const STRIPPED_PROXY_REQUEST_HEADERS: &[&str] = &[
 #[inline]
 fn is_stripped_proxy_request_header(name: &axum::http::HeaderName) -> bool {
     STRIPPED_PROXY_REQUEST_HEADERS.contains(&name.as_str())
+}
+
+fn frontend_asset_content_type(asset: &shared::FrontendAsset) -> &'static str {
+    match std::path::Path::new(asset.path)
+        .extension()
+        .and_then(|ext| ext.to_str())
+    {
+        Some("html") => "text/html",
+        Some("js") => "application/javascript",
+        Some("css") => "text/css",
+        Some("json") => "application/json",
+        Some("webmanifest") => "application/manifest+json",
+        _ => match shared::storage::content_type(asset.path) {
+            "application/octet-stream" if !asset.gzipped => infer::get(asset.contents)
+                .map_or("application/octet-stream", |kind| kind.mime_type()),
+            content_type => content_type,
+        },
+    }
 }
 
 fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> Response<Body> {
@@ -448,14 +466,15 @@ pub async fn handle_startup() -> Result<
                 .into_iter()
                 .filter(|m| !applied_migrations.iter().any(|am| am.id == m.snapshot.id))
             {
+                let summary = migration.snapshot.summary();
                 tracing::info!(
-                    tables = ?migration.snapshot.tables().len(),
-                    sequences = ?migration.snapshot.sequences().len(),
-                    enums = ?migration.snapshot.enums().len(),
-                    columns = ?migration.snapshot.columns(None).len(),
-                    indexes = ?migration.snapshot.indexes(None).len(),
-                    foreign_keys = ?migration.snapshot.foreign_keys(None).len(),
-                    primary_keys = ?migration.snapshot.primary_keys(None).len(),
+                    tables = summary.tables,
+                    sequences = summary.sequences,
+                    enums = summary.enums,
+                    columns = summary.columns,
+                    indexes = summary.indexes,
+                    foreign_keys = summary.foreign_keys,
+                    primary_keys = summary.primary_keys,
                     name = %migration.name,
                     "applying migration"
                 );
@@ -889,12 +908,9 @@ pub async fn handle_startup() -> Result<
 
                     let path = urlencoding::decode(&path[1.min(path.len())..])?;
 
-                    let (is_index, entry) = match FRONTEND_ASSETS.get_entry(&*path) {
-                        Some(entry) => (false, entry),
-                        None => (true, FRONTEND_ASSETS.get_entry("index.html").unwrap()),
-                    };
+                    let asset = shared::frontend_asset(&path);
 
-                    if (entry.as_file().is_none() || is_index)
+                    if asset.is_none()
                         && (path.starts_with("assets")
                             || path.starts_with("avatars")
                             || path.starts_with("publicdata"))
@@ -988,17 +1004,9 @@ pub async fn handle_startup() -> Result<
                         .ok();
                     }
 
-                    let (is_index, file) = match entry {
-                        include_dir::DirEntry::File(file) => (is_index, file),
-                        include_dir::DirEntry::Dir(dir) => match dir.get_file("index.html") {
-                            Some(index_file) => (true, index_file),
-                            None => (true, FRONTEND_ASSETS.get_file("index.html").unwrap()),
-                        },
-                    };
+                    let is_index = asset.is_none();
 
-                    let gzip_file = if is_index {
-                        None
-                    } else if parts
+                    let accepts_gzip = parts
                         .headers
                         .get(axum::http::header::ACCEPT_ENCODING)
                         .and_then(|value| value.to_str().ok())
@@ -1011,39 +1019,38 @@ pub async fn handle_startup() -> Result<
                                     .trim()
                                     .eq_ignore_ascii_case("gzip")
                             })
-                        }) {
-                        FRONTEND_ASSETS.get_file(format!("{}.gz", file.path().display()))
-                    } else {
-                        None
+                        });
+
+                    let (body, content_type, content_encoding) = match asset {
+                        None => (
+                            Body::from(axum::body::Bytes::from_owner(
+                                state.settings.get_rendered_index_html(),
+                            )),
+                            "text/html",
+                            None,
+                        ),
+                        Some(asset) => {
+                            let content_type = frontend_asset_content_type(&asset);
+
+                            if asset.gzipped && !accepts_gzip {
+                                (
+                                    Body::from(asset.decompressed()?.into_owned()),
+                                    content_type,
+                                    None,
+                                )
+                            } else {
+                                (
+                                    Body::from(asset.contents),
+                                    content_type,
+                                    asset.gzipped.then_some("gzip"),
+                                )
+                            }
+                        }
                     };
 
-                    return ApiResponse::new(if is_index {
-                        Body::from(axum::body::Bytes::from_owner(
-                            state.settings.get_rendered_index_html(),
-                        ))
-                    } else if let Some(gzip_file) = gzip_file {
-                        Body::from(gzip_file.contents())
-                    } else {
-                        Body::from(file.contents())
-                    })
-                    .with_header(
-                        "Content-Type",
-                        match infer::get(file.contents()) {
-                            Some(kind) => kind.mime_type(),
-                            _ => match file.path().extension() {
-                                Some(ext) => match ext.to_str() {
-                                    Some("html") => "text/html",
-                                    Some("js") => "application/javascript",
-                                    Some("css") => "text/css",
-                                    Some("json") => "application/json",
-                                    Some("svg") => "image/svg+xml",
-                                    _ => "application/octet-stream",
-                                },
-                                None => "application/octet-stream",
-                            },
-                        },
-                    )
-                    .with_optional_header("Content-Encoding", gzip_file.map(|_| "gzip"))
+                    return ApiResponse::new(body)
+                    .with_header("Content-Type", content_type)
+                    .with_optional_header("Content-Encoding", content_encoding)
                     .with_header("Vary", "Accept-Encoding")
                     .with_optional_header(
                         "Content-Security-Policy",

@@ -37,19 +37,19 @@ sentry-anyhow = "0.49.0"
 sentry-tracing = "0.49.0"
 tower = "0.5.2"
 tower-cookies = "0.11.0"
-tower-http = { version = "0.7.0", features = ["normalize-path", "catch-panic"] }
+tower-http = { version = "0.6.0", features = ["normalize-path", "catch-panic"] }
 axum = { version = "0.8.1", features = ["multipart", "ws"] }
 axum-extra = { version = "0.12.1", features = ["query"] }
 include_dir = "0.7.4"
-sqlx = { version = "0.9", features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres", "mysql", "sqlite", "any", "chrono", "ipnetwork", "uuid"] }
-mongodb = "3.5.2"
+sqlx = { version = "0.9", features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "postgres", "mysql", "sqlite", "any", "chrono", "ipnetwork", "uuid"] }
+mongodb = { version = "3.5.2", default-features = false, features = ["compat-3-0-0", "rustls-tls-aws-lc", "dns-resolver"] }
 tokio = { version = "1.43.0", features = ["full"] }
 tokio-util = { version = "0.7.16", features = ["full"] }
 async-trait = "0.1.89"
 anyhow = "1.0.98"
 utoipa = { version = "5.3.1", features = ["axum_extras", "preserve_order", "chrono", "indexmap", "uuid", "rc_schema"] }
 utoipa-axum = "0.2.0"
-garde = { version = "0.23.0", features = ["full"] }
+garde = { version = "0.23.0", features = ["derive", "serde", "url", "email", "email-idna"] }
 serde = { version = "1.0.218", features = ["derive", "rc"] }
 serde_json = { version = "1.0.140", features = ["preserve_order"] }
 serde_norway = "0.9.42"
@@ -75,7 +75,7 @@ colored = "3.0.0"
 russh = "0.63.1"
 futures-util = "0.3.31"
 clap = { version = "4.5.37", features = ["derive", "string"] }
-aws-sdk-s3 = "1.132.0"
+aws-sdk-s3 = { version = "1.132.0", default-features = false, features = ["sigv4a", "http-1x", "default-https-client", "rt-tokio"] }
 rand = "0.10.0"
 rustis = "0.25.0"
 dotenvy = "0.15.7"
@@ -85,14 +85,14 @@ tempfile = "3.23.0"
 totp-rs = { version = "6.0.0", default-features = false, features = ["std", "gen_secret"] }
 compact_str = { version = "0.10.0", features = ["serde", "utoipa", "garde", "sqlx", "sqlx-postgres", "sqlx-mysql"] }
 nestify = "0.3.3"
-sysinfo = "0.39.0"
+sysinfo = { version = "0.39.0", default-features = false, features = ["system", "disk"] }
 serde_with = "3.16.1"
 minijinja = { version = "2.15.1", features = ["json"] }
 dialoguer = "0.12.0"
 hex = "0.4.3"
 zstd = "0.14.0"
 parking_lot = "0.12.5"
-tokio-tungstenite = { version = "0.30.0", features = ["rustls-tls-webpki-roots"] }
+tokio-tungstenite = { version = "0.29.0", features = ["rustls-tls-webpki-roots"] }
 croner = { version = "4.0.0", features = ["serde"] }
 rustix = { version = "1.1.4", features = ["process"] }
 
@@ -107,12 +107,12 @@ debug = false
 
 # release (for github actions)
 [profile.release.package."*"]
-opt-level = "s"
+opt-level = "z"
 codegen-units = 1
 strip = true
 
 [profile.release]
-opt-level = "s"
+opt-level = "z"
 lto = "fat"
 codegen-units = 1
 strip = true

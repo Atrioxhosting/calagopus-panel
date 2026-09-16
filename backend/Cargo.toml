@@ -61,7 +61,6 @@ serde_with = { workspace = true }
 minijinja = { workspace = true }
 serde_norway = { workspace = true }
 hyper = "1.8.1"
-hyper-util = { version = "0.1", features = ["tokio"] }
 hex = { workspace = true }
 aes = "0.9.0"
 cbc = "0.2.1"

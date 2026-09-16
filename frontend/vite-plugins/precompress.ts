@@ -47,7 +47,7 @@ export function precompressAssets(): Plugin {
       resolvedOutDir = path.resolve(config.root, config.build.outDir);
     },
 
-    async writeBundle() {
+    async closeBundle() {
       const filePaths = await getCompressibleFiles(resolvedOutDir).catch(() => []);
       if (filePaths.length === 0) return;
 

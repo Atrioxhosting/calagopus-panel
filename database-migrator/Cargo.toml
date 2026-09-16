@@ -18,3 +18,7 @@ sqlx = { workspace = true }
 clap = { workspace = true }
 futures-util = { workspace = true }
 dialoguer = { workspace = true }
+
+[build-dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
