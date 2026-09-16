@@ -42,7 +42,7 @@ impl PostgresExplorer {
             })
             .connect_lazy_with(
                 sqlx::postgres::PgConnectOptions::new()
-                    .host(host)
+                    .host(crate::net::unbracket(host))
                     .port(port)
                     .username(username)
                     .password(password)

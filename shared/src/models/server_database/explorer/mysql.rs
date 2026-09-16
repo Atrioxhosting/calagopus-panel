@@ -50,7 +50,7 @@ impl MysqlExplorer {
             })
             .connect_lazy_with(
                 sqlx::mysql::MySqlConnectOptions::new()
-                    .host(host)
+                    .host(crate::net::unbracket(host))
                     .port(port)
                     .username(username)
                     .password(password)

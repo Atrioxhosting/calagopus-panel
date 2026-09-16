@@ -361,9 +361,13 @@ impl DatabaseHost {
             DatabaseType::Mysql => {
                 let options = match &self.credentials {
                     DatabaseCredentials::ConnectionString { connection_string } => {
-                        sqlx::mysql::MySqlConnectOptions::from_str(connection_string).map_err(
-                            |err| anyhow::anyhow!("failed to parse MySQL connection string: {err}"),
-                        )?
+                        let options = sqlx::mysql::MySqlConnectOptions::from_str(connection_string)
+                            .map_err(|err| {
+                                anyhow::anyhow!("failed to parse MySQL connection string: {err}")
+                            })?;
+                        let host = crate::net::unbracket(options.get_host()).to_string();
+
+                        options.host(&host)
                     }
                     DatabaseCredentials::Details {
                         host,
@@ -383,11 +387,13 @@ impl DatabaseHost {
             DatabaseType::Postgres => {
                 let options = match &self.credentials {
                     DatabaseCredentials::ConnectionString { connection_string } => {
-                        sqlx::postgres::PgConnectOptions::from_str(connection_string).map_err(
-                            |err| {
+                        let options = sqlx::postgres::PgConnectOptions::from_str(connection_string)
+                            .map_err(|err| {
                                 anyhow::anyhow!("failed to parse Postgres connection string: {err}")
-                            },
-                        )?
+                            })?;
+                        let host = crate::net::unbracket(options.get_host()).to_string();
+
+                        options.host(&host)
                     }
                     DatabaseCredentials::Details {
                         host,
