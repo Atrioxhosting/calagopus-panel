@@ -1,0 +1,14 @@
+[Unit]
+Description=Calagopus Panel Docker NAT66
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/calagopus-nat66-load
+ExecReload=/usr/local/sbin/calagopus-nat66-load
+ExecStop=-/usr/sbin/nft delete table ip6 calagopus_nat66
+
+[Install]
+WantedBy=multi-user.target

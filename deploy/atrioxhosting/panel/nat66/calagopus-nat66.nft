@@ -1,0 +1,6 @@
+table ip6 calagopus_nat66 {
+    chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        ip6 saddr fd6d:3f4b:7e9c::/64 oifname "ens18" counter snat to 2a0c:b641:620::6
+    }
+}

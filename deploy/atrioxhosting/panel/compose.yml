@@ -1,0 +1,70 @@
+services:
+  web:
+    image: ghcr.io/calagopus/panel:latest
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Amsterdam
+      - REDIS_URL=redis://cache
+      - DATABASE_URL=postgresql://panel:${POSTGRES_PASSWORD}@db/panel
+      - DATABASE_MIGRATE=true
+      - PORT=8000
+      - APP_DEBUG=false
+      - APP_LOG_DIRECTORY=/var/log/calagopus
+      - APP_PRIMARY=true
+      - APP_ENABLE_WINGS_PROXY=false
+      - APP_TRUSTED_PROXIES=172.30.0.1/32
+      - APP_ENCRYPTION_KEY=${APP_ENCRYPTION_KEY}
+      - APP_USE_DECRYPTION_CACHE=true
+      - APP_USE_INTERNAL_CACHE=true
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+      - 9.9.9.9
+    volumes:
+      - /opt/calagopus-panel/data:/var/lib/calagopus
+      - /opt/calagopus-panel/logs:/var/log/calagopus
+    ports:
+      - 127.0.0.1:8000:8000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - db
+      - cache
+    networks:
+      - backend
+
+  db:
+    image: ghcr.io/calagopus/pgautoupgrade:18-alpine
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Amsterdam
+      - POSTGRES_USER=panel
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=panel
+      - PGDATA=/data
+    volumes:
+      - /opt/calagopus-panel/postgres:/data
+    networks:
+      - backend
+
+  cache:
+    image: ghcr.io/calagopus/valkey:latest
+    restart: unless-stopped
+    command: --protected-mode no --save 60 1 --dir /data --dbfilename dump.rdb
+    environment:
+      TZ: Europe/Amsterdam
+    volumes:
+      - /opt/calagopus-panel/cache:/data
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
+        - subnet: fd6d:3f4b:7e9c::/64
+          gateway: fd6d:3f4b:7e9c::1

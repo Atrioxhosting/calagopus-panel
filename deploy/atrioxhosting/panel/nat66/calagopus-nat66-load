@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+/usr/sbin/nft delete table ip6 calagopus_nat66 2>/dev/null || true
+exec /usr/sbin/nft -f /etc/nftables.d/calagopus-nat66.nft
