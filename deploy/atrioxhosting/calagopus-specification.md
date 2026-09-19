@@ -222,6 +222,12 @@ Tundra gebruikt UDP `7100` uitsluitend rechtstreeks tussen Wings 1 en Wings 2 vi
 - UDP
 - destination port `7100`
 
+De definitieve Tundra-peerendpoints zijn de openbare IPv4-adressen van de Wings-nodes:
+- Wings 1: `82.153.147.7:7100/udp`
+- Wings 2: `82.153.147.8:7100/udp`
+
+De eerdere IPv6-only Tundra-opzet is vervallen. Voor deze wijziging is geen wijziging aan de centrale firewallarchitectuur uitgevoerd; de bestaande Wings-setregel op `vmbr0` blijft leidend.
+
 Codex voert geen nftables-commando's uit die bedoeld zijn voor de centrale router. Wanneer een vereiste verbinding door de centrale firewall wordt geblokkeerd, stopt Codex bij die verificatie en rapporteert exact bron, bestemming, protocol en poort aan Menno.
 
 ---
@@ -254,13 +260,13 @@ Gebruik:
 De directe node-hostnames worden niet voor de Wings API gebruikt.
 
 Tundra:
-- Wings 1: `2a0c:b641:620::7`
-- Wings 2: `2a0c:b641:620::8`
+- Wings 1: `82.153.147.7`
+- Wings 2: `82.153.147.8`
 - UDP `7100`
 - geen hostname
 - geen HTTP(S)
 
-Deze scheiding is een harde security-eis. HTTP(S)-verkeer naar de Wings API loopt via Bunny zodat de origin niet rechtstreeks als HTTP(S)-aanvalsoppervlak wordt blootgesteld. SFTP en gameverkeer gebruiken de directe node-route omdat deze protocollen niet via Bunny lopen. Tundra gebruikt uitsluitend de directe IPv6-adressen voor versleuteld Wings-naar-Wings-verkeer over UDP `7100` en wordt niet via DNS of HTTP(S) gerouteerd. Deze verkeerspaden worden niet met elkaar verwisseld.
+Deze scheiding is een harde security-eis. HTTP(S)-verkeer naar de Wings API loopt via Bunny zodat de origin niet rechtstreeks als HTTP(S)-aanvalsoppervlak wordt blootgesteld. SFTP en gameverkeer gebruiken de directe node-route omdat deze protocollen niet via Bunny lopen. Tundra gebruikt uitsluitend de openbare IPv4-adressen van de twee Wings-nodes voor rechtstreeks versleuteld Wings-naar-Wings-verkeer over UDP `7100` en wordt niet via Bunny, DNS of HTTP(S) gerouteerd. Deze verkeerspaden worden niet met elkaar verwisseld.
 
 ---
 
@@ -312,6 +318,8 @@ De directe node-hostnames `dev-atrioxgame-n1.atrioxhost.com` en `dev-atrioxgame-
 Wings communiceert met het Panel via `https://dev-atrioxgame-panel.atrioxhost.com` op publieke HTTPS/TCP `443`. Bunny Shield mag deze communicatie niet blokkeren met een browserchallenge. Voor iedere Wings-node bestaat daarom een Bunny Shield-bypass die tegelijk matcht op het bron-IP-adres van die Wings-node en de exacte Calagopus Wings User-Agent.
 
 Wings 1 gebruikt hiervoor de bronadressen `82.153.147.7` en `2a0c:b641:620::7`. Wings 2 gebruikt hiervoor de bronadressen `82.153.147.8` en `2a0c:b641:620::8`.
+
+Tijdens de afgeronde dev-rebuild is daarnaast extern een tijdelijke Bunny-testregel actief gemaakt die Bunny Shield voor de dev-omgeving breed omzeilt. Dit is uitsluitend de vastgestelde actuele dev-status en geen vervanging van het beoogde per-nodebeleid op bronadres plus exacte Wings User-Agent. Deze externe testregel wordt niet vanaf de Panel- of Wings-VM's beheerd.
 
 Na iedere Wings-upgrade wordt de actuele Calagopus Wings User-Agent opnieuw vastgesteld. Wanneer deze is gewijzigd, wordt de bijbehorende Bunny Shield-bypass daarmee gelijkgetrokken voordat de node als volledig werkend wordt beschouwd.
 
@@ -400,6 +408,8 @@ Controle: `ss -lntp | grep 8000`
 
 OpenLiteSpeed verzorgt HTTPS tussen Bunny en de Panel-origin en proxyt naar `127.0.0.1:8000`. OpenLiteSpeed stuurt het oorspronkelijke `Host`-header en de relevante forwarded headers door zodat Calagopus achter de reverse proxy correcte scheme- en clientinformatie kan verwerken. Calagopus vertrouwt uitsluitend de directe proxybron zoals vastgelegd met `APP_TRUSTED_PROXIES=172.30.0.1/32`.
 
+Naast de HTTP-proxycontext bevat de OpenLiteSpeed-vhost een native WebSocket-proxy voor URI `/` naar `127.0.0.1:8000`. Deze mapping geldt uitsluitend voor requests met een WebSocket-upgrade; niet-upgradeverkeer blijft via de bestaande HTTP-proxycontext lopen. Hierdoor worden alle huidige en toekomstige Calagopus-WebSocketroutes, inclusief routes met dynamische UUID-segmenten, naar dezelfde lokale Panel-backend doorgestuurd.
+
 ## Workers
 
 OpenLiteSpeed gebruikt:
@@ -429,6 +439,7 @@ Na de configuratie controleert Codex dat:
 - WebAdmin niet luistert op `0.0.0.0:7080` of `[::]:7080`
 - AdminPHP zonder `503` via WebAdmin functioneert
 - De publieke Panel-route via Bunny en OpenLiteSpeed de backend bereikt zonder de backend rechtstreeks publiek te maken
+- Een geauthenticeerde WebSocket-upgrade via de publieke Panel-hostname resulteert in `101 Switching Protocols` en blijft minimaal 60 seconden verbonden
 
 ---
 
@@ -527,6 +538,8 @@ Een hostreboot is geen standaard NAT66-test. Wanneer een concrete wijziging tech
 
 De Wings-deployment begint pas nadat de volledige Panel-deployment is afgerond en Menno expliciet aangeeft dat Codex door mag gaan met Wings. Codex begint niet zelfstandig met de installatie, configuratie, registratie of activatie van Wings 1 of Wings 2. Het afronden van de Panel-deployment vormt op zichzelf geen toestemming om met Wings verder te gaan.
 
+Beide nodes gebruiken de officiële Calagopus Wings `1.2.1`-release. Er wordt geen custom Wings-build gebruikt. In deze officiële release genereert Wings de Tundra-listener hardcoded als IPv4-wildcard `0.0.0.0:<tunnel_port>` en draait de Tundra-container met host-networking. Daardoor luistert de actieve Tundra-daemon op beide nodes op `0.0.0.0:7100/udp`; een IPv6-listener wordt door deze release niet gegenereerd.
+
 Voordat de Wings-deployment voor een node begint:
 - De Panel-deployment is volledig afgerond
 - De vereiste Panel-controles zijn succesvol afgerond
@@ -612,15 +625,17 @@ Voor beide Wings-nodes geldt: Panel → Wings API via Bunny op publieke TCP `443
 
 # 18. Tundra / Private Network
 
-Tundra vormt het private netwerk tussen Wings 1 en Wings 2. Tundra gebruikt rechtstreeks IPv6-verkeer tussen beide Wings-nodes en loopt niet via Bunny, DNS of HTTP(S).
+Tundra vormt het versleutelde private netwerk tussen Wings 1 en Wings 2. De Tundra-peertransportlaag gebruikt rechtstreeks de openbare IPv4-adressen van beide Wings-nodes en loopt niet via Bunny, DNS of HTTP(S).
 
 Codex configureert Tundra met:
 - Protocol: UDP
 - UDP Port: `7100`
-- Wings 1 Host: `2a0c:b641:620::7`
-- Wings 2 Host: `2a0c:b641:620::8`
+- Wings 1 Host: `82.153.147.7`
+- Wings 2 Host: `82.153.147.8`
 
-Het Tundra Host-veld bevat uitsluitend het directe IPv6-adres van de betreffende Wings-node. Het Host-veld bevat geen `https://`, hostname, IPv6-brackets of `:7100`. De UDP-poort `7100` wordt uitsluitend in het daarvoor bestemde poortveld ingesteld.
+Het Tundra Host-veld bevat uitsluitend het openbare IPv4-adres van de betreffende Wings-node. Het Host-veld bevat geen `https://`, hostname of `:7100`. De UDP-poort `7100` wordt uitsluitend in het daarvoor bestemde poortveld ingesteld.
+
+De officiële Wings `1.2.1`-implementatie bindt Tundra hardcoded aan de IPv4-wildcard `0.0.0.0:<tunnel_port>` en start de Tundra-container met host-networking. De definitieve IPv4-architectuur gebruikt deze officieel ondersteunde listener zonder Wings- of Tundra-broncodewijzigingen. De eerdere eis om Tundra uitsluitend via IPv6 te gebruiken is vervallen.
 
 Tundra wordt pas ingeschakeld nadat de normale Calagopus control-plane voor beide Wings-nodes volledig functioneert.
 
@@ -632,11 +647,24 @@ Voordat Codex Tundra inschakelt, moeten alle onderstaande controles succesvol zi
 - De Wings API origin listener gebruikt TCP `8443`
 - Beide Wings-services functioneren correct
 
-Tundra-verkeer zelf gebruikt nooit de Bunny-hostnames of de directe node-hostnames. Wings 1 en Wings 2 communiceren voor Tundra uitsluitend met de hierboven vastgelegde directe IPv6-adressen over UDP `7100`.
+Tundra-verkeer zelf gebruikt nooit de Bunny-hostnames of de directe node-hostnames. Wings 1 en Wings 2 communiceren voor Tundra uitsluitend met de hierboven vastgelegde openbare IPv4-adressen over UDP `7100`.
 
 De centrale nftables-firewall op de router staat Tundra-verkeer uitsluitend rechtstreeks tussen de Calagopus Wings-nodes toe. Codex wijzigt hiervoor geen firewallconfiguratie op het Panel of de Wings-VM's.
 
-Na het inschakelen van Tundra controleert Codex dat beide Wings-nodes via het private netwerk met elkaar kunnen communiceren. Een fout tijdens het inschakelen van Tundra wordt niet opgelost door HTTP(S)-routes, Bunny-routes of Wings API-hostnames te vervangen door directe verbindingen. Codex controleert eerst de Tundra-configuratie, UDP `7100`, de gebruikte IPv6-adressen en de bestaande control-plane.
+Beide Tundra-identiteiten moeten `ready` zijn. Iedere node heeft een geldige actuele UUID en certificate pin. Beide peers accepteren de actuele identiteit en certificate pin van de andere node. De concrete UUID's en certificate pins zijn runtime-identiteiten: zij mogen na een volledige rebuild of een nieuwe Tundra-identiteitsuitgifte legitiem veranderen en worden daarom niet als vaste rebuildwaarden vastgelegd.
+
+Een wijziging van uitsluitend het Tundra Host-adres roteert de bestaande identiteit of het bestaande certificaat niet automatisch. Tundra valideert de peer met de actuele verwachte node-UUID en certificate pin; het peer-IP-adres is daarvan gescheiden.
+
+De werkende situatie is bidirectioneel gecontroleerd met echte QUIC/mTLS-handshakes over openbare IPv4 en UDP `7100`:
+
+- Wings 1 naar Wings 2 is met de geldige bestaande identiteit en pin geslaagd.
+- Wings 2 naar Wings 1 is met de geldige bestaande identiteit en pin geslaagd.
+- In beide richtingen is daadwerkelijk versleuteld UDP-verkeer verzonden en ontvangen.
+- Een opzettelijk onjuiste certificate pin is in beide richtingen geweigerd met `ApplicationVerificationFailure`.
+
+Tundra-peerverbindingen zijn on-demand. `tundra_peers_connected 0` is in idle toestand correct wanneer geen cross-node serverrelay actief is; dit is op zichzelf geen storing zolang beide nodes ready zijn, dezelfde actuele snapshot hebben en een geldige QUIC/mTLS-probe slaagt.
+
+Na het inschakelen van Tundra controleert Codex dat beide Wings-nodes via het private netwerk met elkaar kunnen communiceren. Een fout tijdens het inschakelen van Tundra wordt niet opgelost door HTTP(S)-routes, Bunny-routes of Wings API-hostnames te vervangen door directe verbindingen. Codex controleert eerst de Tundra-configuratie, UDP `7100`, de gebruikte openbare IPv4-adressen, de certificaatpins en de bestaande control-plane.
 
 ---
 
@@ -763,9 +791,16 @@ Voor iedere vrijgegeven Wings-node moeten de onderstaande punten waar zijn:
 
 Nadat beide Wings-nodes afzonderlijk functioneren, moeten bovendien alle Tundra-controles waar zijn:
 - Tundra UDP `7100` werkt rechtstreeks tussen beide Wings-nodes
-- Tundra gebruikt voor Wings 1 uitsluitend `2a0c:b641:620::7`
-- Tundra gebruikt voor Wings 2 uitsluitend `2a0c:b641:620::8`
+- Tundra gebruikt voor Wings 1 uitsluitend `82.153.147.7`
+- Tundra gebruikt voor Wings 2 uitsluitend `82.153.147.8`
 - Tundra gebruikt geen Bunny-hostname, directe node-hostname of HTTP(S)
+- De officiële Wings `1.2.1`-listener luistert op IPv4-wildcard `0.0.0.0:7100/udp`
+- Beide Tundra-identiteiten zijn `ready`
+- Iedere node heeft een geldige actuele UUID en certificate pin
+- Beide peers accepteren de actuele identiteit en certificate pin van de andere node
+- Geldige QUIC/mTLS-peerverbindingen slagen in beide richtingen over openbare IPv4
+- Een opzettelijk onjuiste certificate pin wordt geweigerd
+- Een wijziging van uitsluitend het Tundra Host-adres roteert de bestaande identiteit niet automatisch
 
 Een fase wordt niet als technisch gereed beschouwd wanneer één van de controles voor die fase faalt.
 
@@ -815,6 +850,10 @@ Niet toegestaan. De Calagopus node `URL` en `Public URL` gebruiken de Bunny-host
 
 Niet toegestaan. Tundra wordt pas ingeschakeld nadat Wings 1 en Wings 2 afzonderlijk via de normale control-plane functioneren.
 
+## IPv6-only Tundra op Wings 1.2.1
+
+Niet toegestaan. De officiële Wings `1.2.1`-release genereert voor Tundra een IPv4-wildcardlistener en geen IPv6-listener. Tundra gebruikt in deze omgeving daarom de vastgelegde openbare IPv4-peerhosts op UDP `7100`; de eerdere IPv6-only eis is vervallen.
+
 ## Codex reboot
 
 Niet toegestaan. Codex voert geen hostreboot uit. Wanneer een wijziging daadwerkelijk een reboot vereist, geldt uitsluitend de centrale rebootprocedure uit hoofdstuk 2 en voert Menno de reboot uit.
@@ -829,6 +868,6 @@ Niet toegestaan. Codex voert geen `docker compose down -v` uit, verwijdert geen 
 
 Gebruik deze instructie aan het begin van iedere nieuwe Codex-sessie op deze omgeving:
 
-> Lees eerst `/root/workspace/calagopus-specification.md` volledig en behandel iedere regel als harde uitvoerseis. Neem geen alternatieve ontwerpbeslissingen voor keuzes die daar al vastliggen. Verbreek nooit de actieve SSH/Codex-sessie. Voer geen `reboot`, `shutdown`, `poweroff`, hostnetwerk-restart, SSH-restart of andere hostactie uit die de sessie kan verbreken. Wanneer een noodzakelijke wijziging pas na een reboot actief wordt, stop vóór de reboot en volg uitsluitend de rebootprocedure uit het document. Gebruik nooit `docker compose down -v` en verwijder geen Docker-volumes of persistente Calagopus-data zonder expliciete opdracht van Menno. Controleer vóór iedere container- of netwerk-recreation de daadwerkelijke persistente mounts. De bestaande Git-working-tree staat op `/root/workspace/calagopus-panel`; clone deze repository niet opnieuw en voer geen zelfstandige merge, rebase of branchwissel uit. De actieve Calagopus Panel runtime deployment staat uitsluitend onder `/opt/calagopus-panel` en gebruikt absolute persistente mounts. Git, Git-authenticatie, Codex en `bubblewrap` zijn al geïnstalleerd en werkend en worden niet opnieuw geïnstalleerd, verwijderd of vervangen. Wijzig de centrale nftables-firewall op de router niet. Werk uitsluitend de Panel-fase af. Stop voor handmatige Menno-interactie bij OOBE, een technisch noodzakelijke reboot of een externe Bunny/firewallblokkade. Begin na de Panel-fase niet zelfstandig aan Wings en wacht op expliciete toestemming van Menno en de nieuwe Panel-generated join-data voor de betreffende node. Gebruik voor de Wings API de Bunny-hostnames via publieke HTTPS/TCP `443`, terwijl de Wings API origin op TCP `8443` luistert. Maak geen directe Panel → Wings API-route. Gebruik Tundra pas nadat beide Wings-nodes normaal functioneren en uitsluitend via de vastgelegde directe IPv6-adressen over UDP `7100`.
+> Lees eerst `/root/workspace/calagopus-specification.md` volledig en behandel iedere regel als harde uitvoerseis. Neem geen alternatieve ontwerpbeslissingen voor keuzes die daar al vastliggen. Verbreek nooit de actieve SSH/Codex-sessie. Voer geen `reboot`, `shutdown`, `poweroff`, hostnetwerk-restart, SSH-restart of andere hostactie uit die de sessie kan verbreken. Wanneer een noodzakelijke wijziging pas na een reboot actief wordt, stop vóór de reboot en volg uitsluitend de rebootprocedure uit het document. Gebruik nooit `docker compose down -v` en verwijder geen Docker-volumes of persistente Calagopus-data zonder expliciete opdracht van Menno. Controleer vóór iedere container- of netwerk-recreation de daadwerkelijke persistente mounts. De bestaande Git-working-tree staat op `/root/workspace/calagopus-panel`; clone deze repository niet opnieuw en voer geen zelfstandige merge, rebase of branchwissel uit. De actieve Calagopus Panel runtime deployment staat uitsluitend onder `/opt/calagopus-panel` en gebruikt absolute persistente mounts. Git, Git-authenticatie, Codex en `bubblewrap` zijn al geïnstalleerd en werkend en worden niet opnieuw geïnstalleerd, verwijderd of vervangen. Wijzig de centrale nftables-firewall op de router niet. Werk uitsluitend de Panel-fase af. Stop voor handmatige Menno-interactie bij OOBE, een technisch noodzakelijke reboot of een externe Bunny/firewallblokkade. Begin na de Panel-fase niet zelfstandig aan Wings en wacht op expliciete toestemming van Menno en de nieuwe Panel-generated join-data voor de betreffende node. Gebruik voor de Wings API de Bunny-hostnames via publieke HTTPS/TCP `443`, terwijl de Wings API origin op TCP `8443` luistert. Maak geen directe Panel → Wings API-route. Gebruik Tundra pas nadat beide Wings-nodes normaal functioneren en uitsluitend via de vastgelegde openbare IPv4-adressen `82.153.147.7` en `82.153.147.8` over UDP `7100`.
 
 ---
