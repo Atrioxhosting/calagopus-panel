@@ -257,11 +257,12 @@ impl UserSession {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM user_sessions
-            WHERE user_sessions.user_uuid = $1 AND ($2 IS NULL OR user_sessions.user_agent ILIKE '%' || $2 || '%')
+            WHERE user_sessions.user_uuid = $1 AND {search}
             ORDER BY user_sessions.created DESC
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["user_sessions.user_agent"], &["user_sessions.uuid"])
         )))
         .bind(user_uuid)
         .bind(search)
@@ -359,6 +360,7 @@ impl UserSession {
 
     pub async fn get_cookie<'a>(
         state: &crate::State,
+        request_host: Option<&str>,
         key: impl Into<Cow<'a, str>>,
     ) -> Result<Cookie<'a>, anyhow::Error> {
         let settings = state.settings.get().await?;
@@ -366,7 +368,12 @@ impl UserSession {
         Ok(Cookie::build((settings.app.session_cookie.clone(), key))
             .http_only(true)
             .same_site(tower_cookies::cookie::SameSite::Lax)
-            .secure(settings.app.url.starts_with("https://"))
+            .secure(
+                settings
+                    .app
+                    .url_for_host(request_host)
+                    .starts_with("https://"),
+            )
             .path("/")
             .expires(
                 tower_cookies::cookie::time::OffsetDateTime::now_utc()

@@ -226,10 +226,13 @@ function FileBrowser() {
       },
       {
         id: 'files.moveUpDirectory',
-        callback: () =>
+        callback: () => {
+          if (store.getState().searchInfo) return;
+
           setSearchParams({
             directory: join(store.getState().browsingDirectory, '..'),
-          }),
+          });
+        },
       },
       {
         id: 'files.duplicate',
@@ -469,6 +472,7 @@ function ServerFilesComponent() {
   const doOpenModal = useFileManagerStore((state) => state.doOpenModal);
   const browsingDirectory = useFileManagerStore((state) => state.browsingDirectory);
   const resetEntries = useFileManagerStore((state) => state.resetEntries);
+  const setSearchInfo = useFileManagerStore((state) => state.setSearchInfo);
   const [, setSearchParams] = useSearchParams();
   const [view, setView] = useState<FileManagerView>(getStoredFileManagerView);
   const [fileTreeVisible, setFileTreeVisible] = useState(() => getStoredFileTreeVisibility(serverUuid));
@@ -484,6 +488,9 @@ function ServerFilesComponent() {
   useEffect(() => setFileTreeVisible(getStoredFileTreeVisibility(serverUuid)), [serverUuid]);
 
   const applyView = (value: FileManagerView) => {
+    setSearchInfo(null);
+    resetEntries();
+
     if (value === 'tree') setTreeInitialDirectory(browsingDirectory);
     else setSearchParams({ directory: browsingDirectory });
     localStorage.setItem(FILE_MANAGER_VIEW_STORAGE_KEY, value);

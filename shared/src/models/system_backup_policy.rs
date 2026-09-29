@@ -181,11 +181,16 @@ impl SystemBackupPolicy {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM system_backup_policies
-            WHERE $1 IS NULL OR system_backup_policies.name ILIKE '%' || $1 || '%'
+            WHERE {search}
             ORDER BY system_backup_policies.created
             LIMIT $2 OFFSET $3
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(
+                1,
+                &["system_backup_policies.name"],
+                &["system_backup_policies.uuid"]
+            )
         )))
         .bind(search)
         .bind(per_page)

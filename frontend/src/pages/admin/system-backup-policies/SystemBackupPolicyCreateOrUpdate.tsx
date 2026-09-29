@@ -81,13 +81,9 @@ export default function SystemBackupPolicyCreateOrUpdate({
     z.infer<typeof adminSystemBackupPolicySchema>
   >({
     form,
-    createFn: () => createSystemBackupPolicy(adminSystemBackupPolicyUpdateSchema.parse(form.getValues())),
+    createFn: () => createSystemBackupPolicy(form.getTransformedValues()),
     updateFn: contextSystemBackupPolicy
-      ? () =>
-          updateSystemBackupPolicy(
-            contextSystemBackupPolicy.uuid,
-            adminSystemBackupPolicyUpdateSchema.parse(form.getValues()),
-          )
+      ? () => updateSystemBackupPolicy(contextSystemBackupPolicy.uuid, form.getTransformedValues())
       : undefined,
     deleteFn: contextSystemBackupPolicy
       ? () => deleteSystemBackupPolicy(contextSystemBackupPolicy.uuid, { deleteBackups })

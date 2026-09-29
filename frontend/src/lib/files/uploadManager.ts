@@ -12,6 +12,13 @@ import {
   patchUploadChunk,
   withFileParam,
 } from '@/api/server/files/resumableUpload.ts';
+import {
+  applyUploadResolutions,
+  findUploadConflicts,
+  UploadConflict,
+  UploadConflictResolutions,
+} from '@/lib/files/uploadConflicts.ts';
+import { uploadPathOf } from '@/lib/files/uploadPaths.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { serverFileOperationSchema } from '@/lib/schemas/server/files.ts';
 import { ToastAction, ToastType } from '@/providers/contexts/toastContext.ts';
@@ -41,6 +48,41 @@ let externals: UploadManagerExternals | null = null;
 
 export function setUploadManagerExternals(ext: UploadManagerExternals): void {
   externals = ext;
+}
+
+export type UploadConflictResolver = (
+  destination: Extract<UploadDestination, { type: 'server' }>,
+  conflicts: UploadConflict[],
+  remaining: number,
+) => Promise<UploadConflictResolutions | null>;
+
+let conflictResolver: UploadConflictResolver | null = null;
+
+export function setUploadConflictResolver(resolver: UploadConflictResolver | null): void {
+  conflictResolver = resolver;
+}
+
+async function resolveUploadConflicts(destination: UploadDestination, files: File[]): Promise<File[]> {
+  if (destination.type !== 'server' || !conflictResolver) return files;
+
+  let conflicts: UploadConflict[];
+  try {
+    conflicts = await findUploadConflicts(destination.serverUuid, destination.directory, files);
+  } catch {
+    const { t } = getTranslations();
+    addToastSafely(t('elements.fileUpload.toast.conflictCheckFailed', {}), 'warning');
+    return files;
+  }
+
+  if (conflicts.length === 0) return files;
+
+  const conflicting = conflicts.reduce((sum, conflict) => sum + (conflict.kind === 'folder' ? conflict.files : 1), 0);
+
+  return applyUploadResolutions(
+    files,
+    conflicts,
+    await conflictResolver(destination, conflicts, files.length - conflicting),
+  );
 }
 
 interface DestinationHandler<D extends UploadDestination = UploadDestination> {
@@ -394,7 +436,7 @@ async function uploadRequest(
 
     const formData = new FormData();
     for (const file of files) {
-      formData.append('files', file, file.webkitRelativePath || file.name);
+      formData.append('files', file, uploadPathOf(file));
     }
 
     const totalRequestSize = files.reduce((sum, f) => sum + f.size, 0);
@@ -643,7 +685,7 @@ async function uploadResumableFile(
     throw new Error('uploadResumableFile called for a destination without resumable support');
   }
 
-  const remotePath = file.webkitRelativePath || file.name;
+  const remotePath = uploadPathOf(file);
   await runResumableUpload(destination, file, `file-${fileIndex}`, remotePath, batchId, controller);
 }
 
@@ -753,7 +795,10 @@ function clearFailedEntries(scope: string, folderNames: Set<string>, fileNames: 
   });
 }
 
-export async function uploadFiles(destination: UploadDestination, files: File[]): Promise<void> {
+export async function uploadFiles(destination: UploadDestination, selected: File[]): Promise<void> {
+  if (selected.length === 0) return;
+
+  const files = await resolveUploadConflicts(destination, selected);
   if (files.length === 0) return;
 
   const scope = uploadScopeKey(destination);
@@ -771,7 +816,7 @@ export async function uploadFiles(destination: UploadDestination, files: File[])
 
   files.forEach((file, i) => {
     const idx = startIndex + i;
-    const path = file.webkitRelativePath || file.name;
+    const path = uploadPathOf(file);
     const isFolder = path.includes('/');
     (isFolder ? folderFiles : individualFiles).push({ file, index: idx });
   });
@@ -779,7 +824,7 @@ export async function uploadFiles(destination: UploadDestination, files: File[])
   const folderBatchIds = new Map<string, string>();
   const folderCounts = new Map<string, number>();
   for (const { file } of folderFiles) {
-    const path = file.webkitRelativePath || file.name;
+    const path = uploadPathOf(file);
     const folder = path.split('/')[0];
     if (!folderBatchIds.has(folder)) {
       folderBatchIds.set(folder, `${scope}/folder-${folder}-${Date.now()}`);
@@ -816,7 +861,7 @@ export async function uploadFiles(destination: UploadDestination, files: File[])
     }
 
     for (const { file, index } of folderFiles) {
-      const path = file.webkitRelativePath || file.name;
+      const path = uploadPathOf(file);
       const folder = path.split('/')[0];
       const batchId = folderBatchIds.get(folder)!;
       next.set(`file-${index}`, {
@@ -869,7 +914,7 @@ export async function uploadFiles(destination: UploadDestination, files: File[])
 
   const folderGroups = new Map<string, Array<{ file: File; index: number }>>();
   for (const entry of folderFiles) {
-    const path = entry.file.webkitRelativePath || entry.file.name;
+    const path = uploadPathOf(entry.file);
     const folder = path.split('/')[0];
     if (!folderGroups.has(folder)) folderGroups.set(folder, []);
     folderGroups.get(folder)!.push(entry);

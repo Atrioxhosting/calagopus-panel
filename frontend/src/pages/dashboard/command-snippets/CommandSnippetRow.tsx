@@ -1,10 +1,10 @@
 import { faClone, faPencil, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import deleteCommandSnippet from '@/api/me/command-snippets/deleteCommandSnippet.ts';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
@@ -15,11 +15,16 @@ import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import CommandSnippetDuplicateModal from './modals/CommandSnippetDuplicateModal.tsx';
 import CommandSnippetEditModal from './modals/CommandSnippetEditModal.tsx';
 
-export default function CommandSnippetRow({
-  commandSnippet,
-}: {
+interface CommandSnippetRowProps {
   commandSnippet: z.infer<typeof userCommandSnippetSchema>;
-}) {
+  isSelected?: boolean;
+  onSelectionChange?: (selected: boolean) => void;
+}
+
+const CommandSnippetRow = forwardRef<HTMLTableRowElement, CommandSnippetRowProps>(function CommandSnippetRow(
+  { commandSnippet, isSelected = false, onSelectionChange },
+  ref,
+) {
   const { t } = useTranslations();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
@@ -91,11 +96,17 @@ export default function CommandSnippetRow({
       >
         {({ items, openMenu }) => (
           <TableRow
+            ref={ref}
+            bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
             onContextMenu={(e) => {
               e.preventDefault();
               openMenu(e.clientX, e.clientY);
             }}
           >
+            {onSelectionChange !== undefined && (
+              <TableSelectionCell id={commandSnippet.uuid} checked={isSelected} onChange={onSelectionChange} />
+            )}
+
             <TableData>!{commandSnippet.name}</TableData>
 
             <TableData>{commandSnippet.eggs.length}</TableData>
@@ -110,4 +121,6 @@ export default function CommandSnippetRow({
       </ContextMenu>
     </>
   );
-}
+});
+
+export default CommandSnippetRow;

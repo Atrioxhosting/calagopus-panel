@@ -279,12 +279,13 @@ impl UserApiKey {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM user_api_keys
-            WHERE user_api_keys.user_uuid = $1 AND ($2 IS NULL OR user_api_keys.name ILIKE '%' || $2 || '%')
+            WHERE user_api_keys.user_uuid = $1 AND {search}
                 AND (user_api_keys.expires IS NULL OR user_api_keys.expires > NOW())
             ORDER BY user_api_keys.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["user_api_keys.name"], &["user_api_keys.uuid"])
         )))
         .bind(user_uuid)
         .bind(search)

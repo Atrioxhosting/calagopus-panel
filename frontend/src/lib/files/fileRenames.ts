@@ -1,5 +1,5 @@
 import { basename, dirname } from 'pathe';
-import loadDirectory from '@/api/server/files/loadDirectory.ts';
+import statFiles from '@/api/server/files/statFiles.ts';
 
 export interface FileRename {
   from: string;
@@ -55,39 +55,43 @@ export const resolveFileRenames = async (
   if (result.renamed === 0) return [];
   if (result.renamed === result.files.length) return result.files;
 
-  const listings = new Map<string, Promise<Set<string>>>();
-  const list = (directory: string) => {
-    let listing = listings.get(directory);
-    if (!listing) {
-      listing = (async () => {
-        const names = new Set<string>();
-        let page = 1;
-        while (true) {
-          const response = await loadDirectory(uuid, directory, page, 'name_asc');
-          for (const entry of response.entries.data) names.add(entry.name);
-          if (page * response.entries.perPage >= response.entries.total || response.entries.data.length === 0)
-            return names;
-          page += 1;
-        }
-      })();
-      listings.set(directory, listing);
+  const candidates = result.files.filter((file) => paths.some((path) => isWithinRenamedPath(path, file.from)));
+  if (candidates.length === 0) return [];
+
+  const requested = new Map<string, Set<string>>();
+  const request = (directory: string, name: string) => {
+    let names = requested.get(directory);
+    if (!names) {
+      names = new Set();
+      requested.set(directory, names);
     }
-    return listing;
+    names.add(name);
   };
 
-  const resolved = await Promise.all(
-    result.files.map(async (file) => {
-      if (!paths.some((path) => isWithinRenamedPath(path, file.from))) return null;
+  for (const file of candidates) {
+    request(dirname(file.from), basename(file.from));
+    request(dirname(file.to), basename(file.to));
+  }
 
+  const present = new Map<string, Set<string>>();
+  await Promise.all(
+    Array.from(requested, async ([directory, names]) => {
       try {
-        const [source, destination] = await Promise.all([list(dirname(file.from)), list(dirname(file.to))]);
-        return !source.has(basename(file.from)) && destination.has(basename(file.to)) ? file : null;
+        const entries = await statFiles(uuid, directory, Array.from(names));
+        present.set(directory, new Set(entries.map((entry) => entry.name)));
       } catch {
-        return null;
+        // a directory that cannot be statted leaves its renames unresolved
       }
     }),
   );
-  return resolved.filter((file): file is FileRename => file !== null);
+
+  return candidates.filter((file) => {
+    const source = present.get(dirname(file.from));
+    const destination = present.get(dirname(file.to));
+    if (!source || !destination) return false;
+
+    return !source.has(basename(file.from)) && destination.has(basename(file.to));
+  });
 };
 
 export const hasOverlappingFileRenames = (files: FileRename[]) =>

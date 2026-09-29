@@ -3,6 +3,7 @@ import {
   faPlugCircleXmark,
   faSatellite,
   faTrash,
+  faTriangleExclamation,
   IconDefinition,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -14,6 +15,9 @@ import { httpErrorToHuman } from '@/api/axios.ts';
 import ActionBar from '@/elements/ActionBar.tsx';
 import Button from '@/elements/buttons/Button.tsx';
 import { AdminCan } from '@/elements/Can.tsx';
+import Alert from '@/elements/feedback/Alert.tsx';
+import Switch from '@/elements/input/Switch.tsx';
+import Stack from '@/elements/layout/Stack.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import { ObjectSet } from '@/lib/objectSet.ts';
@@ -67,7 +71,7 @@ const PAST_TENSE = {
   delete: 'deleted',
 } as const satisfies Record<ServerAction, string>;
 
-function request(action: ServerAction, uuid: string): Promise<void> {
+function request(action: ServerAction, uuid: string, force: boolean, deleteBackups: boolean): Promise<void> {
   switch (action) {
     case 'suspend':
       return updateServer(uuid, { suspended: true });
@@ -76,7 +80,7 @@ function request(action: ServerAction, uuid: string): Promise<void> {
     case 'clearState':
       return clearServerState(uuid);
     case 'delete':
-      return deleteServer(uuid, { force: false, deleteBackups: false });
+      return deleteServer(uuid, { force, deleteBackups });
   }
 }
 
@@ -109,6 +113,8 @@ export default function ServerActionBar({
 
   const [loading, setLoading] = useState<ServerAction | null>(null);
   const [confirming, setConfirming] = useState<ServerAction | null>(null);
+  const [force, setForce] = useState(false);
+  const [deleteBackups, setDeleteBackups] = useState(false);
 
   const targets = (action: ServerAction) => selectedServers.values().filter((server) => changesServer(action, server));
 
@@ -159,7 +165,9 @@ export default function ServerActionBar({
     const skipped = selectedServers.size - servers.length;
 
     setLoading(action);
-    const results = await Promise.allSettled(servers.map((server) => request(action, server.uuid)));
+    const results = await Promise.allSettled(
+      servers.map((server) => request(action, server.uuid, force, deleteBackups)),
+    );
     setLoading(null);
 
     report(action, results, skipped);
@@ -184,7 +192,32 @@ export default function ServerActionBar({
     const servers = tItem('server', targets(confirming).length);
 
     if (confirming === 'delete') {
-      return t('pages.admin.servers.bulkActions.modal.deleteContent', { servers }).md();
+      return (
+        <Stack>
+          {t('pages.admin.servers.bulkActions.modal.deleteContent', { servers }).md()}
+
+          <Switch
+            label={t('common.form.force', {})}
+            name='force'
+            color='red'
+            checked={force}
+            onChange={(e) => setForce(e.target.checked)}
+          />
+
+          {force && (
+            <Alert color='red' icon={<FontAwesomeIcon icon={faTriangleExclamation} />}>
+              {t('pages.admin.servers.bulkActions.modal.alert.forceWarning', {})}
+            </Alert>
+          )}
+
+          <Switch
+            label={t('pages.admin.servers.bulkActions.modal.form.deleteBackups', {})}
+            name='deleteBackups'
+            checked={deleteBackups}
+            onChange={(e) => setDeleteBackups(e.target.checked)}
+          />
+        </Stack>
+      );
     }
 
     return t('pages.admin.servers.bulkActions.modal.content', {
@@ -193,9 +226,15 @@ export default function ServerActionBar({
     }).md();
   };
 
+  const closeConfirmation = () => {
+    setConfirming(null);
+    setForce(false);
+    setDeleteBackups(false);
+  };
+
   const onConfirmed = () => {
     const action = confirming;
-    setConfirming(null);
+    closeConfirmation();
 
     if (action) {
       run(action);
@@ -206,7 +245,7 @@ export default function ServerActionBar({
     <>
       <ConfirmationModal
         opened={confirming !== null}
-        onClose={() => setConfirming(null)}
+        onClose={closeConfirmation}
         title={t('pages.admin.servers.bulkActions.modal.title', {})}
         confirm={t('common.button.continue', {})}
         onConfirmed={onConfirmed}

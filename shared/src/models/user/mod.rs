@@ -582,11 +582,12 @@ impl User {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM users
             LEFT JOIN roles ON roles.uuid = users.role_uuid
-            WHERE users.role_uuid = $1 AND ($2 IS NULL OR users.username ILIKE '%' || $2 || '%' OR users.email ILIKE '%' || $2 || '%')
+            WHERE users.role_uuid = $1 AND {search}
             ORDER BY users.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["users.username", "users.email"], &["users.uuid"])
         )))
         .bind(role_uuid)
         .bind(search)
@@ -621,11 +622,12 @@ impl User {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM users
             LEFT JOIN roles ON roles.uuid = users.role_uuid
-            WHERE $1 IS NULL OR users.username ILIKE '%' || $1 || '%' OR users.email ILIKE '%' || $1 || '%'
+            WHERE {search}
             ORDER BY users.created
             LIMIT $2 OFFSET $3
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(1, &["users.username", "users.email"], &["users.uuid"])
         )))
         .bind(search)
         .bind(per_page)
@@ -836,6 +838,10 @@ impl User {
             .two_factor_accepted_methods
             .iter()
             .any(|method| self.has_two_factor_method(*method, settings))
+    }
+
+    pub fn can_login_with_password(&self, settings: &crate::settings::AppSettings) -> bool {
+        settings.app.password_login_enabled && !self.password_login_disabled
     }
 
     pub fn require_email_verification(&self, settings: &crate::settings::AppSettings) -> bool {

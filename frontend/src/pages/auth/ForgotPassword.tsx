@@ -56,7 +56,7 @@ export default function ForgotPassword() {
   return (
     <AuthWrapper registry={window.extensionContext.extensionRegistry.pages.auth.forgotPassword.container}>
       <div className='flex flex-col space-y-4 mb-4 w-full'>
-        {settings.app.url !== window.location.origin && (
+        {![settings.app.url, ...settings.app.additionalUrls].includes(window.location.origin) && (
           <Alert
             icon={<FontAwesomeIcon icon={faExclamationTriangle} />}
             color='yellow'

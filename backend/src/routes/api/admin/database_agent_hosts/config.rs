@@ -23,6 +23,7 @@ mod patch {
     #[derive(ToSchema, Serialize)]
     struct Response {
         applied: usize,
+        ignored_paths: Vec<&'static str>,
     }
 
     #[utoipa::path(patch, path = "/", responses(
@@ -37,7 +38,7 @@ mod patch {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("database-agent-hosts.update")?;
 
-        db_agent_api::strip_config_paths(&mut data.config);
+        let ignored_paths = db_agent_api::strip_config_paths(&mut data.config);
 
         let update_host = async |host: uuid::Uuid| -> Result<bool, anyhow::Error> {
             let host = DatabaseAgentHost::by_uuid_optional_cached(&state.database, host).await?;
@@ -93,7 +94,11 @@ mod patch {
             }
         }
 
-        ApiResponse::new_serialized(Response { applied }).ok()
+        ApiResponse::new_serialized(Response {
+            applied,
+            ignored_paths,
+        })
+        .ok()
     }
 }
 

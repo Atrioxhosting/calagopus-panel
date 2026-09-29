@@ -207,4 +207,9 @@ export class FilesRegistry implements Registry {
     callback(this.fileContextMenu);
     return this;
   }
+
+  public enterFileMassContextMenu(callback: (registry: ContextMenuRegistry) => unknown): this {
+    callback(this.fileMassContextMenu);
+    return this;
+  }
 }

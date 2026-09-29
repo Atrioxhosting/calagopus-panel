@@ -2,7 +2,6 @@ import { faMinus, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { z } from 'zod';
 import ActionIcon from '@/elements/buttons/ActionIcon.tsx';
 import Button from '@/elements/buttons/Button.tsx';
@@ -52,7 +51,7 @@ export default function TableCreateModal({
       table: '',
       columns: [{ name: 'id', type: 'bigint', nullable: false, primaryKey: true, autoIncrement: true }],
     },
-    validate: zod4Resolver(values),
+    schema: values,
     onClose: props.onClose,
     onSubmit: async (data) => {
       await api.createTable({ schema: null, ...data });

@@ -111,11 +111,12 @@ impl SystemBackupPolicyServer {
             JOIN servers ON servers.uuid = system_backup_policy_servers.server_uuid
             WHERE
                 system_backup_policy_servers.system_backup_policy_uuid = $1
-                AND ($2 IS NULL OR servers.name ILIKE '%' || $2 || '%')
+                AND {search}
             ORDER BY system_backup_policy_servers.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["servers.name"], &["servers.uuid"])
         )))
         .bind(system_backup_policy_uuid)
         .bind(search)

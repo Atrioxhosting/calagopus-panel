@@ -73,7 +73,7 @@ export default function ServerCreate() {
 
   const { loading, doCreateOrUpdate } = useResourceForm<ServerCreateFormValues, AdminServer>({
     form,
-    createFn: () => createServer(form.getValues()),
+    createFn: () => createServer(form.getTransformedValues()),
     doUpdate: false,
     basePath: '/admin/servers',
     resourceName: t('pages.admin.servers.resourceName', {}),

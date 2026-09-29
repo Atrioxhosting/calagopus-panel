@@ -107,11 +107,12 @@ impl ServerMount {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM server_mounts
             JOIN mounts ON mounts.uuid = server_mounts.mount_uuid
-            WHERE server_mounts.server_uuid = $1 AND ($2 IS NULL OR mounts.name ILIKE '%' || $2 || '%')
+            WHERE server_mounts.server_uuid = $1 AND {search}
             ORDER BY server_mounts.mount_uuid ASC
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["mounts.name"], &["mounts.uuid"])
         )))
         .bind(server_uuid)
         .bind(search)
@@ -149,11 +150,12 @@ impl ServerMount {
             JOIN node_mounts ON mounts.uuid = node_mounts.mount_uuid AND node_mounts.node_uuid = $1
             JOIN nest_egg_mounts ON mounts.uuid = nest_egg_mounts.mount_uuid AND nest_egg_mounts.egg_uuid = $2
             LEFT JOIN server_mounts ON server_mounts.mount_uuid = mounts.uuid AND server_mounts.server_uuid = $3
-            WHERE $4 IS NULL OR mounts.name ILIKE '%' || $4 || '%'
+            WHERE {search}
             ORDER BY mounts.created
             LIMIT $5 OFFSET $6
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(4, &["mounts.name"], &["mounts.uuid"])
         )))
         .bind(server.node.uuid)
         .bind(server.egg.uuid)
@@ -194,11 +196,12 @@ impl ServerMount {
             JOIN node_mounts ON mounts.uuid = node_mounts.mount_uuid AND node_mounts.node_uuid = $1
             JOIN nest_egg_mounts ON mounts.uuid = nest_egg_mounts.mount_uuid AND nest_egg_mounts.egg_uuid = $2
             LEFT JOIN server_mounts ON server_mounts.mount_uuid = mounts.uuid AND server_mounts.server_uuid = $3
-            WHERE mounts.user_mountable = TRUE AND ($4 IS NULL OR mounts.name ILIKE '%' || $4 || '%')
+            WHERE mounts.user_mountable = TRUE AND {search}
             ORDER BY mounts.created
             LIMIT $5 OFFSET $6
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(4, &["mounts.name"], &["mounts.uuid"])
         )))
         .bind(server.node.uuid)
         .bind(server.egg.uuid)
@@ -237,11 +240,12 @@ impl ServerMount {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM server_mounts
             JOIN servers ON servers.uuid = server_mounts.server_uuid
-            WHERE server_mounts.mount_uuid = $1 AND ($2 IS NULL OR servers.name ILIKE '%' || $2 || '%')
+            WHERE server_mounts.mount_uuid = $1 AND {search}
             ORDER BY server_mounts.mount_uuid ASC
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["servers.name"], &["servers.uuid"])
         )))
         .bind(mount_uuid)
         .bind(search)

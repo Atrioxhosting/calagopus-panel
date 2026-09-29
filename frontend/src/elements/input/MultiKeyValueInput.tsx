@@ -9,6 +9,7 @@ import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
 interface MultiKeyValueInputProps {
   label?: string;
+  description?: string;
   withAsterisk?: boolean;
   allowReordering?: boolean;
   options: Record<string, string>;
@@ -27,6 +28,7 @@ interface DndKeyValue extends DndItem {
 
 function MultiKeyValueInput({
   label,
+  description,
   withAsterisk,
   allowReordering = true,
   options,
@@ -244,6 +246,7 @@ function MultiKeyValueInput({
     <Stack gap='xs'>
       <Stack gap={0}>
         {label && <Input.Label required={withAsterisk}>{label}</Input.Label>}
+        {description && <Input.Description mb={4}>{description}</Input.Description>}
         <div className='grid grid-cols-6 gap-2'>
           <TextInput
             ref={keyInputRef}

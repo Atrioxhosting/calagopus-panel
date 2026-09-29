@@ -1,5 +1,4 @@
 import { ModalProps } from '@mantine/core';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { join } from 'pathe';
 import { z } from 'zod';
 import compressFiles from '@/api/server/files/compressFiles.ts';
@@ -41,7 +40,7 @@ export default function ArchiveCreateModal({ files, ...props }: Props) {
       name: '',
       format: 'tar_gz',
     },
-    validate: zod4Resolver(serverFilesArchiveCreateSchema),
+    schema: serverFilesArchiveCreateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await compressFiles(server.uuid, {

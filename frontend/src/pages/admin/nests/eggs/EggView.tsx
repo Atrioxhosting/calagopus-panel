@@ -1,4 +1,11 @@
-import { faCodeCommit, faCog, faComputer, faFolderTree, faTerminal } from '@fortawesome/free-solid-svg-icons';
+import {
+  faCodeCommit,
+  faCog,
+  faComputer,
+  faFolderTree,
+  faMicrochip,
+  faTerminal,
+} from '@fortawesome/free-solid-svg-icons';
 import { useParams } from 'react-router';
 import { z } from 'zod';
 import getEgg from '@/api/admin/nests/eggs/getEgg.ts';
@@ -7,6 +14,7 @@ import ResourceView from '@/elements/ResourceView.tsx';
 import Title from '@/elements/typography/Title.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminNestSchema } from '@/lib/schemas/admin/nests.ts';
+import AdminEggDevices from '@/pages/admin/nests/eggs/devices/AdminEggDevices.tsx';
 import EggCreateOrUpdate from '@/pages/admin/nests/eggs/EggCreateOrUpdate.tsx';
 import AdminEggMounts from '@/pages/admin/nests/eggs/mounts/AdminEggMounts.tsx';
 import AdminEggVariables from '@/pages/admin/nests/eggs/variables/AdminEggVariables.tsx';
@@ -57,6 +65,13 @@ export default function EggView({ contextNest }: { contextNest: z.infer<typeof a
                 path: `/mounts`,
                 element: <AdminEggMounts contextNest={contextNest} contextEgg={egg} />,
                 permission: 'eggs.mounts',
+              },
+              {
+                name: t('pages.admin.nests.tabs.eggs.page.tabs.devices.title', {}),
+                icon: faMicrochip,
+                path: `/devices`,
+                element: <AdminEggDevices contextNest={contextNest} contextEgg={egg} />,
+                permission: 'eggs.devices',
               },
               {
                 name: t('pages.admin.nests.tabs.eggs.page.tabs.servers.title', {}),

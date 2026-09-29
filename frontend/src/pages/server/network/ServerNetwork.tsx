@@ -1,19 +1,23 @@
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Ref } from 'react';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import createAllocation from '@/api/server/allocations/createAllocation.ts';
 import getAllocations from '@/api/server/allocations/getAllocations.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import { ServerCan } from '@/elements/Can.tsx';
 import ServerContentContainer from '@/elements/containers/ServerContentContainer.tsx';
-import Table from '@/elements/data-display/Table.tsx';
+import Table, { tableSelectionHeader } from '@/elements/data-display/Table.tsx';
+import SelectionArea from '@/elements/dnd/SelectionArea.tsx';
 import ConditionalTooltip from '@/elements/overlays/ConditionalTooltip.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
+import { useTableSelection } from '@/plugins/selection/useTableSelection.ts';
 import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
+import AllocationActionBar from './AllocationActionBar.tsx';
 import AllocationRow from './AllocationRow.tsx';
 import ServerFirewall from './firewall/ServerFirewall.tsx';
 import NetworkSubNavigation from './NetworkSubNavigation.tsx';
@@ -25,6 +29,7 @@ export default function ServerNetwork() {
   const { server } = useServerStore();
   const canReadAllocations = useServerCan('allocations.read');
   const canReadFirewall = useServerCan('firewall.read');
+  const canDelete = useServerCan('allocations.delete');
 
   const {
     data: allocations,
@@ -39,6 +44,15 @@ export default function ServerNetwork() {
     fetcher: (page, search) => getAllocations(server.uuid, page, search),
     canRequest: canReadAllocations,
   });
+
+  const {
+    selected: selectedAllocations,
+    toggle: toggleAllocation,
+    clear: clearSelection,
+    selectAll,
+    allSelected,
+    selectionAreaProps,
+  } = useTableSelection({ items: allocations?.data, shortcuts: canDelete });
 
   const doAdd = () => {
     createAllocation(server.uuid)
@@ -57,7 +71,7 @@ export default function ServerNetwork() {
 
   return (
     <ServerContentContainer
-      title={t('pages.server.network.title', {})}
+      title={t('pages.server.network.allocations.title', {})}
       subtitle={t('pages.server.network.subtitle', {
         current: allocations?.total ?? 0,
         max: server.featureLimits.allocations,
@@ -85,24 +99,50 @@ export default function ServerNetwork() {
     >
       <NetworkSubNavigation />
 
-      <Table
-        columns={[
-          '',
-          t('pages.server.network.table.columns.hostname', {}),
-          t('pages.server.network.table.columns.port', {}),
-          t('common.table.columns.notes', {}),
-          t('common.table.columns.created', {}),
-          '',
-        ]}
-        loading={loading}
-        pagination={allocations}
-        onPageSelect={setPage}
-        error={error}
-      >
-        {allocations?.data.map((allocation) => (
-          <AllocationRow key={allocation.uuid} allocation={allocation} />
-        ))}
-      </Table>
+      <AllocationActionBar
+        selectedAllocations={selectedAllocations}
+        clearSelection={clearSelection}
+        onFinished={refetch}
+      />
+
+      <SelectionArea {...selectionAreaProps} disabled={!canDelete}>
+        <Table
+          columns={[
+            ...(canDelete
+              ? [
+                  tableSelectionHeader({
+                    checked: allSelected,
+                    indeterminate: selectedAllocations.size > 0 && !allSelected,
+                    onChange: (checked) => (checked ? selectAll() : clearSelection()),
+                  }),
+                ]
+              : []),
+            '',
+            t('pages.server.network.table.columns.hostname', {}),
+            t('pages.server.network.table.columns.port', {}),
+            t('common.table.columns.notes', {}),
+            t('common.table.columns.created', {}),
+            '',
+          ]}
+          loading={loading}
+          pagination={allocations}
+          onPageSelect={setPage}
+          error={error}
+        >
+          {allocations?.data.map((allocation) => (
+            <SelectionArea.Selectable key={allocation.uuid} item={allocation}>
+              {(innerRef: Ref<HTMLElement>) => (
+                <AllocationRow
+                  allocation={allocation}
+                  ref={innerRef as Ref<HTMLTableRowElement>}
+                  isSelected={selectedAllocations.has(allocation.uuid)}
+                  onSelectionChange={canDelete ? (selected) => toggleAllocation(allocation, selected) : undefined}
+                />
+              )}
+            </SelectionArea.Selectable>
+          ))}
+        </Table>
+      </SelectionArea>
     </ServerContentContainer>
   );
 }

@@ -93,20 +93,20 @@ mod post {
 
         permissions.has_server_permission("files.create")?;
 
-        if server.is_ignored(&data.root, true) {
+        if server.is_ignored_subtree(&data.root) {
             return ApiResponse::error("root directory not found")
                 .with_status(StatusCode::NOT_FOUND)
                 .ok();
         }
 
-        if destination_server.is_ignored(&data.destination, true) {
+        if destination_server.is_ignored_subtree(&data.destination) {
             return ApiResponse::error("destination directory not found")
                 .with_status(StatusCode::NOT_FOUND)
                 .ok();
         }
 
         for file in &data.files {
-            if server.is_ignored_either(Path::new(&data.root).join(&file.from))
+            if server.is_ignored_subtree(Path::new(&data.root).join(&file.from))
                 || destination_server.is_ignored_either(Path::new(&data.destination).join(&file.to))
             {
                 return ApiResponse::error("file not found")

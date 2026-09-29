@@ -414,6 +414,7 @@ pub(crate) static BASE_ADMIN_PERMISSIONS: LazyLock<IndexMap<&'static str, Permis
                             "Allows viewing and managing a node's allocations.",
                         ),
                         ("mounts", "Allows viewing and managing a node's mounts."),
+                        ("devices", "Allows viewing and managing a node's devices."),
                         (
                             "database-hosts",
                             "Allows viewing and managing a node's database hosts.",
@@ -457,6 +458,7 @@ pub(crate) static BASE_ADMIN_PERMISSIONS: LazyLock<IndexMap<&'static str, Permis
                             "Allows viewing and managing a server's variables.",
                         ),
                         ("mounts", "Allows viewing and managing a server's mounts."),
+                        ("devices", "Allows viewing and managing a server's devices."),
                     ]),
                 },
             ),
@@ -482,6 +484,7 @@ pub(crate) static BASE_ADMIN_PERMISSIONS: LazyLock<IndexMap<&'static str, Permis
                         ("update", "Allows modifying eggs."),
                         ("delete", "Allows deleting eggs."),
                         ("mounts", "Allows viewing and managing an egg's mounts."),
+                        ("devices", "Allows viewing and managing an egg's devices."),
                     ]),
                 },
             ),
@@ -584,6 +587,18 @@ pub(crate) static BASE_ADMIN_PERMISSIONS: LazyLock<IndexMap<&'static str, Permis
                         ("read", "Allows viewing mounts."),
                         ("update", "Allows modifying mounts."),
                         ("delete", "Allows deleting mounts."),
+                    ]),
+                },
+            ),
+            (
+                "devices",
+                PermissionGroup {
+                    description: "Permissions that control the ability to manage devices for the panel.",
+                    permissions: IndexMap::from([
+                        ("create", "Allows creating new devices."),
+                        ("read", "Allows viewing devices."),
+                        ("update", "Allows modifying devices."),
+                        ("delete", "Allows deleting devices."),
                     ]),
                 },
             ),
@@ -922,6 +937,17 @@ pub(crate) static BASE_SERVER_PERMISSIONS: LazyLock<IndexMap<&'static str, Permi
                         ("attach", "Allows attaching new mounts to the server."),
                         ("read", "Allows viewing existing mounts."),
                         ("detach", "Allows detaching mounts from the server."),
+                    ]),
+                },
+            ),
+            (
+                "devices",
+                PermissionGroup {
+                    description: "Permissions that control the ability to manage server devices.",
+                    permissions: IndexMap::from([
+                        ("attach", "Allows attaching new devices to the server."),
+                        ("read", "Allows viewing existing devices."),
+                        ("detach", "Allows detaching devices from the server."),
                     ]),
                 },
             ),

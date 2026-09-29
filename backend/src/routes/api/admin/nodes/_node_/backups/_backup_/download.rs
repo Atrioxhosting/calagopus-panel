@@ -44,8 +44,10 @@ mod get {
             example = "123e4567-e89b-12d3-a456-426614174000",
         ),
     ))]
+    #[allow(clippy::too_many_arguments)]
     pub async fn route(
         state: GetState,
+        request_host: shared::GetRequestHost,
         permissions: GetPermissionManager,
         activity_logger: GetAdminActivityLogger,
         user: GetUser,
@@ -74,7 +76,13 @@ mod get {
         }
 
         let url = backup
-            .download_url(&state, &user, &node, params.archive_format)
+            .download_url(
+                &state,
+                request_host.as_deref(),
+                &user,
+                &node,
+                params.archive_format,
+            )
             .await?;
 
         activity_logger

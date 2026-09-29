@@ -2,10 +2,9 @@ import { faHeart, faHeartBroken } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { forwardRef } from 'react';
 import Badge from '@/elements/data-display/Badge.tsx';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import TableLink from '@/elements/data-display/TableLink.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
-import Checkbox from '@/elements/input/Checkbox.tsx';
 import { ContextMenuChildrenProps, ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
@@ -26,7 +25,7 @@ interface NodeRowProps {
 }
 
 const NodeRow = forwardRef<HTMLTableRowElement, NodeRowProps>(function NodeRow(
-  { node, desync, isSelected, onSelectionChange, contextMenuProps },
+  { node, desync, isSelected = false, onSelectionChange, contextMenuProps },
   ref,
 ) {
   const { t } = useTranslations();
@@ -52,15 +51,7 @@ const NodeRow = forwardRef<HTMLTableRowElement, NodeRowProps>(function NodeRow(
       ref={ref}
     >
       {onSelectionChange !== undefined && (
-        <TableData className='pl-4 relative cursor-pointer w-10 text-center'>
-          <Checkbox
-            id={node.uuid}
-            checked={isSelected}
-            onChange={(e) => onSelectionChange(e.target.checked)}
-            onClick={(e) => e.stopPropagation()}
-            classNames={{ input: 'cursor-pointer!' }}
-          />
-        </TableData>
+        <TableSelectionCell id={node.uuid} checked={isSelected} onChange={onSelectionChange} />
       )}
 
       <TableData>
@@ -126,11 +117,6 @@ const NodeRow = forwardRef<HTMLTableRowElement, NodeRowProps>(function NodeRow(
               {nodeDeploymentStateInfo[deploymentState].label()}
             </Badge>
           </Tooltip>
-          {node.maintenanceEnabled && (
-            <Badge color='red' variant='light'>
-              {t('pages.admin.nodes.tabs.capacity.page.status.maintenanceEnabled', {})}
-            </Badge>
-          )}
           {isNodeAIO(node) && (
             <Tooltip label={t('pages.admin.nodes.tabs.general.page.tooltip.allInOneNode', {})}>
               <FontAwesomeIcon icon={faHeart} className='text-purple-500' />

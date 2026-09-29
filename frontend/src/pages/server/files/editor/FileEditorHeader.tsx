@@ -144,7 +144,7 @@ export default function FileEditorHeader({
             </div>
           )}
           <div hidden={!browsingWritableDirectory || action === 'image' || action === 'audio'}>
-            {action === 'edit' ? (
+            {action !== 'new' ? (
               <ServerCan action={collabActive ? 'files.update' : 'files.create'}>
                 <Button loading={saving} onClick={onSave}>
                   {t('common.button.save', {})}

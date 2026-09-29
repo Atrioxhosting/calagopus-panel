@@ -465,11 +465,12 @@ impl DatabaseHost {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM database_hosts
-            WHERE ($1 IS NULL OR database_hosts.name ILIKE '%' || $1 || '%')
+            WHERE {search}
             ORDER BY database_hosts.created
             LIMIT $2 OFFSET $3
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(1, &["database_hosts.name"], &["database_hosts.uuid"])
         )))
         .bind(search)
         .bind(per_page)

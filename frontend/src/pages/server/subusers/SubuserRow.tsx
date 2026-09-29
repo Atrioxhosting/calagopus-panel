@@ -1,12 +1,12 @@
 import { faLock, faLockOpen, faPencil, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import deleteSubuser from '@/api/server/subusers/deleteSubuser.ts';
 import Avatar from '@/elements/data-display/Avatar.tsx';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
@@ -17,7 +17,16 @@ import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
 import SubuserUpdateModal from './modals/SubuserUpdateModal.tsx';
 
-export default function SubuserRow({ subuser }: { subuser: z.infer<typeof serverSubuserSchema> }) {
+interface SubuserRowProps {
+  subuser: z.infer<typeof serverSubuserSchema>;
+  isSelected?: boolean;
+  onSelectionChange?: (selected: boolean) => void;
+}
+
+const SubuserRow = forwardRef<HTMLTableRowElement, SubuserRowProps>(function SubuserRow(
+  { subuser, isSelected = false, onSelectionChange },
+  ref,
+) {
   const { t } = useTranslations();
   const { addToast } = useToast();
   const { server } = useServerStore();
@@ -77,11 +86,17 @@ export default function SubuserRow({ subuser }: { subuser: z.infer<typeof server
       >
         {({ items, openMenu }) => (
           <TableRow
+            ref={ref}
+            bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
             onContextMenu={(e) => {
               e.preventDefault();
               openMenu(e.clientX, e.clientY);
             }}
           >
+            {onSelectionChange !== undefined && (
+              <TableSelectionCell id={subuser.user.uuid} checked={isSelected} onChange={onSelectionChange} />
+            )}
+
             <TableData>
               <div className='size-5 aspect-square relative'>
                 <Avatar size={20} className='select-none' src={subuser.user.avatar} name={subuser.user.username} />
@@ -108,4 +123,6 @@ export default function SubuserRow({ subuser }: { subuser: z.infer<typeof server
       </ContextMenu>
     </>
   );
-}
+});
+
+export default SubuserRow;

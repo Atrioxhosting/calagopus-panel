@@ -37,6 +37,7 @@ export default function FilePermissionsModal({ file, ...props }: Props) {
   const browsingWritableDirectory = useFileManager((state) => state.browsingWritableDirectory);
   const browsingDirectory = useFileManager((state) => state.browsingDirectory);
   const invalidateFilemanager = useFileManager((state) => state.invalidateFilemanager);
+  const patchDirectoryEntries = useFileManager((state) => state.patchDirectoryEntries);
 
   const [permissions, setPermissions] = useState<Record<PermissionKey, Record<PermissionType, boolean>>>({
     owner: { read: false, write: false, execute: false },
@@ -53,8 +54,8 @@ export default function FilePermissionsModal({ file, ...props }: Props) {
   }, [props.opened]);
 
   useEffect(() => {
-    if (file?.mode) {
-      const octalValue = permissionStringToNumber(file.mode);
+    const octalValue = permissionStringToNumber(file?.mode ?? '');
+    if (octalValue !== null) {
       const octalString = octalValue.toString().padStart(3, '0');
 
       const [ownerPerms, groupPerms, otherPerms] = octalString.split('').map(Number);
@@ -143,7 +144,7 @@ export default function FilePermissionsModal({ file, ...props }: Props) {
     const fileName = file.name;
     const directory = browsingDirectory;
     const wasRecursive = recursive;
-    const oldMode = permissionStringToNumber(file.mode ?? '').toString();
+    const oldMode = permissionStringToNumber(file.mode ?? '');
     const newPermissions = getOctalValue();
 
     setLoading(true);
@@ -156,20 +157,29 @@ export default function FilePermissionsModal({ file, ...props }: Props) {
       .then(({ updated }) => {
         props.onClose();
         if (updated > 0) {
+          const refresh = () => {
+            if (wasRecursive) {
+              invalidateFilemanager();
+            } else {
+              void patchDirectoryEntries(directory, [fileName]);
+            }
+          };
+          refresh();
+
           const undo =
-            wasRecursive || oldMode === newPermissions.toString()
+            wasRecursive || oldMode === null || oldMode === newPermissions
               ? null
               : createUndoAction(
                   () =>
                     chmodFiles({
                       uuid: server.uuid,
                       root: directory,
-                      files: [{ file: fileName, mode: oldMode, recursive: false }],
+                      files: [{ file: fileName, mode: oldMode.toString(), recursive: false }],
                     }),
                   (result) => result.updated,
                   {
                     addToast,
-                    invalidateFilemanager,
+                    invalidateFilemanager: refresh,
                     cannotUndoMessage: t('pages.server.files.toast.permissionsCouldNotBeRestored', {}),
                     undoneMessage: t('pages.server.files.toast.permissionsRestored', {}),
                     onError: (msg) => addToast(httpErrorToHuman(msg), 'error'),

@@ -1,7 +1,6 @@
 import { forwardRef, memo } from 'react';
 import { z } from 'zod';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
-import Checkbox from '@/elements/input/Checkbox.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
 import { adminEggRepositoryEggSchema } from '@/lib/schemas/admin/eggRepositories.ts';
@@ -25,17 +24,7 @@ const EggRepositoryEggRow = memo(
         className='cursor-pointer'
         onClick={onOpen}
       >
-        <TableData className='pl-4 relative w-10 text-center'>
-          <Checkbox
-            id={egg.uuid}
-            checked={isSelected}
-            onChange={(e) => {
-              onSelectionChange(e.target.checked);
-            }}
-            onClick={(e) => e.stopPropagation()}
-            classNames={{ input: 'cursor-pointer!' }}
-          />
-        </TableData>
+        <TableSelectionCell id={egg.uuid} checked={isSelected} onChange={onSelectionChange} />
 
         <TableData>
           <Code>{egg.path}</Code>

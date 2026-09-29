@@ -5,6 +5,7 @@ export interface BackupColumnOptions {
   kind: boolean;
   source: boolean;
   files: boolean;
+  retention: boolean;
   locked: boolean;
 }
 
@@ -14,11 +15,12 @@ export interface BackupColumns extends BackupColumnOptions {
   progressColSpan: number;
 }
 
-export function getBackupColumns({ kind, source, files, locked }: BackupColumnOptions): BackupColumns {
+export function getBackupColumns({ kind, source, files, retention, locked }: BackupColumnOptions): BackupColumns {
   return {
     kind,
     source,
     files,
+    retention,
     locked,
     headers: [
       () => getTranslations().t('common.table.columns.name', {}),
@@ -27,6 +29,7 @@ export function getBackupColumns({ kind, source, files, locked }: BackupColumnOp
       () => getTranslations().t('common.table.columns.checksum', {}),
       () => getTranslations().t('common.table.columns.size', {}),
       ...(files ? [() => getTranslations().t('common.table.columns.files', {})] : []),
+      ...(retention ? [() => getTranslations().t('pages.server.backups.table.columns.retention', {})] : []),
       () => getTranslations().t('common.table.columns.created', {}),
       ...(locked ? [() => getTranslations().t('pages.server.backups.table.columns.locked', {})] : []),
       '',

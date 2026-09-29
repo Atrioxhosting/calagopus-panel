@@ -2,12 +2,12 @@ import { faStar, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useQueryClient } from '@tanstack/react-query';
 import debounce from 'debounce';
-import { useEffect, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import deleteAllocation from '@/api/server/allocations/deleteAllocation.ts';
 import updateAllocation from '@/api/server/allocations/updateAllocation.ts';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import TextArea from '@/elements/input/TextArea.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
@@ -23,7 +23,16 @@ import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
 
-export default function AllocationRow({ allocation }: { allocation: z.infer<typeof serverAllocationSchema> }) {
+interface AllocationRowProps {
+  allocation: z.infer<typeof serverAllocationSchema>;
+  isSelected?: boolean;
+  onSelectionChange?: (selected: boolean) => void;
+}
+
+const AllocationRow = forwardRef<HTMLTableRowElement, AllocationRowProps>(function AllocationRow(
+  { allocation, isSelected = false, onSelectionChange },
+  ref,
+) {
   const { t } = useTranslations();
   const { addToast } = useToast();
   const { server, updateServer } = useServerStore();
@@ -145,11 +154,17 @@ export default function AllocationRow({ allocation }: { allocation: z.infer<type
       >
         {({ items, openMenu }) => (
           <TableRow
+            ref={ref}
+            bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
             onContextMenu={(e) => {
               e.preventDefault();
               openMenu(e.clientX, e.clientY);
             }}
           >
+            {onSelectionChange !== undefined && (
+              <TableSelectionCell id={allocation.uuid} checked={isSelected} onChange={onSelectionChange} />
+            )}
+
             <td className='relative w-10 text-center'>
               {allocation.isPrimary && (
                 <Tooltip label={t('common.tooltip.primary', {})}>
@@ -189,4 +204,6 @@ export default function AllocationRow({ allocation }: { allocation: z.infer<type
       </ContextMenu>
     </>
   );
-}
+});
+
+export default AllocationRow;

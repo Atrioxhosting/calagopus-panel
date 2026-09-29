@@ -9,6 +9,7 @@ import {
   faHouse,
   faInfoCircle,
   faLayerGroup,
+  faMicrochip,
   faNetworkWired,
   faPenRuler,
   faShareNodes,
@@ -26,6 +27,7 @@ import AdminNodeBackups from './backups/AdminNodeBackups.tsx';
 import AdminNodeConfiguration from './configuration/AdminNodeConfiguration.tsx';
 import AdminNodeDatabaseAgentHosts from './database-agent-hosts/AdminNodeDatabaseAgentHosts.tsx';
 import AdminNodeDatabaseHosts from './database-hosts/AdminNodeDatabaseHosts.tsx';
+import AdminNodeDevices from './devices/AdminNodeDevices.tsx';
 import AdminNodeLogs from './logs/AdminNodeLogs.tsx';
 import AdminNodeMounts from './mounts/AdminNodeMounts.tsx';
 import NodeCreateOrUpdate from './NodeCreateOrUpdate.tsx';
@@ -99,6 +101,13 @@ export default function NodeView() {
                 path: `/mounts`,
                 element: <AdminNodeMounts node={node} />,
                 permission: 'nodes.mounts',
+              },
+              {
+                name: t('pages.admin.nodes.tabs.devices.title', {}),
+                icon: faMicrochip,
+                path: `/devices`,
+                element: <AdminNodeDevices node={node} />,
+                permission: 'nodes.devices',
               },
               {
                 name: t('pages.admin.nodes.tabs.databaseHosts.title', {}),

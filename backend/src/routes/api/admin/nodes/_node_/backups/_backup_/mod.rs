@@ -65,7 +65,7 @@ mod get {
     use serde::Serialize;
     use shared::{
         ApiError, GetState,
-        models::{IntoApiObject, user::GetPermissionManager},
+        models::{IntoApiObject, server_backup::ServerBackup, user::GetPermissionManager},
         response::{ApiResponse, ApiResponseResult},
     };
     use utoipa::ToSchema;
@@ -98,8 +98,12 @@ mod get {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("nodes.backups")?;
 
+        let retention_status = ServerBackup::retention_statuses(&state.database, [&backup.0])
+            .await?
+            .remove(&backup.0.uuid);
+
         ApiResponse::new_serialized(Response {
-            backup: backup.0.into_api_object(&state, ()).await?,
+            backup: backup.0.into_api_object(&state, retention_status).await?,
         })
         .ok()
     }

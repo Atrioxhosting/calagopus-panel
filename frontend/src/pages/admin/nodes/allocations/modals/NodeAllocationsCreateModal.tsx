@@ -6,6 +6,7 @@ import { z } from 'zod';
 import createNodeAllocations from '@/api/admin/nodes/allocations/createNodeAllocations.ts';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import Button from '@/elements/buttons/Button.tsx';
+import NodeAllocationIpInput from '@/elements/input/NodeAllocationIpInput.tsx';
 import TagsInput from '@/elements/input/TagsInput.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
@@ -81,8 +82,9 @@ export default function NodeAllocationsCreateModal({
       onSubmit={doCreate}
     >
       <Stack>
-        <TextInput
+        <NodeAllocationIpInput
           withAsterisk
+          nodeUuid={node.uuid}
           label={t('common.table.columns.ip', {})}
           placeholder={t('common.table.columns.ip', {})}
           {...form.getInputProps('ip')}

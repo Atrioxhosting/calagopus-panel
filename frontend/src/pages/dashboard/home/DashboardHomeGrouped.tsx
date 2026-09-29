@@ -90,6 +90,20 @@ export default function DashboardHomeGrouped() {
     });
   }, []);
 
+  const handleServersSelectionChange = useCallback((servers: z.infer<typeof serverSchema>[], selected: boolean) => {
+    setSelectedServers((previous) => {
+      const next = previous.clone();
+      for (const server of servers) {
+        if (selected) {
+          next.add(server);
+        } else {
+          next.delete(server);
+        }
+      }
+      return next;
+    });
+  }, []);
+
   const handleServerClick = useCallback((server: z.infer<typeof serverSchema>, event: React.MouseEvent) => {
     if (sKeyPressedRef.current) {
       event.preventDefault();
@@ -205,6 +219,7 @@ export default function DashboardHomeGrouped() {
                       dragHandleProps={dragHandleProps as unknown as ComponentProps<'button'>}
                       selectedServers={selectedServers}
                       onServerSelectionChange={handleServerSelectionChange}
+                      onServersSelectionChange={handleServersSelectionChange}
                       onServerClick={handleServerClick}
                       sKeyPressedRef={sKeyPressedRef}
                       isDropTarget={

@@ -134,6 +134,7 @@ export default function OobeServer({ onNext, onBack, canGoBack, skipFrom, data }
         pinnedCpus: [],
         startup: egg.startupCommands['Default'] || Object.values(egg.startupCommands)[0] || '',
         image: form.getValues().image,
+        labels: {},
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         hugepagesPassthroughEnabled: false,
         kvmPassthroughEnabled: false,

@@ -8,12 +8,12 @@ import {
   faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { z } from 'zod';
 import getDatabaseSize from '@/api/server/databases/getDatabaseSize.ts';
 import CopyOnClick from '@/elements/CopyOnClick.tsx';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import Code from '@/elements/typography/Code.tsx';
@@ -31,7 +31,16 @@ import DatabaseDetailsModal from './modals/DatabaseDetailsModal.tsx';
 import DatabaseEditModal from './modals/DatabaseEditModal.tsx';
 import DatabaseRecreateModal from './modals/DatabaseRecreateModal.tsx';
 
-export default function DatabaseRow({ database }: { database: z.infer<typeof serverDatabaseSchema> }) {
+interface DatabaseRowProps {
+  database: z.infer<typeof serverDatabaseSchema>;
+  isSelected?: boolean;
+  onSelectionChange?: (selected: boolean) => void;
+}
+
+const DatabaseRow = forwardRef<HTMLTableRowElement, DatabaseRowProps>(function DatabaseRow(
+  { database, isSelected = false, onSelectionChange },
+  ref,
+) {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const [openModal, setOpenModal] = useState<'edit' | 'details' | 'recreate' | 'delete' | null>(null);
@@ -110,11 +119,17 @@ export default function DatabaseRow({ database }: { database: z.infer<typeof ser
       >
         {({ items, openMenu }) => (
           <TableRow
+            ref={ref}
+            bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
             onContextMenu={(e) => {
               e.preventDefault();
               openMenu(e.clientX, e.clientY);
             }}
           >
+            {onSelectionChange !== undefined && (
+              <TableSelectionCell id={database.uuid} checked={isSelected} onChange={onSelectionChange} />
+            )}
+
             <TableData>{database.name}</TableData>
 
             <TableData>{databaseTypeLabelMapping[database.type]}</TableData>
@@ -145,4 +160,6 @@ export default function DatabaseRow({ database }: { database: z.infer<typeof ser
       </ContextMenu>
     </>
   );
-}
+});
+
+export default DatabaseRow;

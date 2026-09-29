@@ -16,7 +16,7 @@ pub const MINIMUM_PANEL_VERSION: semver::Version = semver::Version::new(1, 1, 0)
 pub enum PanelVersionError {
     Incompatible {
         required: semver::VersionReq,
-        current: semver::Version,
+        target: semver::Version,
     },
     AllowsOutdated {
         required: semver::VersionReq,
@@ -26,9 +26,9 @@ pub enum PanelVersionError {
 impl std::fmt::Display for PanelVersionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Incompatible { required, current } => write!(
+            Self::Incompatible { required, target } => write!(
                 f,
-                "requires panel version {required} but the current panel version ({current}) is incompatible"
+                "requires panel version {required} but panel version {target} is incompatible"
             ),
             Self::AllowsOutdated { required } => write!(
                 f,
@@ -124,9 +124,12 @@ impl MetadataToml {
 
     /// Check the extension's `panel_version` requirement. Extensions whose requirement
     /// admits panel versions older than [`MINIMUM_PANEL_VERSION`] are always declined;
-    /// compatibility with the current panel version is checked unless
-    /// `skip_compatibility` is set.
-    pub fn check_panel_version(&self, skip_compatibility: bool) -> Result<(), PanelVersionError> {
+    /// compatibility with `target` (the panel version the extension is built into,
+    /// which is not necessarily the running one) is checked when it is given.
+    pub fn check_panel_version(
+        &self,
+        target: Option<&semver::Version>,
+    ) -> Result<(), PanelVersionError> {
         let excludes_outdated = self.panel_version.comparators.iter().any(|comparator| {
             let lower_bound = match comparator.op {
                 semver::Op::Exact
@@ -153,21 +156,23 @@ impl MetadataToml {
             });
         }
 
-        if !skip_compatibility {
-            let current: semver::Version = crate::VERSION
-                .parse()
-                .expect("CARGO_PKG_VERSION is valid semver");
-
-            if !self.panel_version.matches(&current) {
-                return Err(PanelVersionError::Incompatible {
-                    required: self.panel_version.clone(),
-                    current,
-                });
-            }
+        if let Some(target) = target
+            && !self.panel_version.matches(target)
+        {
+            return Err(PanelVersionError::Incompatible {
+                required: self.panel_version.clone(),
+                target: target.clone(),
+            });
         }
 
         Ok(())
     }
+}
+
+pub fn running_panel_version() -> semver::Version {
+    crate::VERSION
+        .parse()
+        .expect("CARGO_PKG_VERSION is valid semver")
 }
 
 #[derive(Clone, Deserialize, Serialize)]

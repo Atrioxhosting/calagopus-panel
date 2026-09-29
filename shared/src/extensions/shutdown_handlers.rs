@@ -38,13 +38,20 @@ impl ShutdownHandlerBuilder {
         let state = self.state.clone();
         let tasks = Arc::clone(&self.tasks);
 
-        self.tasks.write().await.insert(
+        let previous = self.tasks.write().await.insert(
             name,
             ShutdownHandler {
                 name,
                 task: Box::new(move |state: State| Box::pin(shutdown_fn(state))),
             },
         );
+
+        if previous.is_some() {
+            tracing::warn!(
+                name,
+                "shutdown handler registered twice, replacing the previous one"
+            );
+        }
     }
 }
 

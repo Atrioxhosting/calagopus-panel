@@ -2,9 +2,8 @@ import { faCopy, faFolder, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Ref, useState } from 'react';
 import { createSearchParams, useNavigate } from 'react-router';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import TableLink from '@/elements/data-display/TableLink.tsx';
-import Checkbox from '@/elements/input/Checkbox.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
@@ -127,14 +126,7 @@ export default function AssetRow({
             }}
             ref={ref}
           >
-            <td className='pl-4 w-10 text-center'>
-              <Checkbox
-                id={asset.name}
-                checked={isSelected}
-                onChange={() => toggleSelectedAsset(asset)}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </td>
+            <TableSelectionCell id={asset.name} checked={isSelected} onChange={() => toggleSelectedAsset(asset)} />
 
             <TableData>
               <TableLink to={asset.url} target='_blank'>

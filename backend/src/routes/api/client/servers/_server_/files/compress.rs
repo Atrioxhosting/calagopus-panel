@@ -63,7 +63,7 @@ mod post {
         let files = data
             .files
             .into_iter()
-            .filter(|f| !server.is_ignored_either(std::path::Path::new(&data.root).join(f)))
+            .filter(|f| !server.is_ignored_subtree(std::path::Path::new(&data.root).join(f)))
             .collect();
 
         let request_body = wings_api::servers_server_files_compress::post::RequestBody {

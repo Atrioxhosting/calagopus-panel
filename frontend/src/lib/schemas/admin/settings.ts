@@ -11,6 +11,22 @@ export const adminSettingsApplicationSchema = z.object({
   banner: z.preprocess(nullableString, z.string().min(1).max(255).nullable()),
   bannerLight: z.preprocess(nullableString, z.string().min(1).max(255).nullable()),
   url: z.url({ protocol: /^https?$/ }).max(255),
+  additionalUrls: z
+    .array(z.string())
+    .max(32)
+    .refine(
+      (urls) =>
+        urls.every(
+          (url) =>
+            z
+              .url({ protocol: /^https?$/ })
+              .max(255)
+              .safeParse(url).success,
+        ),
+      {
+        message: 'Every URL must be a valid http or https URL',
+      },
+    ),
   language: z.string(),
   twoFactorRequirement: z.enum(['admins', 'all_users', 'none']),
   emailTwoFactorEnabled: z.boolean(),
@@ -20,6 +36,7 @@ export const adminSettingsApplicationSchema = z.object({
   sessionDurationSeconds: z.number().min(60).max(31536000),
   telemetryEnabled: z.boolean(),
   registrationEnabled: z.boolean(),
+  passwordLoginEnabled: z.boolean(),
 });
 
 export const adminSettingsCaptchaProviderNoneSchema = z.object({
@@ -214,6 +231,7 @@ export const adminSettingsRatelimitsSchema = z.object({
   clientServersFilesPullQuery: adminSettingsRatelimitConfigurationSchema,
   remote: adminSettingsRatelimitConfigurationSchema,
   remoteSftpAuth: adminSettingsRatelimitConfigurationSchema,
+  remoteEnroll: adminSettingsRatelimitConfigurationSchema,
   exemptIps: z.array(z.ipv4().or(z.ipv6()).or(z.cidrv4()).or(z.cidrv6())).max(256),
   exemptApiKeys: z.array(z.uuid()).max(256),
 });

@@ -17,7 +17,6 @@ use tower_http::normalize_path::NormalizePathLayer;
 
 mod bins;
 
-#[cfg(target_arch = "x86_64")]
 #[global_allocator]
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 

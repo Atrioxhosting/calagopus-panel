@@ -12,6 +12,7 @@ mod get {
     #[derive(ToSchema, Serialize)]
     struct ResponseApp<'a> {
         url: &'a str,
+        additional_urls: &'a [compact_str::CompactString],
         icon: &'a str,
         icon_light: Option<&'a str>,
         banner: Option<&'a str>,
@@ -19,6 +20,7 @@ mod get {
         name: &'a str,
         language: &'a str,
         registration_enabled: bool,
+        password_login_enabled: bool,
         email_two_factor_enabled: bool,
         email_verification_required: bool,
         two_factor_accepted_methods: &'a [shared::settings::app::TwoFactorMethod],
@@ -96,6 +98,7 @@ mod get {
             captcha_provider: settings.captcha_provider.to_public_provider(),
             app: ResponseApp {
                 url: &settings.app.url,
+                additional_urls: &settings.app.additional_urls,
                 icon: &settings.app.icon,
                 icon_light: settings.app.icon_light.as_deref(),
                 banner: settings.app.banner.as_deref(),
@@ -103,6 +106,7 @@ mod get {
                 name: &settings.app.name,
                 language: &settings.app.language,
                 registration_enabled: settings.app.registration_enabled,
+                password_login_enabled: settings.app.password_login_enabled,
                 email_two_factor_enabled: settings.app.email_two_factor_enabled,
                 email_verification_required: settings.app.email_verification_required,
                 two_factor_accepted_methods: &settings.app.two_factor_accepted_methods,

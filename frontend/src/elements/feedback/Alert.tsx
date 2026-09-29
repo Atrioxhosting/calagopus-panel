@@ -9,7 +9,11 @@ const Alert = forwardRef<HTMLDivElement, AlertProps>(({ className, styles, ...re
     <MantineAlert
       ref={ref}
       className={classNames(className, 'text-2xl')}
-      styles={deepmerge(styles, { wrapper: { width: '100%' }, icon: { alignSelf: 'center' } })}
+      styles={deepmerge(styles, {
+        wrapper: { width: '100%' },
+        body: { justifyContent: 'center' },
+        icon: { alignSelf: 'center', marginTop: 0 },
+      })}
       {...rest}
     />
   );

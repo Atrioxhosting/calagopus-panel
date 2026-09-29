@@ -1,8 +1,7 @@
 import { forwardRef, memo } from 'react';
 import { z } from 'zod';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import TableLink from '@/elements/data-display/TableLink.tsx';
-import Checkbox from '@/elements/input/Checkbox.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
 import RedactedText from '@/elements/typography/RedactedText.tsx';
@@ -46,21 +45,18 @@ const NodeAllocationRow = memo(
         }}
         ref={ref}
       >
-        <td className='pl-4 relative cursor-pointer w-10 text-center'>
-          <Checkbox
-            id={allocation.uuid}
-            checked={isNodeAllocationSelected}
-            disabled={selectedAllMatching}
-            onChange={() => {
-              if (isNodeAllocationSelected) {
-                removeSelectedNodeAllocation(allocation);
-              } else {
-                addSelectedNodeAllocation(allocation);
-              }
-            }}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </td>
+        <TableSelectionCell
+          id={allocation.uuid}
+          checked={isNodeAllocationSelected}
+          disabled={selectedAllMatching}
+          onChange={() => {
+            if (isNodeAllocationSelected) {
+              removeSelectedNodeAllocation(allocation);
+            } else {
+              addSelectedNodeAllocation(allocation);
+            }
+          }}
+        />
 
         <TableData>
           <Code>{allocation.uuid}</Code>

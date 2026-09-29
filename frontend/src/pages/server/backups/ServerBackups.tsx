@@ -1,7 +1,17 @@
 import { faBoxArchive, faChevronDown, faLayerGroup, faPlus, faSearch } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ComponentProps, memo, ReactNode, startTransition, useCallback, useMemo, useState } from 'react';
+import {
+  ComponentProps,
+  memo,
+  ReactNode,
+  Ref,
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { z } from 'zod';
 import { getEmptyPaginationSet, httpErrorToHuman } from '@/api/axios.ts';
 import getBackups from '@/api/server/backups/getBackups.ts';
@@ -11,8 +21,9 @@ import updateBackupGroupsOrder from '@/api/server/backups/groups/updateBackupGro
 import Button from '@/elements/buttons/Button.tsx';
 import ServerContentContainer from '@/elements/containers/ServerContentContainer.tsx';
 import Badge from '@/elements/data-display/Badge.tsx';
-import Table from '@/elements/data-display/Table.tsx';
+import Table, { tableSelectionHeader } from '@/elements/data-display/Table.tsx';
 import { DndContainer, DndItem, SortableItem } from '@/elements/dnd/DragAndDrop.tsx';
+import SelectionArea from '@/elements/dnd/SelectionArea.tsx';
 import EmptyState from '@/elements/feedback/EmptyState.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Group from '@/elements/layout/Group.tsx';
@@ -23,12 +34,14 @@ import Text from '@/elements/typography/Text.tsx';
 import Title from '@/elements/typography/Title.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { serverBackupFilterSchema, serverBackupGroupSchema, serverBackupSchema } from '@/lib/schemas/server/backups.ts';
+import { useUserSetting } from '@/lib/userSettings.ts';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
 import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useGlobalStore } from '@/stores/global.ts';
 import { useServerStore } from '@/stores/server.ts';
+import BackupActionBar from './BackupActionBar.tsx';
 import BackupGroupCard from './BackupGroupCard.tsx';
 import BackupGroupItem from './BackupGroupItem.tsx';
 import BackupRow from './BackupRow.tsx';
@@ -36,12 +49,16 @@ import BackupsSubNavigation from './BackupsSubNavigation.tsx';
 import { getBackupColumns } from './columns.ts';
 import BackupCreateModal from './modals/BackupCreateModal.tsx';
 import BackupGroupCreateModal from './modals/BackupGroupCreateModal.tsx';
+import { useBackupSelection } from './useBackupSelection.ts';
 
 interface DndBackupGroup extends z.infer<typeof serverBackupGroupSchema>, DndItem {
   id: string;
 }
 
 const MemoizedBackupGroupItem = memo(BackupGroupItem);
+
+const expandedMapSchema = z.record(z.string(), z.boolean().catch(true));
+const EMPTY_EXPANDED_MAP: Record<string, boolean> = {};
 
 const EMPTY_BACKUPS = getEmptyPaginationSet<z.infer<typeof serverBackupSchema>>();
 
@@ -80,6 +97,7 @@ export default function ServerBackups({
   const [localBackups, setLocalBackups] = useState(EMPTY_BACKUPS);
 
   const [openModal, setOpenModal] = useState<'createBackup' | 'createGroup' | null>(null);
+  const [requestedScope, setRequestedScope] = useState<string | null>(null);
 
   const maxBackupGroupCount = useGlobalStore((state) => state.settings.server.maxBackupGroupCount);
 
@@ -94,7 +112,11 @@ export default function ServerBackups({
   const showGroups = variant === 'page';
   const showGroupLabels = variant === 'section';
   const columns = useMemo(
-    () => getBackupColumns({ kind: showKind, source: showSource, files: showFiles, locked: true }),
+    () => getBackupColumns({ kind: showKind, source: showSource, files: showFiles, retention: false, locked: true }),
+    [showKind, showSource, showFiles],
+  );
+  const groupColumns = useMemo(
+    () => getBackupColumns({ kind: showKind, source: showSource, files: showFiles, retention: true, locked: true }),
     [showKind, showSource, showFiles],
   );
 
@@ -119,7 +141,43 @@ export default function ServerBackups({
     queryFn: () => getBackupUsage(server.uuid),
   });
 
+  const canSelect = useServerCan(['backups.update', 'backups.delete']);
+  const [expandedGroups] = useUserSetting('server::backup_groups_expanded', expandedMapSchema, EMPTY_EXPANDED_MAP);
+
   const sortedGroups = useMemo(() => [...(groups ?? [])].sort((a, b) => a.order - b.order), [groups]);
+  const hasGroups = showGroups && sortedGroups.length > 0;
+  const visibleScopes = hasGroups
+    ? sortedGroups.filter((group) => expandedGroups[group.uuid] !== false).map((group) => group.uuid)
+    : [];
+
+  if (!hasGroups || expandedGroups[`${server.uuid}-ungrouped`] !== false) {
+    visibleScopes.push('ungrouped');
+  }
+
+  const activeScope = canSelect
+    ? (visibleScopes.find((scope) => scope === requestedScope) ?? visibleScopes[0] ?? null)
+    : null;
+
+  useEffect(() => {
+    if (requestedScope !== activeScope) setRequestedScope(activeScope);
+  }, [requestedScope, activeScope]);
+
+  const {
+    selected: selectedBackups,
+    toggle: toggleBackup,
+    clear: clearSelection,
+    selectAll,
+    allSelected,
+    scopeProps,
+    selectionAreaProps,
+  } = useBackupSelection({
+    scope: 'ungrouped',
+    activeScope,
+    setActiveScope: setRequestedScope,
+    items: backups.data,
+    enabled: canSelect,
+  });
+
   const groupNames = useMemo(() => new Map((groups ?? []).map((group) => [group.uuid, group.name])), [groups]);
 
   const dndGroups: DndBackupGroup[] = useMemo(
@@ -164,7 +222,6 @@ export default function ServerBackups({
       )
     : (createBlockedReason ?? '');
 
-  const hasGroups = showGroups && sortedGroups.length > 0;
   const groupsSettled = !canReadGroups || groups !== undefined;
   const isEmpty =
     variant === 'page' &&
@@ -248,47 +305,70 @@ export default function ServerBackups({
     );
 
   const ungroupedTable = (
-    <Table
-      flush={hasGroups}
-      columns={columns.headers}
-      loading={loading}
-      pagination={backups}
-      onPageSelect={setPage}
-      error={error}
-      empty={
-        isEmpty ? (
-          <EmptyState
-            flush
-            icon={faBoxArchive}
-            title={t('pages.server.backups.empty.title', {})}
-            description={
-              canCreateBackup
-                ? t('pages.server.backups.empty.description', {})
-                : t('pages.server.backups.empty.descriptionReadOnly', {})
-            }
-          >
-            {createControl}
-          </EmptyState>
-        ) : undefined
-      }
-    >
-      {backups.data.map((backup) => (
-        <BackupRow
-          backup={backup}
-          backupGroupName={
-            canReadGroups && showGroupLabels && backup.backupGroupUuid
-              ? groupNames.get(backup.backupGroupUuid)
-              : undefined
+    <div {...scopeProps}>
+      <SelectionArea {...selectionAreaProps} disabled={!canSelect}>
+        <Table
+          flush={hasGroups}
+          columns={
+            canSelect
+              ? [
+                  tableSelectionHeader({
+                    checked: allSelected,
+                    indeterminate: selectedBackups.size > 0 && !allSelected,
+                    onChange: (checked) => (checked ? selectAll() : clearSelection()),
+                  }),
+                  ...columns.headers,
+                ]
+              : columns.headers
           }
-          columns={columns}
-          key={backup.uuid}
-        />
-      ))}
-    </Table>
+          loading={loading}
+          pagination={backups}
+          onPageSelect={setPage}
+          error={error}
+          empty={
+            isEmpty ? (
+              <EmptyState
+                flush
+                icon={faBoxArchive}
+                title={t('pages.server.backups.empty.title', {})}
+                description={
+                  canCreateBackup
+                    ? t('pages.server.backups.empty.description', {})
+                    : t('pages.server.backups.empty.descriptionReadOnly', {})
+                }
+              >
+                {createControl}
+              </EmptyState>
+            ) : undefined
+          }
+        >
+          {backups.data.map((backup) => (
+            <SelectionArea.Selectable key={backup.uuid} item={backup}>
+              {(innerRef: Ref<HTMLElement>) => (
+                <BackupRow
+                  backup={backup}
+                  backupGroupName={
+                    canReadGroups && showGroupLabels && backup.backupGroupUuid
+                      ? groupNames.get(backup.backupGroupUuid)
+                      : undefined
+                  }
+                  columns={columns}
+                  ref={innerRef as Ref<HTMLTableRowElement>}
+                  isSelected={selectedBackups.has(backup.uuid)}
+                  onSelectionChange={canSelect ? (selected) => toggleBackup(backup, selected) : undefined}
+                />
+              )}
+            </SelectionArea.Selectable>
+          ))}
+        </Table>
+      </SelectionArea>
+    </div>
   );
 
   const body = (
     <>
+      <BackupActionBar selectedBackups={selectedBackups} groups={sortedGroups} clearSelection={clearSelection} />
+
       <BackupCreateModal
         createDefaults={createDefaults}
         opened={openModal === 'createBackup'}
@@ -308,7 +388,7 @@ export default function ServerBackups({
                   <div style={{ cursor: 'grabbing' }} className='shadow-xl rounded-xl'>
                     <MemoizedBackupGroupItem
                       group={activeGroup}
-                      columns={columns}
+                      columns={groupColumns}
                       dragHandleProps={{ style: { cursor: 'grabbing' } }}
                     />
                   </div>
@@ -323,7 +403,10 @@ export default function ServerBackups({
                     renderItem={({ dragHandleProps }) => (
                       <MemoizedBackupGroupItem
                         group={group}
-                        columns={columns}
+                        groups={sortedGroups}
+                        columns={groupColumns}
+                        activeScope={activeScope}
+                        setActiveScope={setRequestedScope}
                         dragHandleProps={dragHandleProps as unknown as ComponentProps<'button'>}
                       />
                     )}
@@ -332,11 +415,21 @@ export default function ServerBackups({
               }
             </DndContainer>
           ) : (
-            sortedGroups.map((group) => <BackupGroupItem key={group.uuid} group={group} columns={columns} />)
+            sortedGroups.map((group) => (
+              <BackupGroupItem
+                key={group.uuid}
+                group={group}
+                groups={sortedGroups}
+                columns={groupColumns}
+                activeScope={activeScope}
+                setActiveScope={setRequestedScope}
+              />
+            ))
           )}
 
           {hasGroups ? (
             <BackupGroupCard
+              {...scopeProps}
               storageKey={`${server.uuid}-ungrouped`}
               header={
                 <>

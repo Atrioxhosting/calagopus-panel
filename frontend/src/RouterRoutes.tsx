@@ -12,6 +12,7 @@ import { ContextMenuProvider } from '@/elements/overlays/ContextMenu.tsx';
 import OobeGuard from '@/routers/guards/OobeGuard.tsx';
 import ContentContainer from './elements/containers/ContentContainer.tsx';
 import ExtensionSlot from './elements/ExtensionSlot.tsx';
+import UploadConflictHost from './elements/files/UploadConflictHost.tsx';
 import UploadsCard from './elements/files/UploadsCard.tsx';
 import QuickActionsPalette from './elements/quickActions/QuickActionsPalette.tsx';
 import { useCurrentWindow } from './providers/CurrentWindowProvider.tsx';
@@ -112,6 +113,7 @@ export default function RouterRoutes({ isNormal }: { isNormal: boolean }) {
               </Suspense>
 
               {isNormal && <UploadsCard />}
+              {isNormal && <UploadConflictHost />}
               {isNormal && <QuickActionsPalette />}
 
               <ExtensionSlot

@@ -45,6 +45,8 @@ export default function Login() {
   const [passkeyOptions, setPasskeyOptions] = useState<CredentialRequestOptions>();
   const captcha = useCaptcha();
 
+  const webauthnEnabled = settings.webauthn?.enabled !== false && window.isSecureContext;
+
   const usernameForm = useForm({
     initialValues: {
       username: '',
@@ -93,7 +95,7 @@ export default function Login() {
       return;
     }
 
-    if (settings.webauthn?.enabled === false) {
+    if (!webauthnEnabled) {
       setStep('password');
       return;
     }
@@ -104,6 +106,11 @@ export default function Login() {
     getSecurityKeys(usernameForm.values.username)
       .then((keys) => {
         if (keys.options.publicKey?.allowCredentials?.length === 0) {
+          if (!settings.app.passwordLoginEnabled) {
+            setError(t('pages.auth.login.error.passwordLoginDisabled', {}));
+            return;
+          }
+
           setStep('password');
         } else {
           startTransition(() => {
@@ -239,7 +246,7 @@ export default function Login() {
             })}
           </Alert>
         )}
-        {settings.app.url !== window.location.origin && (
+        {![settings.app.url, ...settings.app.additionalUrls].includes(window.location.origin) && (
           <Alert
             icon={<FontAwesomeIcon icon={faExclamationTriangle} />}
             color='yellow'
@@ -269,41 +276,51 @@ export default function Login() {
           <>
             <div>
               <Title order={2}>{t('pages.auth.login.step.username.title', {})}</Title>
-              <Text className='text-neutral-400!'>{t('pages.auth.login.step.username.subtitle', {})}</Text>
+              <Text className='text-neutral-400!'>
+                {settings.app.passwordLoginEnabled || webauthnEnabled
+                  ? t('pages.auth.login.step.username.subtitle', {})
+                  : t('pages.auth.login.step.username.subtitleProviderOnly', {})}
+              </Text>
             </div>
             <Card>
               <Stack>
-                <div className='flex flex-col gap-1'>
-                  <TextInput
-                    label={t('common.form.usernameOrEmail', {})}
-                    placeholder={t('pages.auth.login.step.username.form.usernameOrEmailPlaceholder', {})}
-                    autoComplete='username'
-                    onKeyDown={(e) => e.key === 'Enter' && doSubmitUsername()}
-                    leftSection={<FontAwesomeIcon icon={faUser} />}
-                    size='md'
-                    autoFocus
-                    {...usernameForm.getInputProps('username')}
-                  />
-                  <NavLink className='text-neutral-400' to='/auth/forgot-password'>
-                    {t('pages.auth.login.step.username.link.forgotPassword', {})}
-                  </NavLink>
-                </div>
-                <Button
-                  onClick={doSubmitUsername}
-                  disabled={!usernameForm.isValid()}
-                  loading={loading}
-                  size='md'
-                  fullWidth
-                >
-                  {t('common.button.continue', {})}
-                </Button>
+                {(settings.app.passwordLoginEnabled || webauthnEnabled) && (
+                  <>
+                    <div className='flex flex-col gap-1'>
+                      <TextInput
+                        label={t('common.form.usernameOrEmail', {})}
+                        placeholder={t('pages.auth.login.step.username.form.usernameOrEmailPlaceholder', {})}
+                        autoComplete='username'
+                        onKeyDown={(e) => e.key === 'Enter' && doSubmitUsername()}
+                        leftSection={<FontAwesomeIcon icon={faUser} />}
+                        size='md'
+                        autoFocus
+                        {...usernameForm.getInputProps('username')}
+                      />
+                      {settings.app.passwordLoginEnabled && (
+                        <NavLink className='text-neutral-400' to='/auth/forgot-password'>
+                          {t('pages.auth.login.step.username.link.forgotPassword', {})}
+                        </NavLink>
+                      )}
+                    </div>
+                    <Button
+                      onClick={doSubmitUsername}
+                      disabled={!usernameForm.isValid()}
+                      loading={loading}
+                      size='md'
+                      fullWidth
+                    >
+                      {t('common.button.continue', {})}
+                    </Button>
 
-                {(oAuthProviders.length > 0 ||
-                  (settings.webauthn?.enabled !== false && settings.webauthn?.allowDiscoverable !== false)) && (
-                  <Divider label={t('common.divider.or', {})} labelPosition='center' />
+                    {(oAuthProviders.length > 0 ||
+                      (webauthnEnabled && settings.webauthn?.allowDiscoverable !== false)) && (
+                      <Divider label={t('common.divider.or', {})} labelPosition='center' />
+                    )}
+                  </>
                 )}
 
-                {settings.webauthn?.enabled !== false && settings.webauthn?.allowDiscoverable !== false && (
+                {webauthnEnabled && settings.webauthn?.allowDiscoverable !== false && (
                   <Button
                     variant='light'
                     onClick={doDiscoverablePasskeyAuth}
@@ -347,7 +364,7 @@ export default function Login() {
                     </>
                   )
                 )}
-                {settings.app.registrationEnabled && (
+                {settings.app.registrationEnabled && settings.app.passwordLoginEnabled && (
                   <NavLink to='/auth/register' className='text-neutral-400 flex gap-1 items-center'>
                     {t('pages.auth.login.step.username.link.notRegistered', {})}{' '}
                     <p>{t('pages.auth.login.step.username.link.createAccount', {})}</p>
@@ -380,9 +397,11 @@ export default function Login() {
 
                 <Divider label={t('common.divider.or', {})} labelPosition='center' />
 
-                <Button variant='light' onClick={() => setStep('password')} size='md' fullWidth>
-                  {t('pages.auth.login.step.passkey.button.usePassword', {})}
-                </Button>
+                {settings.app.passwordLoginEnabled && (
+                  <Button variant='light' onClick={() => setStep('password')} size='md' fullWidth>
+                    {t('pages.auth.login.step.passkey.button.usePassword', {})}
+                  </Button>
+                )}
                 <Button variant='light' onClick={() => setStep('username')} size='md' fullWidth>
                   {t('common.button.back', {})}
                 </Button>

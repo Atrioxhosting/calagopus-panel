@@ -55,6 +55,7 @@ export default function AdminDatabaseAgentHostBackups({
           t('common.table.columns.node', {}),
           t('common.table.columns.checksum', {}),
           t('common.table.columns.size', {}),
+          t('pages.server.backups.table.columns.retention', {}),
           t('common.table.columns.created', {}),
           '',
         ]}

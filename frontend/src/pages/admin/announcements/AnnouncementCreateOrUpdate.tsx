@@ -59,9 +59,9 @@ export default function AnnouncementCreateOrUpdate({
     z.infer<typeof adminAnnouncementSchema>
   >({
     form,
-    createFn: () => createAnnouncement(adminAnnouncementCreateSchema.parse(form.getValues())),
+    createFn: () => createAnnouncement(form.getTransformedValues()),
     updateFn: contextAnnouncement
-      ? () => updateAnnouncement(contextAnnouncement.uuid, adminAnnouncementUpdateSchema.parse(form.getValues()))
+      ? () => updateAnnouncement(contextAnnouncement.uuid, form.getTransformedValues())
       : undefined,
     deleteFn: contextAnnouncement ? () => deleteAnnouncement(contextAnnouncement.uuid) : undefined,
     doUpdate: !!contextAnnouncement,

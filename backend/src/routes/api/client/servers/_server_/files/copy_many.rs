@@ -69,7 +69,7 @@ mod post {
                 .files
                 .into_iter()
                 .filter(|f| {
-                    !server.is_ignored_either(Path::new(&data.root).join(&f.from))
+                    !server.is_ignored_subtree(Path::new(&data.root).join(&f.from))
                         && !server.is_ignored_either(Path::new(&data.root).join(&f.to))
                 })
                 .collect(),

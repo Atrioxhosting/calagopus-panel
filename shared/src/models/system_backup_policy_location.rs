@@ -111,11 +111,12 @@ impl SystemBackupPolicyLocation {
             JOIN locations ON locations.uuid = system_backup_policy_locations.location_uuid
             WHERE
                 system_backup_policy_locations.system_backup_policy_uuid = $1
-                AND ($2 IS NULL OR locations.name ILIKE '%' || $2 || '%')
+                AND {search}
             ORDER BY system_backup_policy_locations.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["locations.name"], &["locations.uuid"])
         )))
         .bind(system_backup_policy_uuid)
         .bind(search)

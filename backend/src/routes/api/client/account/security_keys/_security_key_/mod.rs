@@ -83,17 +83,24 @@ mod delete {
                 .ok();
         }
 
+        let can_login_with_password = state
+            .settings
+            .get_as(|s| user.can_login_with_password(s))
+            .await?;
+
         let mut transaction = state.database.write().begin().await?;
 
-        if user.password_login_disabled
+        if !can_login_with_password
             && security_key.passkey.is_some()
             && UserSecurityKey::count_usable_by_user_uuid_for_update(&mut transaction, user.uuid)
                 .await?
                 <= 1
         {
-            return ApiResponse::error(
-                "re-enable password login before removing your last security key",
-            )
+            return ApiResponse::error(if user.password_login_disabled {
+                "re-enable password login before removing your last security key"
+            } else {
+                "password login is disabled on this instance, removing your last security key would lock you out"
+            })
             .with_status(StatusCode::CONFLICT)
             .ok();
         }

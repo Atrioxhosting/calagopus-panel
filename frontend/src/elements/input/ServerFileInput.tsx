@@ -5,12 +5,15 @@ import { useQuery } from '@tanstack/react-query';
 import debounce from 'debounce';
 import { useEffect, useMemo, useState } from 'react';
 import { makeComponentHookable } from 'shared';
-import loadDirectory, { DirectoryResponse } from '@/api/server/files/loadDirectory.ts';
+import { z } from 'zod';
+import loadDirectory from '@/api/server/files/loadDirectory.ts';
+import statFiles from '@/api/server/files/statFiles.ts';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import Autocomplete from '@/elements/input/Autocomplete.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
+import { serverDirectoryEntrySchema } from '@/lib/schemas/server/files.ts';
 import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -33,13 +36,13 @@ function splitPath(value: string): { directory: string; prefix: string } {
 }
 
 function checkEntry(
-  entries: DirectoryResponse['entries'] | undefined,
+  entries: z.infer<typeof serverDirectoryEntrySchema>[] | undefined,
   name: string,
   mode: 'file' | 'directory',
 ): 'notFound' | 'isDirectory' | null {
-  if (!entries || name === '' || entries.total > entries.data.length) return null;
+  if (!entries || name === '') return null;
 
-  const entry = entries.data.find((candidate) => candidate.name === name);
+  const entry = entries.find((candidate) => candidate.name === name);
   if (!entry) return 'notFound';
 
   return mode === 'file' && entry.directory ? 'isDirectory' : null;
@@ -83,10 +86,17 @@ function ServerFileInput({ serverUuid, value, onChange, mode = 'file', descripti
   }, [data, directory, prefix, mode]);
 
   const settled = splitPath(settledValue);
+
+  const { data: statEntries } = useQuery({
+    queryKey: queryKeys.server(serverUuid).files.pathStat(settled.directory, [settled.prefix]),
+    queryFn: () => statFiles(serverUuid, `/${settled.directory}`, [settled.prefix]),
+    enabled: canRead && settled.prefix !== '',
+    staleTime: 30_000,
+    retry: false,
+  });
+
   const warning =
-    settled.directory === directory && settled.prefix === prefix
-      ? checkEntry(data?.entries, settled.prefix, mode)
-      : null;
+    settled.directory === directory && settled.prefix === prefix ? checkEntry(statEntries, settled.prefix, mode) : null;
 
   return (
     <Autocomplete

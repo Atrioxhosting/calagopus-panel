@@ -1,14 +1,14 @@
 import { faCheck, faMinus, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import attachMount from '@/api/server/mounts/attachMount.ts';
 import detachMount from '@/api/server/mounts/detachMount.ts';
 import ActionIcon from '@/elements/buttons/ActionIcon.tsx';
 import { ServerCan } from '@/elements/Can.tsx';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import Tooltip from '@/elements/overlays/Tooltip.tsx';
@@ -19,7 +19,16 @@ import { useToast } from '@/providers/contexts/toastContext.ts';
 import { useTranslations } from '@/providers/contexts/translationContext.ts';
 import { useServerStore } from '@/stores/server.ts';
 
-export const MountRow = ({ contextMount }: { contextMount: z.infer<typeof serverMountSchema> }) => {
+interface MountRowProps {
+  contextMount: z.infer<typeof serverMountSchema>;
+  isSelected?: boolean;
+  onSelectionChange?: (selected: boolean) => void;
+}
+
+export const MountRow = forwardRef<HTMLTableRowElement, MountRowProps>(function MountRow(
+  { contextMount, isSelected = false, onSelectionChange },
+  ref,
+) {
   const { t } = useTranslations();
   const { addToast } = useToast();
   const server = useServerStore((state) => state.server);
@@ -94,7 +103,11 @@ export const MountRow = ({ contextMount }: { contextMount: z.infer<typeof server
         </ConfirmationModal>
       </ServerCan>
 
-      <TableRow>
+      <TableRow ref={ref} bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}>
+        {onSelectionChange !== undefined && (
+          <TableSelectionCell id={contextMount.uuid} checked={isSelected} onChange={onSelectionChange} />
+        )}
+
         <TableData>{contextMount.name}</TableData>
 
         <TableData>{contextMount.description}</TableData>
@@ -143,4 +156,4 @@ export const MountRow = ({ contextMount }: { contextMount: z.infer<typeof server
       </TableRow>
     </>
   );
-};
+});

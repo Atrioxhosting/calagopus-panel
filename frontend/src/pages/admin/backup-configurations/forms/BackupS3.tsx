@@ -8,8 +8,9 @@ import BackupProviderSection from './BackupProviderSection.tsx';
 
 type S3FormValues = z.infer<typeof adminBackupConfigurationS3Schema>;
 
-export default function BackupS3({ form }: { form: UseFormReturnType<S3FormValues> }) {
+export default function BackupS3({ form, onRemove }: { form: UseFormReturnType<S3FormValues>; onRemove?: () => void }) {
   const { t } = useTranslations();
+
   const fields: FieldDef<S3FormValues>[] = [
     { type: 'text', name: 'accessKey', label: t('common.form.accessKey', {}), required: true },
     {
@@ -44,7 +45,10 @@ export default function BackupS3({ form }: { form: UseFormReturnType<S3FormValue
   ];
 
   return (
-    <BackupProviderSection title={t('pages.admin.backupConfigurations.tabs.general.page.s3.title', {})}>
+    <BackupProviderSection
+      title={t('pages.admin.backupConfigurations.tabs.general.page.s3.title', {})}
+      onRemove={onRemove}
+    >
       <FormEngine form={form} fields={fields} />
     </BackupProviderSection>
   );

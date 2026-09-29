@@ -3,7 +3,7 @@
   "dialect": "postgres",
   "id": "09a84792-edba-4161-aaee-ce531efc979a",
   "prevIds": [
-    "85179881-d4d8-4f5f-9dcc-d6ee61e20161"
+    "08088c95-2963-49b7-9527-d5ce14a0ad6e"
   ],
   "ddl": [
     {
@@ -1715,7 +1715,7 @@
     {
       "type": "varchar(255)",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -1728,7 +1728,7 @@
     {
       "type": "text",
       "typeSchema": null,
-      "notNull": true,
+      "notNull": false,
       "dimensions": 0,
       "default": null,
       "generated": null,
@@ -2982,19 +2982,6 @@
       "generated": null,
       "identity": null,
       "name": "disk",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "nodes"
-    },
-    {
-      "type": "bigint",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "0",
-      "generated": null,
-      "identity": null,
-      "name": "bandwidth_per_gib",
       "entityType": "columns",
       "schema": "public",
       "table": "nodes"
@@ -5275,6 +5262,19 @@
       "table": "servers"
     },
     {
+      "type": "json",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'{}'",
+      "generated": null,
+      "identity": null,
+      "name": "labels",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "servers"
+    },
+    {
       "type": "jsonb",
       "typeSchema": null,
       "notNull": true,
@@ -5400,45 +5400,6 @@
       "generated": null,
       "identity": null,
       "name": "created",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "servers"
-    },
-    {
-      "type": "varchar(255)",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "billing_period_id",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "servers"
-    },
-    {
-      "type": "timestamp",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "billing_period_start",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "servers"
-    },
-    {
-      "type": "timestamp",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "billing_period_end",
       "entityType": "columns",
       "schema": "public",
       "table": "servers"
@@ -12660,6 +12621,58 @@
       "name": "tunnel_epoch",
       "entityType": "sequences",
       "schema": "public"
+    },
+    {
+      "type": "bigint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "bandwidth_per_gib",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "nodes"
+    },
+    {
+      "type": "varchar(255)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "billing_period_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "servers"
+    },
+    {
+      "type": "timestamp",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "billing_period_start",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "servers"
+    },
+    {
+      "type": "timestamp",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "billing_period_end",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "servers"
     }
   ],
   "renames": []

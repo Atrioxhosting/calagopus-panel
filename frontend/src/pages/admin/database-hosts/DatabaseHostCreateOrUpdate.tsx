@@ -51,9 +51,9 @@ export default function DatabaseHostCreateOrUpdate({
     z.infer<typeof adminDatabaseHostSchema>
   >({
     form,
-    createFn: () => createDatabaseHost(adminDatabaseHostCreateSchema.parse(form.getValues())),
+    createFn: () => createDatabaseHost(form.getTransformedValues() as z.infer<typeof adminDatabaseHostCreateSchema>),
     updateFn: contextDatabaseHost
-      ? () => updateDatabaseHost(contextDatabaseHost.uuid, adminDatabaseHostUpdateSchema.parse(form.getValues()))
+      ? () => updateDatabaseHost(contextDatabaseHost.uuid, form.getTransformedValues())
       : undefined,
     deleteFn: contextDatabaseHost
       ? () => deleteDatabaseHost(contextDatabaseHost.uuid, { force: deleteDoForce })

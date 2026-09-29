@@ -94,6 +94,7 @@ export default function OobeConfiguration({ onNext }: OobeComponentProps) {
       bannerLight: null,
       language: form.values.applicationLanguage,
       url: form.values.applicationUrl,
+      additionalUrls: [],
       twoFactorRequirement: 'none',
       emailTwoFactorEnabled: false,
       twoFactorAcceptedMethods: ['totp', 'security_key'],
@@ -102,6 +103,7 @@ export default function OobeConfiguration({ onNext }: OobeComponentProps) {
       sessionDurationSeconds: 7 * 24 * 3600,
       telemetryEnabled: true,
       registrationEnabled: form.values.applicationRegistration,
+      passwordLoginEnabled: true,
     })
       .then(() =>
         updateWebauthnSettings({

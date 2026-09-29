@@ -131,11 +131,12 @@ impl NodeDatabaseAgentHost {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM node_database_agent_hosts
             JOIN database_agent_hosts ON node_database_agent_hosts.database_agent_host_uuid = database_agent_hosts.uuid
-            WHERE node_database_agent_hosts.node_uuid = $1 AND ($2 IS NULL OR database_agent_hosts.name ILIKE '%' || $2 || '%')
+            WHERE node_database_agent_hosts.node_uuid = $1 AND {search}
             ORDER BY node_database_agent_hosts.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["database_agent_hosts.name"], &["database_agent_hosts.uuid"])
         )))
         .bind(node_uuid)
         .bind(search)

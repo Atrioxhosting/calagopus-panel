@@ -1,7 +1,7 @@
 import { faArrowLeft, faClipboard, faPaperPlane } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { DrawerProps } from '@mantine/core';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { getEmptyPaginationSet } from '@/api/axios.ts';
 import getServerActivity from '@/api/server/getServerActivity.ts';
@@ -53,12 +53,19 @@ export default function CommandHistoryDrawer({ opened, onClose, ...props }: Draw
     data: activities = getEmptyPaginationSet<z.infer<typeof serverActivitySchema>>(),
     loading,
     setPage,
+    refetch,
   } = useSearchablePaginatedTable({
     queryKey: queryKeys.server(server.uuid).activity.byEvent(null, 'server:console.command'),
     fetcher: (page) => getServerActivity(server.uuid, null, page, 'server:console.command'),
     modifyParams: false,
     canRequest: useServerCan('activity.read') && !isConflictingState(server, user),
   });
+
+  useEffect(() => {
+    if (opened) {
+      refetch();
+    }
+  }, [opened]);
 
   const handleRowClick = (activity: z.infer<typeof serverActivitySchema>) => {
     const data = activity.data as { command?: string } | null;

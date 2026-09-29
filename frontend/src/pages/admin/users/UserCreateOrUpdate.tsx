@@ -54,10 +54,8 @@ export default function UserCreateOrUpdate({ contextUser }: { contextUser?: z.in
 
   const { loading, doCreateOrUpdate, doDelete } = useResourceForm<UserFormValues, z.infer<typeof adminFullUserSchema>>({
     form,
-    createFn: () => createUser(adminUserUpdateSchema.parse(form.getValues())),
-    updateFn: contextUser
-      ? () => updateUser(contextUser.uuid, adminUserUpdateSchema.parse(form.getValues()))
-      : undefined,
+    createFn: () => createUser(form.getTransformedValues()),
+    updateFn: contextUser ? () => updateUser(contextUser.uuid, form.getTransformedValues()) : undefined,
     deleteFn: contextUser ? () => deleteUser(contextUser.uuid) : undefined,
     doUpdate: !!contextUser,
     basePath: '/admin/users',

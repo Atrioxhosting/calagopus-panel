@@ -385,6 +385,33 @@ impl Env {
         peer
     }
 
+    pub fn find_host(
+        &self,
+        headers: &HeaderMap,
+        uri: &axum::http::Uri,
+        connect_info: ConnectInfo<std::net::SocketAddr>,
+    ) -> Option<compact_str::CompactString> {
+        let peer = connect_info.ip();
+
+        if self
+            .app_trusted_proxies
+            .iter()
+            .any(|cidr| cidr.contains(&peer))
+            && let Some(forwarded) = headers.get("X-Forwarded-Host")
+            && let Ok(forwarded) = forwarded.to_str()
+            && let Some(host) = forwarded.split(',').next()
+            && !host.trim().is_empty()
+        {
+            return Some(compact_str::CompactString::from(host.trim()).to_ascii_lowercase());
+        }
+
+        headers
+            .get(axum::http::header::HOST)
+            .and_then(|host| host.to_str().ok())
+            .or_else(|| uri.authority().map(|authority| authority.as_str()))
+            .map(|host| compact_str::CompactString::from(host.trim()).to_ascii_lowercase())
+    }
+
     #[inline]
     pub fn is_debug(&self) -> bool {
         self.app_debug.load(std::sync::atomic::Ordering::Relaxed)

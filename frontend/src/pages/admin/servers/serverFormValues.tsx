@@ -2,6 +2,7 @@ import { UseFormReturnType } from '@mantine/form';
 import { useEffect, useMemo, useRef } from 'react';
 import { z } from 'zod';
 import type { FieldDef } from '@/elements/form-engine/index.ts';
+import MultiKeyValueInput from '@/elements/input/MultiKeyValueInput.tsx';
 import Select from '@/elements/input/Select.tsx';
 import TextArea from '@/elements/input/TextArea.tsx';
 import { getTimezoneOptions } from '@/lib/format/timezones.ts';
@@ -42,6 +43,7 @@ const baseServerFormValues = {
   pinnedCpus: [],
   startup: '',
   image: '',
+  labels: {},
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   hugepagesPassthroughEnabled: false,
   kvmPassthroughEnabled: false,
@@ -78,6 +80,7 @@ export const serverToFormValues = (server: AdminServer): Partial<ServerUpdateFor
   pinnedCpus: server.pinnedCpus,
   startup: server.startup,
   image: server.image,
+  labels: server.labels,
   timezone: server.timezone,
   hugepagesPassthroughEnabled: server.hugepagesPassthroughEnabled,
   kvmPassthroughEnabled: server.kvmPassthroughEnabled,
@@ -561,6 +564,22 @@ function buildServerConfigFields<T extends ServerEggAssignmentFormValues>(
     },
     timezoneField,
     buildStartupField<T>(t, { form, eggs }),
+    {
+      type: 'custom',
+      name: 'labels',
+      colSpan: 'full',
+      advanced: true,
+      render: (f) => (
+        <MultiKeyValueInput
+          label={t('pages.admin.servers.tabs.general.page.form.labels', {})}
+          description={t('pages.admin.servers.tabs.general.page.form.labelsDescription', {})}
+          options={(f.getValues().labels ?? {}) as Record<string, string>}
+          onChange={(labels) => f.setFieldValue('labels', labels as never)}
+          placeholderKey='com.example.tier'
+          placeholderValue='gold'
+        />
+      ),
+    },
     ...createOnlyFields,
     {
       type: 'switch',

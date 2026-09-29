@@ -127,7 +127,7 @@ export default function LoginCheckpoint() {
             })}
           </Alert>
         )}
-        {settings.app.url !== window.location.origin && (
+        {![settings.app.url, ...settings.app.additionalUrls].includes(window.location.origin) && (
           <Alert
             icon={<FontAwesomeIcon icon={faExclamationTriangle} />}
             color='yellow'

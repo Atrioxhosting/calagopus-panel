@@ -2,7 +2,6 @@ import { faFile, faFolder } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Anchor } from '@mantine/core';
 import classNames from 'classnames';
-import ignore from 'ignore';
 import { join } from 'pathe';
 import { useMemo, useState } from 'react';
 import loadDirectory from '@/api/server/files/loadDirectory.ts';
@@ -10,6 +9,7 @@ import Badge from '@/elements/data-display/Badge.tsx';
 import Breadcrumbs from '@/elements/data-display/Breadcrumbs.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import ScrollingText from '@/elements/ScrollingText.tsx';
+import { compileIgnoreList, type IgnoreVerdict } from '@/lib/files/ignoreList.ts';
 import { useResource } from '@/plugins/resource/useResource.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -17,7 +17,7 @@ export default function IgnoredFilesBrowser({ serverUuid, patterns }: { serverUu
   const { t } = useTranslations();
   const [path, setPath] = useState('/');
 
-  const matcher = useMemo(() => ignore().add(patterns), [patterns]);
+  const list = useMemo(() => compileIgnoreList(patterns), [patterns]);
 
   const { data, loading } = useResource({
     queryKey: ['ignored-files-browser', serverUuid, path],
@@ -32,10 +32,8 @@ export default function IgnoredFilesBrowser({ serverUuid, patterns }: { serverUu
     });
   }, [data]);
 
-  const isIgnored = (name: string, directory: boolean) => {
-    const relative = join(path, name).replace(/^\/+/, '') + (directory ? '/' : '');
-    return relative.length > 0 && matcher.ignores(relative);
-  };
+  const verdictOf = (name: string, directory: boolean): IgnoreVerdict =>
+    list ? list.verdict(join(path, name), directory) : 'skip';
 
   const pathSegments = path.split('/').filter(Boolean);
   const shownCount = data?.entries.data.length ?? 0;
@@ -71,7 +69,8 @@ export default function IgnoredFilesBrowser({ serverUuid, patterns }: { serverUu
           <p className='text-sm text-(--mantine-color-dimmed) px-3 py-2'>{t('common.label.emptyDirectory', {})}</p>
         ) : (
           entries.map((entry) => {
-            const ignored = isIgnored(entry.name, entry.directory);
+            const verdict = verdictOf(entry.name, entry.directory);
+            const ignored = verdict === 'skip';
             const content = (
               <>
                 <FontAwesomeIcon icon={entry.directory ? faFolder : faFile} className='text-(--mantine-color-dimmed)' />
@@ -81,6 +80,11 @@ export default function IgnoredFilesBrowser({ serverUuid, patterns }: { serverUu
                 {ignored && (
                   <Badge size='xs' color='red' variant='light' className='ml-auto shrink-0'>
                     {t('common.label.ignored', {})}
+                  </Badge>
+                )}
+                {verdict === 'descend' && (
+                  <Badge size='xs' color='yellow' variant='light' className='ml-auto shrink-0'>
+                    {t('common.label.partiallyIgnored', {})}
                   </Badge>
                 )}
               </>

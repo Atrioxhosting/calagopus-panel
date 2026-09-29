@@ -2,6 +2,7 @@ import { ContainerRegistry, Registry } from 'shared';
 import { z } from 'zod';
 import type { Props as ContainerProps } from '@/elements/containers/ServerContentContainer.tsx';
 import { serverBackupSchema } from '@/lib/schemas/server/backups.ts';
+import { ComponentListRegistry } from '../../../slices/componentList.ts';
 import { ContextMenuRegistry } from '../../../slices/contextMenu.ts';
 import { SubNavigationRegistry } from '../../../slices/subNavigation.ts';
 import { SystemRegistry } from './system.ts';
@@ -9,6 +10,7 @@ import { SystemRegistry } from './system.ts';
 export class BackupsRegistry implements Registry {
   public mergeFrom(other: this): this {
     this.container.mergeFrom(other.container);
+    this.actionBar.mergeFrom(other.actionBar);
     this.subNavigation.mergeFrom(other.subNavigation);
     this.backupContextMenu.mergeFrom(other.backupContextMenu);
     this.system.mergeFrom(other.system);
@@ -17,6 +19,7 @@ export class BackupsRegistry implements Registry {
   }
 
   public container: ContainerRegistry<ContainerProps> = new ContainerRegistry();
+  public actionBar: ComponentListRegistry = new ComponentListRegistry();
   public subNavigation: SubNavigationRegistry = new SubNavigationRegistry();
   public backupContextMenu: ContextMenuRegistry<{ backup: z.infer<typeof serverBackupSchema> }> =
     new ContextMenuRegistry();
@@ -24,6 +27,11 @@ export class BackupsRegistry implements Registry {
 
   public enterContainer(callback: (registry: ContainerRegistry<ContainerProps>) => unknown): this {
     callback(this.container);
+    return this;
+  }
+
+  public enterActionBar(callback: (registry: ComponentListRegistry) => unknown): this {
+    callback(this.actionBar);
     return this;
   }
 

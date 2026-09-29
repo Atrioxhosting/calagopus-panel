@@ -1,8 +1,11 @@
 import { ModalProps } from '@mantine/core';
+import { useQuery } from '@tanstack/react-query';
+import debounce from 'debounce';
 import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 import renameFiles from '@/api/server/files/renameFiles.ts';
+import statFiles from '@/api/server/files/statFiles.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Group from '@/elements/layout/Group.tsx';
@@ -13,6 +16,7 @@ import { ModalFooter } from '@/elements/modals/Modal.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import { buildRenamePreview, MassRenameOptions, RenameScope, RenameStatus } from '@/lib/files/massRename.ts';
 import { createUndoAction } from '@/lib/files/undoableFileMutation.ts';
+import { queryKeys } from '@/lib/queryKeys.ts';
 import { serverDirectoryEntrySchema } from '@/lib/schemas/server/files.ts';
 import { useUndoableToast } from '@/plugins/toast/useUndoableToast.ts';
 import { useFileManager } from '@/providers/contexts/fileManagerContext.ts';
@@ -52,6 +56,10 @@ const defaultOptions: MassRenameOptions = {
 
 const blockingStatuses: RenameStatus[] = ['invalid', 'invalidRegex', 'conflict', 'duplicate'];
 
+const noExistingNames = new Set<string>();
+
+const sameNames = (a: string[], b: string[]) => a.length === b.length && a.every((name, index) => name === b[index]);
+
 export default function MassRenameModal({ files, ...props }: Props) {
   const { t, tItem } = useTranslations();
   const { addToast } = useToast();
@@ -71,26 +79,63 @@ export default function MassRenameModal({ files, ...props }: Props) {
   const [expanded, setExpanded] = useState<Section | null>('match');
   const [loading, setLoading] = useState(false);
 
+  const [settledTargets, setSettledTargets] = useState<string[]>([]);
+  const updateSettledTargets = useMemo(() => debounce((next: string[]) => setSettledTargets(next), 400), []);
+
   useEffect(() => {
     if (!props.opened) {
       setOptions(defaultOptions);
       setExcluded(new Set());
       setExpanded('match');
       setLoading(false);
+      setSettledTargets([]);
     }
   }, [props.opened]);
 
-  const existingNames = useMemo(() => new Set(browsingEntries.data.map((entry) => entry.name)), [browsingEntries.data]);
+  const targetNames = useMemo(
+    () =>
+      buildRenamePreview(files, options, noExistingNames, excluded)
+        .filter((row) => row.included)
+        .map((row) => row.newName),
+    [files, options, excluded],
+  );
+
+  useEffect(() => {
+    updateSettledTargets(targetNames);
+  }, [targetNames]);
+
+  const {
+    data: takenTargets,
+    isFetching: checkingTargets,
+    isError: targetCheckFailed,
+  } = useQuery({
+    queryKey: queryKeys.server(server.uuid).files.pathStat(browsingDirectory, settledTargets),
+    queryFn: () => statFiles(server.uuid, browsingDirectory, settledTargets),
+    enabled: props.opened && settledTargets.length > 0,
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  const existingNames = useMemo(() => {
+    const names = new Set(browsingEntries.data.map((entry) => entry.name));
+    for (const entry of takenTargets ?? []) names.add(entry.name);
+    return names;
+  }, [browsingEntries.data, takenTargets]);
 
   const rows = useMemo(
     () => buildRenamePreview(files, options, existingNames, excluded),
     [files, options, existingNames, excluded],
   );
 
+  const targetsChecked =
+    targetNames.length === 0 ||
+    targetCheckFailed ||
+    (sameNames(targetNames, settledTargets) && !checkingTargets && takenTargets !== undefined);
+
   const changedRows = rows.filter((row) => row.status !== 'unchanged');
   const includedRows = rows.filter((row) => row.included);
   const hasBlocking = rows.some((row) => !excluded.has(row.name) && blockingStatuses.includes(row.status));
-  const canSubmit = includedRows.length > 0 && !hasBlocking;
+  const canSubmit = includedRows.length > 0 && !hasBlocking && targetsChecked;
 
   const toggleSection = (section: Section) => setExpanded((prev) => (prev === section ? null : section));
 

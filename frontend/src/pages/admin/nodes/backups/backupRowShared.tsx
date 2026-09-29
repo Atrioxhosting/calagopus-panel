@@ -2,6 +2,7 @@ import { faFileArrowDown } from '@fortawesome/free-solid-svg-icons';
 import { z } from 'zod';
 import downloadNodeBackup from '@/api/admin/nodes/backups/downloadNodeBackup.ts';
 import { httpErrorToHuman } from '@/api/axios.ts';
+import BackupRetentionStatusBadge from '@/elements/data-display/BackupRetentionStatusBadge.tsx';
 import BackupSourceLabel from '@/elements/data-display/BackupSourceLabel.tsx';
 import Badge from '@/elements/data-display/Badge.tsx';
 import { TableData } from '@/elements/data-display/Table.tsx';
@@ -92,6 +93,14 @@ export function BackupStatusCells({ backup, files = true }: { backup: ServerBack
 
       {backup.completed && files ? <TableData>{backup.files}</TableData> : null}
     </>
+  );
+}
+
+export function BackupRetentionCell({ backup }: { backup: ServerBackup }) {
+  return (
+    <TableData>
+      <BackupRetentionStatusBadge status={backup.retentionStatus} />
+    </TableData>
   );
 }
 

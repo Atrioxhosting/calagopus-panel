@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import updateCommandSnippet from '@/api/me/command-snippets/updateCommandSnippet.ts';
@@ -42,7 +41,7 @@ export default function CommandSnippetEditModal({ commandSnippet, ...props }: Pr
       eggs: [],
       command: '',
     },
-    validate: zod4Resolver(userCommandSnippetUpdateSchema),
+    schema: userCommandSnippetUpdateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await updateCommandSnippet(commandSnippet.uuid, values);

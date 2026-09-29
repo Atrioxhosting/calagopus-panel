@@ -205,6 +205,7 @@ export interface RegisteredFormIds {
   'admin.nodes.createOrUpdate': true;
   'admin.nodes.locationModal': true;
   'admin.mounts.createOrUpdate': true;
+  'admin.devices.createOrUpdate': true;
   'admin.backupConfigurations.createOrUpdate': true;
   'admin.backupConfigurations.pbs': true;
   'admin.backupConfigurations.s3': true;

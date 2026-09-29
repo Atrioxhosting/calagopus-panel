@@ -3,7 +3,7 @@ import { deepmerge } from 'deepmerge-ts';
 import { useEffect, useMemo, useState } from 'react';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import type { ExtendableSchema, FormId } from '@/elements/form-engine/index.ts';
-import { resolveFormValidation, tagFormId } from '@/elements/form-engine/useFormEngine.ts';
+import { resolveFormValidation, schemaFormOptions, tagFormId } from '@/elements/form-engine/useFormEngine.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 
 interface UseModalFormOptions<T extends Record<string, unknown>> extends UseFormInput<T> {
@@ -29,14 +29,18 @@ export function useModalForm<T extends Record<string, unknown>>({
 }: UseModalFormOptions<T>) {
   const { addToast } = useToast();
 
-  const resolved = useMemo(() => (formId ? resolveFormValidation(formId, schema) : undefined), [formId, schema]);
+  const resolved = useMemo(
+    () => (formId ? resolveFormValidation<T>(formId, schema) : { initialValues: {}, ...schemaFormOptions<T>(schema) }),
+    [formId, schema],
+  );
 
   const form = useForm<T>({
     ...formInput,
     initialValues: formInput.initialValues
-      ? (deepmerge(formInput.initialValues, resolved?.initialValues ?? {}) as T)
+      ? (deepmerge(formInput.initialValues, resolved.initialValues) as T)
       : undefined,
-    validate: resolved?.validate ?? formInput.validate,
+    validate: resolved.validate ?? formInput.validate,
+    transformValues: resolved.transformValues ?? formInput.transformValues,
     validateInputOnBlur,
   });
   if (formId) tagFormId(form, formId);

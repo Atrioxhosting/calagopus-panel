@@ -1,4 +1,11 @@
-import { faArrowUpRightFromSquare, faGripVertical, faMinus, faPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
+import {
+  faArrowUpRightFromSquare,
+  faGripVertical,
+  faMinus,
+  faPlus,
+  faTrash,
+  faTriangleExclamation,
+} from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Box, Group, Paper, Stack, Text, useComputedColorScheme } from '@mantine/core';
 import { ComponentProps, useCallback, useMemo, useState } from 'react';
@@ -8,6 +15,7 @@ import ActionIcon from '@/elements/buttons/ActionIcon.tsx';
 import Button from '@/elements/buttons/Button.tsx';
 import Badge from '@/elements/data-display/Badge.tsx';
 import { DndContainer, DndItem, SortableItem } from '@/elements/dnd/DragAndDrop.tsx';
+import Alert from '@/elements/feedback/Alert.tsx';
 import LocalizedTextInput from '@/elements/input/LocalizedTextInput.tsx';
 import Select from '@/elements/input/Select.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
@@ -297,6 +305,14 @@ export default function RouteOrderEditor({
 
   return (
     <Stack gap='xs'>
+      {availableRoutes.length > 0 && (
+        <Alert color='yellow' icon={<FontAwesomeIcon icon={faTriangleExclamation} />}>
+          {t('elements.routeOrderEditor.missingRoutes', {
+            routes: availableRoutes.map((r) => (typeof r.name === 'string' ? r.name : r.name!())).join(', '),
+          })}
+        </Alert>
+      )}
+
       {value.length > 0 ? (
         <DndContainer
           items={dndItems}

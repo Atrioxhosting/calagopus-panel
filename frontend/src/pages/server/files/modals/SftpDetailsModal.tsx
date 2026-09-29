@@ -1,19 +1,22 @@
-import { faExternalLink } from '@fortawesome/free-solid-svg-icons';
+import { faExternalLink, faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ModalProps } from '@mantine/core';
 import Button from '@/elements/buttons/Button.tsx';
 import CopyOnClick from '@/elements/CopyOnClick.tsx';
+import Alert from '@/elements/feedback/Alert.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import { Modal, ModalFooter } from '@/elements/modals/Modal.tsx';
 import Anchor from '@/elements/typography/Anchor.tsx';
 import { useRedactedAddress } from '@/plugins/privacy/useRedactAddresses.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import { useGlobalStore } from '@/stores/global.ts';
 import { useServerStore } from '@/stores/server.ts';
 
 export default function SftpDetailsModal({ ...props }: ModalProps) {
   const { t } = useTranslations();
   const { user } = useAuth();
+  const passwordLoginEnabled = useGlobalStore((state) => state.settings.app.passwordLoginEnabled);
   const server = useServerStore((state) => state.server);
   const displayHost = useRedactedAddress(server.sftpHost);
 
@@ -44,12 +47,18 @@ export default function SftpDetailsModal({ ...props }: ModalProps) {
           />
         </CopyOnClick>
 
-        <TextInput
-          label={t('common.form.password', {})}
-          value={t('common.form.yourControlPanelPassword', {})}
-          className='col-span-4 pointer-events-none'
-          readOnly
-        />
+        {user!.hasPassword && passwordLoginEnabled && !user!.passwordLoginDisabled ? (
+          <TextInput
+            label={t('common.form.password', {})}
+            value={t('common.form.yourControlPanelPassword', {})}
+            className='col-span-4 pointer-events-none'
+            readOnly
+          />
+        ) : (
+          <Alert className='col-span-4' color='yellow' icon={<FontAwesomeIcon icon={faTriangleExclamation} />}>
+            {t('common.alert.passwordAuthUnavailable', {})}
+          </Alert>
+        )}
       </div>
 
       <ModalFooter>

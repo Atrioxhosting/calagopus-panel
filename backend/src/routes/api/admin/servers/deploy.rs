@@ -99,6 +99,9 @@ mod post {
         #[garde(length(chars, min = 2, max = 255))]
         #[schema(min_length = 2, max_length = 255)]
         image: compact_str::CompactString,
+        #[garde(custom(shared::models::server::validate_labels))]
+        #[serde(default)]
+        labels: indexmap::IndexMap<compact_str::CompactString, compact_str::CompactString>,
         #[garde(skip)]
         #[schema(value_type = Option<String>)]
         timezone: Option<chrono_tz::Tz>,
@@ -321,6 +324,7 @@ mod post {
             pinned_cpus: data.pinned_cpus,
             startup: data.startup,
             image: data.image,
+            labels: data.labels,
             timezone: data.timezone,
             hugepages_passthrough_enabled: data.hugepages_passthrough_enabled,
             kvm_passthrough_enabled: data.kvm_passthrough_enabled,
@@ -361,6 +365,7 @@ mod post {
                     "pinned_cpus": server.pinned_cpus,
                     "startup": server.startup,
                     "image": server.image,
+                    "labels": server.labels,
                     "timezone": server.timezone,
 
                     "hugepages_passthrough_enabled": server.hugepages_passthrough_enabled,

@@ -119,7 +119,10 @@ class SelectionArea<T> extends Component<SelectionAreaProps<T>> {
   private mouseDown = false;
   private selectionStarted = false;
   private selectionMode: SelectionMode = 'replace';
+  private pointerMoved = false;
   private readonly SELECTION_THRESHOLD = 5;
+  // Horizontal drags leave text selectable; vertical drags start row selection.
+  private readonly VERTICAL_SELECTION_THRESHOLD = 10;
 
   private lastClientX = 0;
   private lastClientY = 0;
@@ -127,12 +130,14 @@ class SelectionArea<T> extends Component<SelectionAreaProps<T>> {
 
   private rAFId: number | null = null;
   private contextValue: SelectionContextType<unknown> | null = null;
+  private suppressingTextSelection = false;
 
   componentWillUnmount(): void {
     window.removeEventListener('mousemove', this.handleMouseMove);
     window.removeEventListener('mouseup', this.handleMouseUp);
     window.removeEventListener('scroll', this.handleScroll, { capture: true });
     if (this.rAFId !== null) cancelAnimationFrame(this.rAFId);
+    this.endTextSelectionSuppression();
     this.clearSelectionPreview();
   }
 
@@ -223,6 +228,9 @@ class SelectionArea<T> extends Component<SelectionAreaProps<T>> {
   private readonly handleMouseDown = (e: ReactMouseEvent<HTMLDivElement>): void => {
     if (this.props.disabled || e.button !== 0) return;
 
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('input:not([type="checkbox"]), textarea, select, [contenteditable="true"]')) return;
+
     const container = this.containerRef.current!;
     const containerRect = container.getBoundingClientRect();
 
@@ -231,6 +239,7 @@ class SelectionArea<T> extends Component<SelectionAreaProps<T>> {
     this.pendingSelectables.clear();
     this.currentlySelected = [];
     this.selectionStarted = false;
+    this.pointerMoved = false;
     this.selectionMode = e.ctrlKey || e.metaKey ? 'toggle' : e.shiftKey ? 'add' : 'replace';
     this.selectablesMap.forEach(({ element, item }) => {
       this.cacheSelectable(container, containerRect, element, item);
@@ -291,11 +300,21 @@ class SelectionArea<T> extends Component<SelectionAreaProps<T>> {
     const dx = Math.abs(x - this.startPoint.x);
     const dy = Math.abs(y - this.startPoint.y);
 
-    if (!this.selectionStarted && (dx > this.SELECTION_THRESHOLD || dy > this.SELECTION_THRESHOLD)) {
+    if (dx > this.SELECTION_THRESHOLD || dy > this.SELECTION_THRESHOLD) {
+      this.pointerMoved = true;
+    }
+
+    if (!this.selectionStarted && dy > this.VERTICAL_SELECTION_THRESHOLD) {
       this.selectionStarted = true;
+      this.beginTextSelectionSuppression();
       if (originalEvent) {
         this.props.onSelectedStart?.(originalEvent);
       }
+    }
+
+    if (this.suppressingTextSelection) {
+      const textSelection = window.getSelection();
+      if (textSelection && !textSelection.isCollapsed) textSelection.removeAllRanges();
     }
 
     if (this.selectionStarted) {
@@ -344,7 +363,7 @@ class SelectionArea<T> extends Component<SelectionAreaProps<T>> {
     this.measurePendingSelectables();
     if (this.mouseDown) this.updateSelection(e.clientX, e.clientY, e);
 
-    if (!this.props.disabled && !this.selectionStarted && this.mouseDown && this.props.fireEvents) {
+    if (!this.props.disabled && !this.pointerMoved && this.mouseDown && this.props.fireEvents) {
       const target = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
       if (target && !(target instanceof HTMLInputElement)) {
         const newEvent = new MouseEvent('click', {
@@ -363,6 +382,8 @@ class SelectionArea<T> extends Component<SelectionAreaProps<T>> {
       }
     }
 
+    this.endTextSelectionSuppression();
+
     if (this.selectionBoxRef.current) {
       this.selectionBoxRef.current.style.display = 'none';
     }
@@ -378,9 +399,31 @@ class SelectionArea<T> extends Component<SelectionAreaProps<T>> {
 
     this.mouseDown = false;
     this.selectionStarted = false;
+    this.pointerMoved = false;
     this.lastMouseEvent = null;
     this.props.onSelectedEnd?.();
   };
+
+  private readonly preventSelectStart = (event: Event): void => {
+    event.preventDefault();
+  };
+
+  private beginTextSelectionSuppression(): void {
+    if (this.suppressingTextSelection) return;
+    this.suppressingTextSelection = true;
+
+    this.containerRef.current?.classList.add('selection-area-dragging');
+    document.addEventListener('selectstart', this.preventSelectStart);
+    window.getSelection()?.removeAllRanges();
+  }
+
+  private endTextSelectionSuppression(): void {
+    if (!this.suppressingTextSelection) return;
+    this.suppressingTextSelection = false;
+
+    this.containerRef.current?.classList.remove('selection-area-dragging');
+    document.removeEventListener('selectstart', this.preventSelectStart);
+  }
 
   private getSelectedItems(selectionBounds: SimpleBounds, previewedElements?: Set<HTMLElement>): T[] {
     const selected: CachedRect<T>[] = [];

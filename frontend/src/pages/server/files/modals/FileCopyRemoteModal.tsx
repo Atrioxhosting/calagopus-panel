@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { join } from 'pathe';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
@@ -72,7 +71,7 @@ export default function FileCopyRemoteModal({ files, ...props }: Props) {
       destinationServers: [],
       name: '',
     },
-    validate: zod4Resolver(formSchema),
+    schema: formSchema,
     onClose: () => {
       setDestinationServers([]);
       props.onClose();

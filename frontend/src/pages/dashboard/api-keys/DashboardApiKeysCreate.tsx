@@ -79,7 +79,7 @@ export default function DashboardApiKeysCreate() {
         if (callbackUrl) {
           const url = new URL(callbackUrl);
           url.searchParams.set('key', key.key);
-          window.location.href = url.toString();
+          window.location.replace(url.toString());
         } else {
           addToast(t('pages.account.apiKeys.modal.createApiKey.toast.created', {}), 'success');
           setCreatedKey(key.key);

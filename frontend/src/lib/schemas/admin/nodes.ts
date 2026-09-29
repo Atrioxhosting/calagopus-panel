@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { adminBackupConfigurationSchema } from '@/lib/schemas/admin/backupConfigurations.ts';
 import { adminDatabaseAgentHostSchema } from '@/lib/schemas/admin/databaseAgentHosts.ts';
 import { adminDatabaseHostSchema } from '@/lib/schemas/admin/databaseHosts.ts';
+import { adminDeviceSchema } from '@/lib/schemas/admin/devices.ts';
 import { adminLocationSchema } from '@/lib/schemas/admin/locations.ts';
 import { adminMountSchema } from '@/lib/schemas/admin/mounts.ts';
 import { adminServerBackupSchema, adminServerSchema } from '@/lib/schemas/admin/servers.ts';
@@ -39,6 +40,27 @@ export const adminNodeSchema = z.looseObject({
 export const adminNodeTokenSchema = z.object({
   tokenId: z.string(),
   token: z.string(),
+});
+
+export const adminNodeSetupProbeSchema = z.object({
+  version: z.string(),
+  container: z.boolean(),
+  architecture: z.string(),
+  cpuCount: z.number(),
+  memoryBytes: z.number(),
+  diskBytes: z.number(),
+  ips: z.array(z.string()),
+  apiPort: z.number(),
+  sftpPort: z.number(),
+  docker: z.object({
+    available: z.boolean(),
+    version: z.string().nullable(),
+  }),
+});
+
+export const adminNodeEnrollmentSchema = z.object({
+  code: z.string(),
+  expires: z.coerce.date(),
 });
 
 export const adminNodeAllocatedCapacitySchema = z.object({
@@ -113,6 +135,11 @@ export const adminNodeMountSchema = z.looseObject({
   created: z.coerce.date(),
 });
 
+export const adminNodeDeviceSchema = z.looseObject({
+  device: z.lazy(() => adminDeviceSchema),
+  created: z.coerce.date(),
+});
+
 export const adminNodeDatabaseHostSchema = z.looseObject({
   databaseHost: z.lazy(() => adminDatabaseHostSchema),
   created: z.coerce.date(),
@@ -135,10 +162,12 @@ export const adminNodeTransfersSchema = z.record(z.string(), adminNodeTransferPr
 export type AdminNode = z.infer<typeof adminNodeSchema>;
 export type AdminNodeAllocatedCapacity = z.infer<typeof adminNodeAllocatedCapacitySchema>;
 export type AdminNodeToken = z.infer<typeof adminNodeTokenSchema>;
+export type AdminNodeSetupProbe = z.infer<typeof adminNodeSetupProbeSchema>;
 export type AdminNodeAllocation = z.infer<typeof adminNodeAllocationSchema>;
 export type AdminNodeAllocationFilter = z.infer<typeof adminNodeAllocationFilterSchema>;
 export type AdminNodeAllocationSelector = z.infer<typeof adminNodeAllocationSelectorSchema>;
 export type AdminNodeMount = z.infer<typeof adminNodeMountSchema>;
+export type AdminNodeDevice = z.infer<typeof adminNodeDeviceSchema>;
 export type AdminNodeDatabaseHost = z.infer<typeof adminNodeDatabaseHostSchema>;
 export type AdminNodeDatabaseAgentHost = z.infer<typeof adminNodeDatabaseAgentHostSchema>;
 export type AdminNodeServerBackup = z.infer<typeof adminNodeServerBackupSchema>;

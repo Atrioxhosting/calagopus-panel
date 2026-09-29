@@ -379,20 +379,6 @@ pub trait Extension: Send + Sync {
     ) -> Option<ExtensionCallValue> {
         None
     }
-
-    /// Your extension call processor, this can be called by other extensions to interact with yours,
-    /// if the call does not apply to your extension, simply return `None` to continue the matching process.
-    ///
-    /// The only difference to `process_call` is that this takes an owned vec, its automatically implemented in terms of `process_call`.
-    ///
-    /// Optimally (if applies) make sure your calls are globally unique, for example by prepending them with your package name
-    async fn process_call_owned(
-        &self,
-        name: &str,
-        args: Vec<ExtensionCallValue>,
-    ) -> Option<ExtensionCallValue> {
-        self.process_call(name, &args).await
-    }
 }
 
 #[derive(ToSchema, Serialize, Clone)]

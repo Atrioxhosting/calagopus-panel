@@ -2,7 +2,6 @@ import { faUpload } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { ChangeEvent, useRef } from 'react';
 import { z } from 'zod';
 import createSshKey from '@/api/me/ssh-keys/createSshKey.ts';
@@ -33,7 +32,7 @@ export default function SshKeyCreateModal({ ...props }: ModalProps) {
       name: '',
       publicKey: '',
     },
-    validate: zod4Resolver(schema),
+    schema: schema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await createSshKey(values);

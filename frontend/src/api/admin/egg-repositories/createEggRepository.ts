@@ -8,11 +8,11 @@ export default async (
 ): Promise<z.infer<typeof adminEggRepositorySchema>> => {
   const { data } = await axiosInstance.post(
     '/api/admin/egg-repositories',
-    serializeForApi(
-      adminEggRepositoryUpdateSchema,
-      eggRepositoryData,
-      formExtensionSchemas('admin.eggRepositories.createOrUpdate'),
-    ),
+    serializeForApi(adminEggRepositoryUpdateSchema, eggRepositoryData, [
+      ...formExtensionSchemas('admin.eggRepositories.createOrUpdate'),
+      ...formExtensionSchemas('admin.eggRepositories.credentialPassword'),
+      ...formExtensionSchemas('admin.eggRepositories.credentialPrivateKey'),
+    ]),
   );
   return parseFromApi(adminEggRepositorySchema, data.egg_repository);
 };

@@ -8,6 +8,7 @@ import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import { isOpenableFile } from '@/lib/files/files.ts';
 import { bytesProgressString, bytesToString } from '@/lib/format/size.ts';
 import useFileUpload from '@/pages/server/files/hooks/useFileUpload.ts';
+import useOpenFileInNewTab from '@/pages/server/files/hooks/useOpenFileInNewTab.ts';
 import FileRowContextMenu from '@/pages/server/files/list/FileRowContextMenu.tsx';
 import FileRowIcon from '@/pages/server/files/list/FileRowIcon.tsx';
 import FileSearchPreview, {
@@ -86,6 +87,7 @@ function FileTreeRow({
   const { t } = useTranslations();
   const showPreview = row.searchResult && canPreviewFile(row.entry);
   const store = useFileManagerApi();
+  const openInNewTab = useOpenFileInNewTab();
   const anyActing = useFileManagerStore((state) => state.actingFiles.size > 0);
   const clickOnce = useFileManagerStore((state) => state.clickOnce);
   const upload = useFileUpload(row.parent, row.entry.name);
@@ -160,6 +162,20 @@ function FileTreeRow({
         data-file-tree-drop-target={row.entry.directory ? row.path : row.parent}
         data-file-tree-drop-writable={String(row.entry.directory ? directoryWritable : parentWritable)}
         onClick={handleClick}
+        onMouseDownCapture={(event) => {
+          if (event.button === 1) event.preventDefault();
+        }}
+        onAuxClick={(event) => {
+          if (event.button !== 1 || !openMode.openable || upload) return;
+
+          event.preventDefault();
+          event.stopPropagation();
+          openInNewTab(openMode, {
+            browsingDirectory: row.parent,
+            browsingWritableDirectory: parentWritable,
+            browsingFastDirectory: parentFast,
+          });
+        }}
         onContextMenu={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -307,6 +323,7 @@ function FileTreeRow({
         <FileRowContextMenu
           file={row.entry}
           openMode={openMode}
+          onOpen={() => onOpen(item)}
           directory={row.parent}
           writableDirectory={parentWritable}
           upload={upload}

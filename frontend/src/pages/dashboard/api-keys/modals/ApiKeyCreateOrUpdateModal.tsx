@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
@@ -47,7 +46,7 @@ export default function ApiKeyCreateOrUpdateModal({ contextApiKey, onCreated, ..
       adminPermissions: [],
       expires: null,
     },
-    validate: zod4Resolver(userApiKeyUpdateSchema),
+    schema: userApiKeyUpdateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       if (contextApiKey) {

@@ -15,12 +15,16 @@ export default function BackupGroupCard({
   header,
   actions,
   dragHandleProps,
+  onPointerDownCapture,
+  onFocusCapture,
   children,
 }: {
   storageKey: string;
   header: ReactNode;
   actions?: ReactNode;
   dragHandleProps?: ComponentProps<'button'>;
+  onPointerDownCapture?: ComponentProps<'div'>['onPointerDownCapture'];
+  onFocusCapture?: ComponentProps<'div'>['onFocusCapture'];
   children: ReactNode;
 }) {
   const [isExpanded, setIsExpanded] = useUserSettingMapEntry(
@@ -31,7 +35,12 @@ export default function BackupGroupCard({
   );
 
   return (
-    <Card p={0} className='overflow-hidden rounded-xl!'>
+    <Card
+      p={0}
+      className='overflow-hidden rounded-xl!'
+      onPointerDownCapture={onPointerDownCapture}
+      onFocusCapture={onFocusCapture}
+    >
       <div
         className={classNames(
           'flex flex-col sm:flex-row items-stretch sm:items-center gap-3 px-3 justify-between',

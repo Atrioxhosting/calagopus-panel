@@ -173,10 +173,10 @@ pub fn validate_ignored_files(
     patterns: &[compact_str::CompactString],
     _context: &(),
 ) -> Result<(), garde::Error> {
-    let mut builder = ignore::overrides::OverrideBuilder::new("/");
+    let mut builder = crate::ignore_list::IgnoreList::builder();
 
     for pattern in patterns {
-        if let Err(err) = builder.add(pattern) {
+        if let Err(err) = builder.try_push_line(pattern) {
             return Err(garde::Error::new(compact_str::format_compact!(
                 "{pattern} is not a valid pattern: {err}"
             )));

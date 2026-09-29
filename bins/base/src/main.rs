@@ -6,7 +6,6 @@ use std::{
 use tower::Layer;
 use tower_http::normalize_path::NormalizePathLayer;
 
-#[cfg(target_arch = "x86_64")]
 #[global_allocator]
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 

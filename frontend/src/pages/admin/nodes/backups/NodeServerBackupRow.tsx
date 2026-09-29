@@ -13,7 +13,13 @@ import Code from '@/elements/typography/Code.tsx';
 import { adminNodeServerBackupSchema } from '@/lib/schemas/admin/nodes.ts';
 import { useAdminCan } from '@/plugins/usePermissions.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
-import { BackupKindCells, BackupStatusCells, getBackupState, useBackupDownload } from './backupRowShared.tsx';
+import {
+  BackupKindCells,
+  BackupRetentionCell,
+  BackupStatusCells,
+  getBackupState,
+  useBackupDownload,
+} from './backupRowShared.tsx';
 import NodeBackupsDeleteModal from './modals/NodeBackupsDeleteModal.tsx';
 import NodeBackupsExportModal from './modals/NodeBackupsExportModal.tsx';
 import NodeBackupsReassignModal from './modals/NodeBackupsReassignModal.tsx';
@@ -160,6 +166,8 @@ export default function NodeServerBackupRow<P>({
             </TableData>
 
             <BackupStatusCells backup={backup} files={showFiles} />
+
+            <BackupRetentionCell backup={backup} />
 
             <TableData>
               <FormattedTimestamp timestamp={backup.created} />

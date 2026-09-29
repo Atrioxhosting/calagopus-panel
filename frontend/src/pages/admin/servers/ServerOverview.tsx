@@ -301,6 +301,21 @@ export default function ServerOverview({ server }: { server: Server }) {
                     : t('pages.admin.servers.tabs.overview.page.label.autoKillDisabled', {})}
                 </Text>
               </InfoRow>
+              <InfoRow label={t('pages.admin.servers.tabs.overview.page.label.labels', {})}>
+                {Object.keys(server.labels).length > 0 ? (
+                  <Group gap={4} justify='flex-end'>
+                    {Object.entries(server.labels).map(([key, value]) => (
+                      <Badge key={key} color='gray' variant='light' className='normal-case!'>
+                        {key}={value}
+                      </Badge>
+                    ))}
+                  </Group>
+                ) : (
+                  <Text size='sm' c='dimmed'>
+                    {t('common.na', {})}
+                  </Text>
+                )}
+              </InfoRow>
               <InfoRow label={t('pages.admin.servers.tabs.overview.page.label.createdAt', {})}>
                 <Text size='sm'>{formatDateTime(server.created)}</Text>
               </InfoRow>

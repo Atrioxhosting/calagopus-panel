@@ -1,10 +1,10 @@
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import deleteOAuthLink from '@/api/me/oauth-links/deleteOAuthLink.ts';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
@@ -14,7 +14,16 @@ import { userOAuthLinkSchema } from '@/lib/schemas/user/oAuth.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
-export default function OAuthLinkRow({ oauthLink }: { oauthLink: z.infer<typeof userOAuthLinkSchema> }) {
+interface OAuthLinkRowProps {
+  oauthLink: z.infer<typeof userOAuthLinkSchema>;
+  isSelected?: boolean;
+  onSelectionChange?: (selected: boolean) => void;
+}
+
+const OAuthLinkRow = forwardRef<HTMLTableRowElement, OAuthLinkRowProps>(function OAuthLinkRow(
+  { oauthLink, isSelected = false, onSelectionChange },
+  ref,
+) {
   const { t } = useTranslations();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
@@ -63,11 +72,17 @@ export default function OAuthLinkRow({ oauthLink }: { oauthLink: z.infer<typeof 
       >
         {({ items, openMenu }) => (
           <TableRow
+            ref={ref}
+            bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
             onContextMenu={(e) => {
               e.preventDefault();
               openMenu(e.clientX, e.clientY);
             }}
           >
+            {onSelectionChange !== undefined && (
+              <TableSelectionCell id={oauthLink.uuid} checked={isSelected} onChange={onSelectionChange} />
+            )}
+
             <TableData>{oauthLink.oauthProvider.name}</TableData>
 
             <TableData>
@@ -88,4 +103,6 @@ export default function OAuthLinkRow({ oauthLink }: { oauthLink: z.infer<typeof 
       </ContextMenu>
     </>
   );
-}
+});
+
+export default OAuthLinkRow;

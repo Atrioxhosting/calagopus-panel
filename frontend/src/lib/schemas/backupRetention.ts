@@ -28,3 +28,15 @@ export const emptyBackupRetention: BackupRetention = {
 
 export const isBackupRetentionDisabled = (retention: BackupRetention) =>
   backupRetentionRules.every((rule) => retention[rule] === 0);
+
+export const backupRetentionRule = z.enum(backupRetentionRules);
+
+export const serverBackupRetentionStatusSchema = z.object({
+  state: z.enum(['retained', 'locked', 'indefinite', 'expired', 'failed']),
+  retention: backupRetentionSchema,
+  rule: backupRetentionRule.nullable(),
+  rules: z.array(backupRetentionRule),
+  expires: z.coerce.date().nullable(),
+});
+
+export type ServerBackupRetentionStatus = z.infer<typeof serverBackupRetentionStatusSchema>;

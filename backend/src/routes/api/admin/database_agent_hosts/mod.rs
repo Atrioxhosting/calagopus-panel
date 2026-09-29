@@ -2,6 +2,7 @@ use super::State;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 mod _database_agent_host_;
+mod capacities;
 mod config;
 
 mod get {
@@ -145,6 +146,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
             "/{database_agent_host}",
             _database_agent_host_::router(state),
         )
+        .nest("/capacities", capacities::router(state))
         .nest("/config", config::router(state))
         .with_state(state.clone())
 }

@@ -156,11 +156,19 @@ impl EggRepositoryEgg {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM egg_repository_eggs
-            WHERE egg_repository_eggs.egg_repository_uuid = $1 AND ($2 IS NULL OR egg_repository_eggs.path ILIKE '%' || $2 || '%' OR egg_repository_eggs.exported_egg->>'name' ILIKE '%' || $2 || '%')
+            WHERE egg_repository_eggs.egg_repository_uuid = $1 AND {search}
             ORDER BY egg_repository_eggs.exported_egg->>'name'
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(
+                2,
+                &[
+                    "egg_repository_eggs.path",
+                    "egg_repository_eggs.exported_egg->>'name'"
+                ],
+                &["egg_repository_eggs.uuid"]
+            )
         )))
         .bind(egg_repository_uuid)
         .bind(search)

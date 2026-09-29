@@ -49,8 +49,10 @@ mod get {
             example = "tar_gz",
         ),
     ))]
+    #[allow(clippy::too_many_arguments)]
     pub async fn route(
         state: GetState,
+        request_host: shared::GetRequestHost,
         permissions: GetPermissionManager,
         user: GetUser,
         server: GetServer,
@@ -108,7 +110,13 @@ mod get {
         }
 
         let url = backup
-            .download_url(&state, &user, &node, params.archive_format)
+            .download_url(
+                &state,
+                request_host.as_deref(),
+                &user,
+                &node,
+                params.archive_format,
+            )
             .await?;
 
         activity_logger

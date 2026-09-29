@@ -89,11 +89,12 @@ impl Nest {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM nests
-            WHERE ($1 IS NULL OR nests.name ILIKE '%' || $1 || '%')
+            WHERE {search}
             ORDER BY nests.created
             LIMIT $2 OFFSET $3
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(1, &["nests.name"], &["nests.uuid"])
         )))
         .bind(search)
         .bind(per_page)

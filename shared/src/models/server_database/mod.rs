@@ -177,11 +177,12 @@ impl ServerDatabase {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM server_databases
             JOIN database_hosts ON database_hosts.uuid = server_databases.database_host_uuid
-            WHERE server_databases.database_host_uuid = $1 AND ($2 IS NULL OR server_databases.name ILIKE '%' || $2 || '%')
+            WHERE server_databases.database_host_uuid = $1 AND {search}
             ORDER BY server_databases.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["server_databases.name"], &["server_databases.uuid"])
         )))
         .bind(database_host_uuid)
         .bind(search)
@@ -217,11 +218,12 @@ impl ServerDatabase {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM server_databases
             JOIN database_hosts ON database_hosts.uuid = server_databases.database_host_uuid
-            WHERE server_databases.server_uuid = $1 AND ($2 IS NULL OR server_databases.name ILIKE '%' || $2 || '%')
+            WHERE server_databases.server_uuid = $1 AND {search}
             ORDER BY server_databases.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["server_databases.name"], &["server_databases.uuid"])
         )))
         .bind(server_uuid)
         .bind(search)

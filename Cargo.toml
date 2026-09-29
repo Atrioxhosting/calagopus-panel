@@ -14,7 +14,7 @@ exclude = ["backend-extensions/node_modules"]
 default-members = ["bins/base", "bins/all-in-one", "bins/heavy-supervisor"]
 package.rust-version = "1.97.0"
 package.license = "MIT"
-package.version = "1.2.2"
+package.version = "1.2.3+atriox.1"
 package.edition = "2024"
 
 [workspace.dependencies]
@@ -71,6 +71,7 @@ urlencoding = "2.1.3"
 webauthn-rs = { version = "0.5.0", features = ["danger-allow-state-serialisation", "conditional-ui"] }
 webauthn-rs-proto = "=0.5.5"
 sha2 = "0.11.0"
+hmac = "0.13.0"
 colored = "3.0.0"
 russh = "0.63.1"
 futures-util = "0.3.31"

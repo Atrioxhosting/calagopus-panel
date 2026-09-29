@@ -322,11 +322,10 @@ function Palette() {
     () =>
       scope === 'dashboard' && !mode
         ? servers.items
-            .filter((s) => !normalizedQuery || s.name.toLowerCase().includes(normalizedQuery))
             .slice(0, 6)
             .map((s) => buildServerQuickActionItem(s, navigate, () => setOpen(false), serverTarget(s)))
         : [],
-    [scope, mode, servers.items, normalizedQuery, navigate, setOpen, serverTarget],
+    [scope, mode, servers.items, navigate, setOpen, serverTarget],
   );
 
   const allItems = useMemo(

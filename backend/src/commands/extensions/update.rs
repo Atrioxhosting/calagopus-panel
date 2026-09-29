@@ -1,7 +1,9 @@
 use anyhow::Context;
 use clap::{Args, FromArgMatches};
 use colored::Colorize;
-use shared::extensions::distr::{ExtensionDistrFile, SlimExtensionDistrFile};
+use shared::extensions::distr::{
+    ExtensionDistrFile, SlimExtensionDistrFile, running_panel_version,
+};
 use std::path::Path;
 
 #[derive(Args)]
@@ -35,10 +37,11 @@ impl shared::extensions::commands::CliCommand<UpdateArgs> for UpdateCommand {
                 })
                 .await??;
 
-                if let Err(err) = extension_distr
-                    .metadata_toml
-                    .check_panel_version(args.skip_version_check)
-                {
+                if let Err(err) = extension_distr.metadata_toml.check_panel_version(
+                    (!args.skip_version_check)
+                        .then(running_panel_version)
+                        .as_ref(),
+                ) {
                     eprintln!(
                         "{} {} {}",
                         "extension".red(),

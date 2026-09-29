@@ -828,11 +828,13 @@ impl NodeAllocation {
                     $2 IS NULL
                     OR host(node_allocations.ip) || ':' || node_allocations.port ILIKE '%' || $2 || '%'
                     OR (node_allocations.ip_alias IS NOT NULL AND node_allocations.ip_alias || ':' || node_allocations.port ILIKE '%' || $2 || '%')
+                    OR {search_uuid}
                 )
             ORDER BY node_allocations.ip, node_allocations.port
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search_uuid = super::uuid_search_sql(2, "node_allocations.uuid")
         )))
         .bind(node_uuid)
         .bind(search)
@@ -872,7 +874,8 @@ impl NodeAllocation {
                 AND ($2::text IS NULL
                     OR host(node_allocations.ip) || ':' || node_allocations.port ILIKE '%' || $2 || '%'
                     OR (node_allocations.ip_alias IS NOT NULL AND node_allocations.ip_alias || ':' || node_allocations.port ILIKE '%' || $2 || '%')
-                    OR server_allocations.notes ILIKE '%' || $2 || '%')
+                    OR server_allocations.notes ILIKE '%' || $2 || '%'
+                    OR {search_uuid})
                 AND ($3::inet IS NULL OR host(node_allocations.ip) = host($3))
                 AND ($4::int IS NULL OR node_allocations.port >= $4)
                 AND ($5::int IS NULL OR node_allocations.port <= $5)
@@ -880,7 +883,8 @@ impl NodeAllocation {
             ORDER BY node_allocations.ip, node_allocations.port
             LIMIT $7 OFFSET $8
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search_uuid = super::uuid_search_sql(2, "node_allocations.uuid")
         )))
         .bind(node_uuid);
 
@@ -934,7 +938,7 @@ impl NodeAllocation {
     ) -> Result<(i64, i64), crate::database::DatabaseError> {
         let filter = selector.filter().cloned().unwrap_or_default();
 
-        let query = sqlx::query(
+        let query = sqlx::query(sqlx::AssertSqlSafe(format!(
             r#"
             WITH matched AS (
                 SELECT node_allocations.uuid, server_allocations.uuid IS NOT NULL AS in_use
@@ -945,7 +949,8 @@ impl NodeAllocation {
                     AND ($2::text IS NULL
                         OR host(node_allocations.ip) || ':' || node_allocations.port ILIKE '%' || $2 || '%'
                         OR (node_allocations.ip_alias IS NOT NULL AND node_allocations.ip_alias || ':' || node_allocations.port ILIKE '%' || $2 || '%')
-                        OR server_allocations.notes ILIKE '%' || $2 || '%')
+                        OR server_allocations.notes ILIKE '%' || $2 || '%'
+                        OR {search_uuid})
                     AND ($3::inet IS NULL OR host(node_allocations.ip) = host($3))
                     AND ($4::int IS NULL OR node_allocations.port >= $4)
                     AND ($5::int IS NULL OR node_allocations.port <= $5)
@@ -958,7 +963,8 @@ impl NodeAllocation {
             SELECT (SELECT COUNT(*) FROM matched) AS matched_count,
                    (SELECT COUNT(*) FROM deleted) AS deleted_count
             "#,
-        )
+            search_uuid = super::uuid_search_sql(2, "node_allocations.uuid")
+        )))
         .bind(node_uuid);
 
         let row = filter
@@ -980,7 +986,7 @@ impl NodeAllocation {
     ) -> Result<(i64, i64), crate::database::DatabaseError> {
         let filter = selector.filter().cloned().unwrap_or_default();
 
-        let query = sqlx::query(
+        let query = sqlx::query(sqlx::AssertSqlSafe(format!(
             r#"
             WITH matched AS (
                 SELECT node_allocations.uuid, node_allocations.port
@@ -991,7 +997,8 @@ impl NodeAllocation {
                     AND ($2::text IS NULL
                         OR host(node_allocations.ip) || ':' || node_allocations.port ILIKE '%' || $2 || '%'
                         OR (node_allocations.ip_alias IS NOT NULL AND node_allocations.ip_alias || ':' || node_allocations.port ILIKE '%' || $2 || '%')
-                        OR server_allocations.notes ILIKE '%' || $2 || '%')
+                        OR server_allocations.notes ILIKE '%' || $2 || '%'
+                        OR {search_uuid})
                     AND ($3::inet IS NULL OR host(node_allocations.ip) = host($3))
                     AND ($4::int IS NULL OR node_allocations.port >= $4)
                     AND ($5::int IS NULL OR node_allocations.port <= $5)
@@ -1020,7 +1027,8 @@ impl NodeAllocation {
             SELECT (SELECT COUNT(*) FROM matched) AS matched_count,
                    (SELECT COUNT(*) FROM updated) AS updated_count
             "#,
-        )
+            search_uuid = super::uuid_search_sql(2, "node_allocations.uuid")
+        )))
         .bind(node_uuid);
 
         let row = filter

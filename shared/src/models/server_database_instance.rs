@@ -357,11 +357,12 @@ impl ServerDatabaseInstance {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM server_database_instances
             JOIN database_agent_hosts ON database_agent_hosts.uuid = server_database_instances.database_agent_host_uuid
-            WHERE server_database_instances.server_uuid = $1 AND ($2 IS NULL OR server_database_instances.name ILIKE '%' || $2 || '%')
+            WHERE server_database_instances.server_uuid = $1 AND {search}
             ORDER BY server_database_instances.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["server_database_instances.name"], &["server_database_instances.uuid"])
         )))
         .bind(server_uuid)
         .bind(search)
@@ -397,11 +398,12 @@ impl ServerDatabaseInstance {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM server_database_instances
             JOIN database_agent_hosts ON database_agent_hosts.uuid = server_database_instances.database_agent_host_uuid
-            WHERE server_database_instances.database_agent_host_uuid = $1 AND ($2 IS NULL OR server_database_instances.name ILIKE '%' || $2 || '%')
+            WHERE server_database_instances.database_agent_host_uuid = $1 AND {search}
             ORDER BY server_database_instances.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["server_database_instances.name"], &["server_database_instances.uuid"])
         )))
         .bind(database_agent_host_uuid)
         .bind(search)
@@ -437,11 +439,12 @@ impl ServerDatabaseInstance {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM server_database_instances
             JOIN database_agent_hosts ON database_agent_hosts.uuid = server_database_instances.database_agent_host_uuid
-            WHERE server_database_instances.database_agent_template_uuid = $1 AND ($2 IS NULL OR server_database_instances.name ILIKE '%' || $2 || '%')
+            WHERE server_database_instances.database_agent_template_uuid = $1 AND {search}
             ORDER BY server_database_instances.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["server_database_instances.name"], &["server_database_instances.uuid"])
         )))
         .bind(database_agent_template_uuid)
         .bind(search)

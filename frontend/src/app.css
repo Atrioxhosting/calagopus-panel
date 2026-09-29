@@ -162,6 +162,11 @@
   background-color: var(--mantine-primary-color-filled);
 }
 
+.selection-area-dragging {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .selection-area-preview {
   background-color: var(--mantine-color-blue-light) !important;
 }

@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import duplicateCommandSnippet from '@/api/me/command-snippets/duplicateCommandSnippet.ts';
@@ -34,7 +33,7 @@ export default function CommandSnippetDuplicateModal({ commandSnippet, ...props 
     initialValues: {
       name: '',
     },
-    validate: zod4Resolver(duplicateCommandSnippetSchema),
+    schema: duplicateCommandSnippetSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await duplicateCommandSnippet(commandSnippet.uuid, values.name);

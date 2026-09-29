@@ -107,11 +107,12 @@ impl Location {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM locations
-            WHERE locations.backup_configuration_uuid = $1 AND ($2 IS NULL OR locations.name ILIKE '%' || $2 || '%')
+            WHERE locations.backup_configuration_uuid = $1 AND {search}
             ORDER BY locations.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["locations.name"], &["locations.uuid"])
         )))
         .bind(backup_configuration_uuid)
         .bind(search)
@@ -145,11 +146,12 @@ impl Location {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM locations
-            WHERE $1 IS NULL OR locations.name ILIKE '%' || $1 || '%'
+            WHERE {search}
             ORDER BY locations.created
             LIMIT $2 OFFSET $3
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(1, &["locations.name"], &["locations.uuid"])
         )))
         .bind(search)
         .bind(per_page)

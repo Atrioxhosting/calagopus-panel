@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import classNames from 'classnames';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { join } from 'pathe';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
@@ -33,7 +32,7 @@ export default function PullFileModal({ ...props }: ModalProps) {
       url: '',
       name: '',
     },
-    validate: zod4Resolver(serverFilesPullSchema),
+    schema: serverFilesPullSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await pullFile(server.uuid, {

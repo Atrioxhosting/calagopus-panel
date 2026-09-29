@@ -136,6 +136,8 @@ export function createSqliteExplorerApi(run: SqliteRunner): Omit<DatabaseExplore
               autoIncrement: false,
               generated: hidden === 2 || hidden === 3,
               binary: typeName.toUpperCase().includes('BLOB'),
+              enumValues: null,
+              setValues: null,
             },
           ];
         });

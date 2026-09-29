@@ -1,7 +1,7 @@
 // This file is auto-generated from OpenAPI spec. Do not edit manually.
 use super::*;
 use futures_util::TryStreamExt;
-use http_client::CLIENT;
+use http_client::{CLIENT, USER_AGENT};
 use reqwest::{Method, StatusCode};
 use serde::de::DeserializeOwned;
 use std::{
@@ -215,6 +215,10 @@ impl DbAgentClient {
         };
 
         let mut request = url.into_client_request().map_err(ApiHttpError::WebSocket)?;
+
+        request
+            .headers_mut()
+            .insert("User-Agent", HeaderValue::from_static(USER_AGENT));
 
         if !self.token.is_empty() {
             let value = HeaderValue::from_str(&format!("Bearer {}", self.token))

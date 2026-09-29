@@ -819,7 +819,7 @@ impl ScheduleCondition {
 }
 
 // mirrors wings config::FORBIDDEN_PATHS
-const FORBIDDEN_CONFIG_PATHS: &[&str] = &[
+pub const FORBIDDEN_CONFIG_PATHS: &[&str] = &[
     "uuid",
     "token",
     "token_id",
@@ -841,7 +841,12 @@ const FORBIDDEN_CONFIG_PATHS: &[&str] = &[
     "system.user",
     "system.passwd",
     "docker.socket",
+    "tundra.data_directory",
+    "tundra.binary",
+    "tundra.image",
+    "tundra.source_image",
     "allowed_mounts",
+    "allowed_devices",
     "ignore_panel_config_updates",
     "ignore_panel_wings_upgrades",
     "api.host",
@@ -853,7 +858,9 @@ const FORBIDDEN_CONFIG_PATHS: &[&str] = &[
     "api.schedule.steps.http_request",
 ];
 
-pub fn strip_config_paths(value: &mut serde_json::Value) {
+pub fn strip_config_paths(value: &mut serde_json::Value) -> Vec<&'static str> {
+    let mut stripped = Vec::new();
+
     for path in FORBIDDEN_CONFIG_PATHS {
         let mut cursor = &mut *value;
         let mut parts = path.split('.').peekable();
@@ -864,12 +871,15 @@ pub fn strip_config_paths(value: &mut serde_json::Value) {
             };
 
             if parts.peek().is_none() {
-                map.remove(part);
+                if map.remove(part).is_some() {
+                    stripped.push(*path);
+                }
                 break;
             }
 
             if map.get(part).is_some_and(|next| !next.is_object()) {
                 map.remove(part);
+                stripped.push(*path);
                 break;
             }
 
@@ -879,6 +889,8 @@ pub fn strip_config_paths(value: &mut serde_json::Value) {
             }
         }
     }
+
+    stripped
 }
 
 /// What a node reports about the tundra mesh daemon it manages. Hand-written rather than

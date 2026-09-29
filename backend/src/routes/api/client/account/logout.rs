@@ -24,6 +24,7 @@ mod post {
     ))]
     pub async fn route(
         state: GetState,
+        request_host: shared::GetRequestHost,
         auth: GetAuthMethod,
         cookies: Cookies,
     ) -> ApiResponseResult {
@@ -46,7 +47,12 @@ mod post {
             Cookie::build((settings.app.session_cookie.clone(), ""))
                 .http_only(true)
                 .same_site(tower_cookies::cookie::SameSite::Lax)
-                .secure(settings.app.url.starts_with("https://"))
+                .secure(
+                    settings
+                        .app
+                        .url_for_host(request_host.as_deref())
+                        .starts_with("https://"),
+                )
                 .path("/")
                 .expires(
                     tower_cookies::cookie::time::OffsetDateTime::now_utc()

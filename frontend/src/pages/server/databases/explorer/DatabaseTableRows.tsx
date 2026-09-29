@@ -105,8 +105,10 @@ export default function DatabaseTableRows({ table }: { table: z.infer<typeof ser
 
   const primaryKey = table.columns.filter((column) => column.primaryKey);
   const rowsEditable = canEdit && !table.view && primaryKey.length > 0;
-  const editableColumns = new Set(
-    rowsEditable ? table.columns.filter((column) => !column.generated).map((column) => column.name) : [],
+  const editableColumns = new Map(
+    rowsEditable
+      ? table.columns.filter((column) => !column.generated).map((column) => [column.name, column] as const)
+      : [],
   );
   const editedCells = Object.values(edits).reduce((total, row) => total + Object.keys(row).length, 0);
   const dirtyCount = editedCells + ghosts.length;

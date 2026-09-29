@@ -43,6 +43,7 @@ export const publicSettingsSchema = z.object({
   captchaProvider: publicSettingsCaptchaProviderSchema,
   app: z.object({
     url: z.string(),
+    additionalUrls: z.array(z.string()),
     icon: z.string(),
     iconLight: z.string().nullable(),
     banner: z.string().nullable(),
@@ -50,6 +51,7 @@ export const publicSettingsSchema = z.object({
     name: z.string(),
     language: z.string(),
     registrationEnabled: z.boolean(),
+    passwordLoginEnabled: z.boolean(),
     emailTwoFactorEnabled: z.boolean(),
     emailVerificationRequired: z.boolean(),
     twoFactorAcceptedMethods: z.array(twoFactorMethod),

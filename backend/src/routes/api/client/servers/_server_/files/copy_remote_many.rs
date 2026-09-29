@@ -107,14 +107,14 @@ mod post {
                 .ok();
         }
 
-        if server.is_ignored(&data.root, true) {
+        if server.is_ignored_subtree(&data.root) {
             return ApiResponse::error("root directory not found")
                 .with_status(StatusCode::NOT_FOUND)
                 .ok();
         }
 
         for file in &data.files {
-            if server.is_ignored_either(Path::new(&data.root).join(&file.from)) {
+            if server.is_ignored_subtree(Path::new(&data.root).join(&file.from)) {
                 return ApiResponse::error("file not found")
                     .with_status(StatusCode::NOT_FOUND)
                     .ok();
@@ -150,7 +150,7 @@ mod post {
                 .ok();
             }
 
-            if destination_server.is_ignored(&data.destination, true) {
+            if destination_server.is_ignored_subtree(&data.destination) {
                 return ApiResponse::error(format!(
                     "destination directory not found on server {}",
                     destination_server.name

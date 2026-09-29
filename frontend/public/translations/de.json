@@ -151,6 +151,86 @@
       "few": "{count} Sitzungen",
       "many": "{count} Sitzungen",
       "other": "{count} Sitzungen"
+    },
+    "serverAllocation": {
+      "zero": "{count} Allocations",
+      "one": "{count} Allocation",
+      "two": "{count} Allocations",
+      "few": "{count} Allocations",
+      "many": "{count} Allocations",
+      "other": "{count} Allocations"
+    },
+    "database": {
+      "zero": "{count} Datenbanken",
+      "one": "{count} Datenbank",
+      "two": "{count} Datenbanken",
+      "few": "{count} Datenbanken",
+      "many": "{count} Datenbanken",
+      "other": "{count} Datenbanken"
+    },
+    "databaseInstance": {
+      "zero": "{count} verwaltete Datenbanken",
+      "one": "{count} verwaltete Datenbank",
+      "two": "{count} verwaltete Datenbanken",
+      "few": "{count} verwaltete Datenbanken",
+      "many": "{count} verwaltete Datenbanken",
+      "other": "{count} verwaltete Datenbanken"
+    },
+    "schedule": {
+      "zero": "{count} Zeitpläne",
+      "one": "{count} Zeitplan",
+      "two": "{count} Zeitpläne",
+      "few": "{count} Zeitpläne",
+      "many": "{count} Zeitpläne",
+      "other": "{count} Zeitpläne"
+    },
+    "subuser": {
+      "zero": "{count} Subuser",
+      "one": "{count} Subuser",
+      "two": "{count} Subuser",
+      "few": "{count} Subuser",
+      "many": "{count} Subuser",
+      "other": "{count} Subuser"
+    },
+    "mount": {
+      "zero": "{count} Mounts",
+      "one": "{count} Mount",
+      "two": "{count} Mounts",
+      "few": "{count} Mounts",
+      "many": "{count} Mounts",
+      "other": "{count} Mounts"
+    },
+    "device": {
+      "zero": "{count} Geräte",
+      "one": "{count} Gerät",
+      "two": "{count} Geräte",
+      "few": "{count} Geräte",
+      "many": "{count} Geräte",
+      "other": "{count} Geräte"
+    },
+    "apiKey": {
+      "zero": "{count} API-Schlüssel",
+      "one": "{count} API-Schlüssel",
+      "two": "{count} API-Schlüssel",
+      "few": "{count} API-Schlüssel",
+      "many": "{count} API-Schlüssel",
+      "other": "{count} API-Schlüssel"
+    },
+    "oauthLink": {
+      "zero": "{count} verknüpfte Konten",
+      "one": "{count} verknüpftes Konto",
+      "two": "{count} verknüpfte Konten",
+      "few": "{count} verknüpfte Konten",
+      "many": "{count} verknüpfte Konten",
+      "other": "{count} verknüpfte Konten"
+    },
+    "commandSnippet": {
+      "zero": "{count} Befehlskürzel",
+      "one": "{count} Befehlskürzel",
+      "two": "{count} Befehlskürzel",
+      "few": "{count} Befehlskürzel",
+      "many": "{count} Befehlskürzel",
+      "other": "{count} Befehlskürzel"
     }
   },
   "translations": {
@@ -211,7 +291,8 @@
         "error": "Fehler",
         "warning": "Warnung",
         "success": "Erfolg",
-        "clockOffset": "Deine Systemuhr weicht um mehr als 5 Sekunden vom Server ab. Dies kann Probleme mit der Passkey-Authentifizierung und der Zwei-Faktor-Authentifizierung verursachen. Bitte synchronisiere deine Uhr, falls Probleme auftreten. Aktuelle Abweichung: {offset} Sekunde(n)."
+        "clockOffset": "Deine Systemuhr weicht um mehr als 5 Sekunden vom Server ab. Dies kann Probleme mit der Passkey-Authentifizierung und der Zwei-Faktor-Authentifizierung verursachen. Bitte synchronisiere deine Uhr, falls Probleme auftreten. Aktuelle Abweichung: {offset} Sekunde(n).",
+        "passwordAuthUnavailable": "Dein Passwort funktioniert für diese Verbindung nicht. Nutze stattdessen einen SSH-Schlüssel, du kannst einen auf der Seite SSH-Schlüssel in deinem Account hinzufügen."
       },
       "divider": {
         "or": "ODER"
@@ -242,6 +323,11 @@
         "serverFileInput": {
           "notFound": "Es existiert noch keine Datei mit diesem Namen.",
           "isDirectory": "Das ist ein Verzeichnis, keine Datei."
+        },
+        "nodeAllocationIpInput": {
+          "anyAddress": "Alle Adressen",
+          "nodeInterfaces": "Node-Schnittstellen",
+          "inUse": "In Verwendung"
         },
         "ignoredFilesInput": {
           "onePatternPerLine": "Ein Muster pro Zeile.",
@@ -275,7 +361,29 @@
           "weekly": "Wöchentliche Backups behalten",
           "monthly": "Monatliche Backups behalten",
           "yearly": "Jährliche Backups behalten",
-          "ruleSummary": "{rule}: {count}"
+          "ruleSummary": "{rule}: {count}",
+          "status": {
+            "rule": {
+              "count": "Neueste",
+              "days": "Kürzlich",
+              "daily": "Täglich",
+              "weekly": "Wöchentlich",
+              "monthly": "Monatlich",
+              "yearly": "Jährlich"
+            },
+            "locked": "Gesperrt",
+            "indefinite": "Unbegrenzt behalten",
+            "expired": "Wird entfernt",
+            "failed": "Bereinigung",
+            "keptBy": "Behalten durch: {rules}.",
+            "forecastDescription": "Der Löschzeitpunkt ist eine Schätzung anhand des Backup-Zeitplans.",
+            "lockedDescription": "Gesperrte Backups werden von der Aufbewahrung nie entfernt.",
+            "indefiniteDescription": "Es gelten keine Aufbewahrungsregeln.",
+            "expiredDescription": "Keine Regel behält dieses Backup mehr. Es wird beim nächsten Aufbewahrungslauf entfernt.",
+            "failedDescription": "Fehlgeschlagene Backups werden nach 24 Stunden entfernt.",
+            "expires": "Gelöscht {timestamp}",
+            "expiresUnknown": "Keine Löschprognose"
+          }
         }
       },
       "modal": {
@@ -333,6 +441,7 @@
         "username": "Benutzername",
         "usernameOrEmail": "Benutzername/E-Mail",
         "server": "Server",
+        "servers": "Server",
         "url": "URL",
         "email": "E-Mail",
         "path": "Pfad",
@@ -379,6 +488,7 @@
         "additionalAllocations": "Zusätzliche Allocations",
         "externalId": "Externe ID",
         "mount": "Mount",
+        "device": "Gerät",
         "nest": "Nest",
         "lines": "Zeilen",
         "databaseHost": "Datenbank-Host",
@@ -418,6 +528,7 @@
         "truncateDirectory": "Möchtest du alle Dateien dieses Servers löschen, bevor diese Aktion ausgeführt wird? Dies kann nicht rückgängig gemacht werden."
       },
       "table": {
+        "selectRow": "Zeile auswählen",
         "pagination": {
           "results": "Zeige {start} bis {end} von {total} Ergebnissen.",
           "empty": "Es konnten keine Elemente gefunden werden, fast so, als würden sie sich verstecken."
@@ -460,6 +571,28 @@
           "host": "Host"
         }
       },
+      "bulkActions": {
+        "success": "Erfolgreich {items} {action}.",
+        "partial": "Erfolgreich {successfulItems} {action}. {failedItems} fehlgeschlagen.",
+        "successWithSkipped": "Erfolgreich {items} {action}. {skippedItems} übersprungen.",
+        "nothingToDo": "Diese Aktion ändert nichts an der aktuellen Auswahl.",
+        "verb": {
+          "deleted": "gelöscht",
+          "removed": "entfernt",
+          "triggered": "ausgelöst",
+          "locked": "gesperrt",
+          "unlocked": "entsperrt",
+          "moved": "verschoben",
+          "enabled": "aktiviert",
+          "disabled": "deaktiviert",
+          "attached": "eingehängt",
+          "detached": "ausgehängt",
+          "started": "gestartet",
+          "stopped": "gestoppt",
+          "restarted": "neu gestartet",
+          "killed": "gekillt"
+        }
+      },
       "tabs": {
         "general": "Allgemein"
       },
@@ -492,12 +625,27 @@
         "ignored": "Ignoriert",
         "showingFirstEntries": "Die ersten {count} Einträge werden angezeigt"
       },
+      "databaseAgentHost": {
+        "deployment": {
+          "available": "Bereitstellung aktiviert",
+          "nearlyFull": "Fast voll",
+          "full": "Keine Kapazität",
+          "disabled": "Bereitstellung deaktiviert",
+          "maintenance": "In Wartung",
+          "typesDisabled": "Keine Typen aktiviert",
+          "memoryUsage": "Arbeitsspeicher: {used} / {limit}",
+          "memoryUsageUnlimited": "Arbeitsspeicher: {used} belegt, kein Host-Limit",
+          "diskUsage": "Speicherplatz: {used} / {limit}",
+          "diskUsageUnlimited": "Speicherplatz: {used} belegt, kein Host-Limit"
+        }
+      },
       "node": {
         "deployment": {
           "available": "Bereitstellung aktiviert",
           "nearlyFull": "Fast voll",
           "full": "Keine Kapazität",
           "disabled": "Bereitstellung deaktiviert",
+          "maintenance": "In Wartung",
           "memoryUsage": "Arbeitsspeicher: {used} / {limit}",
           "memoryUsageUnlimited": "Arbeitsspeicher: {used} belegt, kein Node-Limit",
           "diskUsage": "Speicherplatz: {used} / {limit}",
@@ -600,6 +748,12 @@
       "impersonatedBy": "Impersoniert von {username}"
     },
     "elements": {
+      "lockedConfigPaths": {
+        "notice": "Diese Einstellungen können nur in der Konfigurationsdatei auf dem Rechner selbst geändert werden. Das Panel ignoriert Änderungen daran:",
+        "toast": {
+          "ignored": "Konfiguration übernommen, außer für diese Einstellungen, die nur in der Konfigurationsdatei auf dem Rechner selbst geändert werden können: {paths}"
+        }
+      },
       "chartLegend": {
         "hide": "{series} ausblenden",
         "show": "{series} einblenden"
@@ -626,6 +780,7 @@
           "redirect": "Weiterleitung"
         },
         "empty": "Keine Routen konfiguriert. Füge unten Routen, Trenner oder Weiterleitungen hinzu.",
+        "missingRoutes": "Die folgenden Seiten fehlen in dieser Routen-Konfiguration und sind für Benutzer nicht verfügbar: {routes}.",
         "unnamed": "(unbenannt)",
         "dividerPlaceholder": "Trenner-Bezeichnung (optional)",
         "redirectNamePlaceholder": "Weiterleitungsname",
@@ -897,10 +1052,27 @@
         "modal": {
           "cancelAllUploads": {
             "content": "Bist du sicher, dass du alle aktiven Uploads abbrechen möchtest? Teilweise hochgeladene Dateien werden verworfen."
+          },
+          "uploadConflict": {
+            "title": "Upload-Konflikte auflösen",
+            "description": "Die folgenden {items} existieren bereits in `{directory}`.",
+            "alsoUploading": "{files} ohne Konflikte werden ohnehin hochgeladen.",
+            "source": "Ausgewählt",
+            "selectedFolder": "Enthält {files}.",
+            "destination": "Vorhanden",
+            "skip": "Überspringen",
+            "overwrite": "Überschreiben",
+            "merge": "Zusammenführen",
+            "mergeHint": "Vorhandene Dateien mit demselben Namen wie eine der {files} werden überschrieben.",
+            "rename": "Umbenennen",
+            "skipAll": "Alle überspringen",
+            "overwriteAll": "Alle überschreiben",
+            "confirm": "{files} hochladen"
           }
         },
         "toast": {
           "uploading": "Hochladen von {files} gestartet...",
+          "conflictCheckFailed": "Vorhandene Dateien konnten nicht geprüft werden; wird trotzdem hochgeladen.",
           "failed": "Upload fehlgeschlagen: {error}",
           "cancelledFile": "Upload von `{file}` erfolgreich abgebrochen.",
           "cancelledFolder": "Upload von `{folder}` ({files}) erfolgreich abgebrochen.",
@@ -1095,7 +1267,8 @@
             "usernameRequired": "Bitte gib einen Benutzernamen ein",
             "registrationDisabled": "Es konnte kein passender Account gefunden werden und die Registrierung ist derzeit deaktiviert.",
             "userAlreadyExists": "Ein Account mit diesem Benutzernamen oder dieser E-Mail existiert bereits.",
-            "securityKeyRequired": "Dieser Account erfordert eine Zwei-Faktor-Authentifizierung, melde dich stattdessen mit einem Sicherheitsschlüssel an."
+            "securityKeyRequired": "Dieser Account erfordert eine Zwei-Faktor-Authentifizierung, melde dich stattdessen mit einem Sicherheitsschlüssel an.",
+            "passwordLoginDisabled": "Die Anmeldung mit Passwort ist in diesem Panel deaktiviert, nutze stattdessen eine der Optionen unten."
           },
           "passkey": {
             "error": {
@@ -1115,6 +1288,7 @@
             "username": {
               "title": "Anmelden",
               "subtitle": "Gib deinen Benutzernamen oder deine E-Mail-Adresse ein, um fortzufahren",
+              "subtitleProviderOnly": "Wähle einen Anbieter, um fortzufahren",
               "form": {
                 "usernameOrEmailPlaceholder": "Dein Benutzername oder deine E-Mail-Adresse"
               },
@@ -1271,7 +1445,7 @@
                     "title": "Server zu {group} hinzufügen",
                     "noServers": "Alle Server sind bereits in dieser Gruppe.",
                     "toast": {
-                      "added": "Server zur Gruppe hinzugefügt."
+                      "added": "{servers} zur Gruppe hinzugefügt."
                     }
                   },
                   "removeServerFromGroup": {
@@ -1606,7 +1780,9 @@
             "previousPage": "Vorherige Seite",
             "nextPage": "Nächste Seite",
             "firstPage": "Erste Seite",
-            "lastPage": "Letzte Seite"
+            "lastPage": "Letzte Seite",
+            "selectAll": "Alle Zeilen auswählen",
+            "deselectAll": "Alle Zeilen abwählen"
           },
           "console": {
             "title": "Server Konsole",
@@ -1654,6 +1830,10 @@
                 "created": "{sshKeys} erstellt."
               }
             },
+            "deleteSshKeys": {
+              "title": "Löschen der SSH-Schlüssel bestätigen",
+              "content": "Bist du sicher, dass du **{sshKeys}** aus deinem Konto löschen möchtest?"
+            },
             "deleteSshKey": {
               "title": "Löschen des SSH-Schlüssels bestätigen",
               "content": "Bist du sicher, dass du **{name}** von deinem Account löschen möchtest?",
@@ -1682,6 +1862,10 @@
                 "updated": "Befehlskürzel aktualisiert."
               }
             },
+            "deleteCommandSnippets": {
+              "title": "Löschen der Befehlskürzel bestätigen",
+              "content": "Bist du sicher, dass du **{commandSnippets}** aus deinem Konto löschen möchtest?"
+            },
             "deleteCommandSnippet": {
               "title": "Löschen des Befehlskürzels bestätigen",
               "content": "Bist du sicher, dass du **{name}** von deinem Account löschen möchtest?",
@@ -1709,6 +1893,10 @@
             }
           },
           "modal": {
+            "deleteOAuthLinks": {
+              "title": "Löschen der OAuth-Verknüpfungen bestätigen",
+              "content": "Bist du sicher, dass du **{oauthLinks}** aus deinem Konto löschen möchtest?"
+            },
             "deleteOAuthLink": {
               "title": "Löschen der OAuth-Verknüpfung bestätigen",
               "content": "Bist du sicher, dass du die Verbindung zu **{provider}** von deinem Account löschen möchtest?",
@@ -1758,6 +1946,10 @@
               "toast": {
                 "recreated": "API-Schlüssel neu erstellt."
               }
+            },
+            "deleteApiKeys": {
+              "title": "Löschen der API-Schlüssel bestätigen",
+              "content": "Bist du sicher, dass du **{apiKeys}** aus deinem Konto löschen möchtest?"
             },
             "deleteApiKey": {
               "title": "Löschen des API-Schlüssels bestätigen",
@@ -1962,6 +2154,8 @@
               "page": {
                 "title": "Anwendungseinstellungen",
                 "form": {
+                  "additionalUrls": "Zusätzliche URLs",
+                  "additionalUrlsDescription": "Weitere Adressen, unter denen das Panel erreichbar ist. Anmeldungen, OAuth und selbst ausgelöste E-Mails verwenden die URL, über die die Anfrage kam; alles andere verwendet die Haupt-URL. Sicherheitsschlüssel funktionieren nur unter URLs, die zur WebAuthn RP ID gehören.",
                   "icon": "Symbol",
                   "iconLight": "Symbol (Helles Design)",
                   "banner": "Banner",
@@ -1977,7 +2171,9 @@
                   "emailVerificationRequiredDescription": "Neue Benutzer müssen ihre E-Mail-Adresse bestätigen, bevor sie das Panel nutzen können. Erfordert einen konfigurierten Mail-Transport.",
                   "telemetryEnabled": "Telemetrie aktivieren",
                   "telemetryEnabledDescription": "Erlaube Calagopus, begrenzte und anonyme Nutzungsdaten zu sammeln, um die Anwendung zu verbessern.",
-                  "registrationEnabled": "Registrierung aktivieren"
+                  "registrationEnabled": "Registrierung aktivieren",
+                  "passwordLoginEnabled": "Passwort-Anmeldung aktivieren",
+                  "passwordLoginEnabledDescription": "Erlaube Benutzern, sich mit Benutzername und Passwort anzumelden. Wenn du dies deaktivierst, bleiben nur OAuth-Anbieter und Sicherheitsschlüssel als Zugang, und die lokale Registrierung, das Zurücksetzen von Passwörtern sowie die SFTP-Anmeldung mit Passwort werden ebenfalls gestoppt."
                 },
                 "enum": {
                   "twoFactorMethod": {
@@ -2005,6 +2201,10 @@
                   "enableRegistration": {
                     "title": "Registrierungs-Aktivierung bestätigen",
                     "content": "Bist du sicher, dass du die Registrierung aktivieren möchtest? Das Aktivieren der Registrierung erlaubt es jedem, ein Konto in diesem Panel zu erstellen. Wenn du keine Captcha konfiguriert hast, könnte dies ein Fehler sein."
+                  },
+                  "disablePasswordLogin": {
+                    "title": "Deaktivierung der Passwort-Anmeldung bestätigen",
+                    "content": "Bist du sicher, dass du die Passwort-Anmeldung deaktivieren möchtest? Alle benötigen dann einen OAuth-Anbieter oder einen Sicherheitsschlüssel, um sich anzumelden, und die lokale Registrierung, das Zurücksetzen von Passwörtern sowie die SFTP-Anmeldung mit Passwort funktionieren nicht mehr. Stelle sicher, dass du dich selbst noch anmelden kannst, bevor du fortfährst."
                   },
                   "telemetryPreview": {
                     "title": "Telemetrie-Vorschau"
@@ -2436,6 +2636,10 @@
             "pendingRestart": {
               "title": "Einige Erweiterungen wurden aktiviert oder deaktiviert",
               "content": "Das Panel übernimmt die Änderung beim nächsten Start."
+            },
+            "versionMismatch": {
+              "title": "Das Panel führt einen Build für eine andere Version aus",
+              "content": "Das laufende Panel hat Version {runningVersion}, Erweiterungs-Builds zielen aber auf Version {targetVersion}. Installierte Erweiterungen müssen mit {targetVersion} kompatibel sein."
             }
           },
           "button": {
@@ -2720,6 +2924,51 @@
         "nodes": {
           "title": "Nodes",
           "resourceName": "Node",
+          "pairing": {
+            "mode": {
+              "pair": "Wartenden Node koppeln",
+              "manual": "Manuell einrichten"
+            },
+            "title": "Mit Wings koppeln",
+            "description": "Starte Wings ohne Konfigurationsdatei, dann wartet es auf die Kopplung. Der Kopplungscode steht in den Logs (`journalctl -u wings` oder `docker compose logs wings`).",
+            "form": {
+              "address": "Node-Adresse",
+              "addressDescription": "Die Adresse, über die das Panel Wings erreicht, inklusive Port.",
+              "pairingCode": "Kopplungscode",
+              "pairingCodeDescription": "Steht in den Wings-Logs, solange es auf die Kopplung wartet.",
+              "panelUrl": "Panel-URL",
+              "panelUrlDescription": "Optionale Überschreibung, z. B. die nächste Region."
+            },
+            "section": {
+              "allocations": "Allokationen",
+              "advanced": "Erweitert"
+            },
+            "probe": {
+              "title": "Wings {version} wartet auf die Kopplung",
+              "resources": "{cores} CPU-Kerne, {memory} Arbeitsspeicher, {disk} Speicherplatz ({architecture})",
+              "dockerAvailable": "Docker {version} ist erreichbar.",
+              "dockerUnavailable": "Docker ist nicht erreichbar. Wings kann erst Server starten, wenn es erreichbar ist.",
+              "container": "Wings läuft in einem Container und sieht die Netzwerkschnittstellen des Hosts nicht. Gib die Allokations-IP selbst ein."
+            },
+            "enrollment": {
+              "description": "Führe diesen Befehl auf dem Node aus. Der Code funktioniert einmal und läuft nach 30 Minuten ab."
+            },
+            "button": {
+              "connect": "Verbinden",
+              "change": "Ändern",
+              "pair": "Koppeln",
+              "createAndPair": "Erstellen & koppeln",
+              "generateCommand": "Registrierungsbefehl erzeugen"
+            },
+            "status": {
+              "waiting": "Warte auf die Verbindung von Wings...",
+              "connected": "Wings {version} ist verbunden.",
+              "timeout": "Wings ist noch nicht online. Prüfe die Logs auf dem Node."
+            },
+            "toast": {
+              "pairFailed": "Der Node wurde erstellt, aber die Kopplung ist fehlgeschlagen: {error}"
+            }
+          },
           "tabs": {
             "overview": {
               "title": "Übersicht",
@@ -2973,6 +3222,25 @@
                   "remove": {
                     "title": "Entfernen des Node Mounts bestätigen",
                     "content": "Bist du sicher, dass du den Mount **{mount}** von **{name}** entfernen möchtest?"
+                  }
+                }
+              }
+            },
+            "devices": {
+              "title": "Geräte",
+              "page": {
+                "title": "Node-Geräte",
+                "toast": {
+                  "added": "Gerät hinzugefügt.",
+                  "removed": "Gerät entfernt."
+                },
+                "modal": {
+                  "add": {
+                    "title": "Gerät hinzufügen"
+                  },
+                  "remove": {
+                    "title": "Entfernen des Geräts bestätigen",
+                    "content": "Bist du sicher, dass du das Gerät **{device}** von **{name}** entfernen möchtest?"
                   }
                 }
               }
@@ -3312,6 +3580,7 @@
                   "unlimited": "Unendlich",
                   "autoKillSeconds": "{seconds}s",
                   "autoKillDisabled": "Deaktiviert",
+                  "labels": "Labels",
                   "uuid": "UUID"
                 },
                 "badge": {
@@ -3372,6 +3641,8 @@
                   "predefinedDockerImagesPlaceholder": "Kein vordefiniertes Image ausgewählt",
                   "startupCommandCustom": "Benutzerdefiniert",
                   "predefinedStartupCommands": "Vordefinierte Startbefehle",
+                  "labels": "Container-Labels",
+                  "labelsDescription": "Docker-Labels, die auf den Server-Container gesetzt werden und sich im Startbefehl als server.labels.<key> auslesen lassen. Werden beim nächsten Start übernommen.",
                   "startOnCompletion": "Nach Abschluss starten",
                   "startOnCompletionDescription": "Server nach Abschluss der Installation starten.",
                   "skipInstaller": "Installer überspringen",
@@ -3457,6 +3728,25 @@
                   "remove": {
                     "title": "Entfernung des Server Mounts bestätigen",
                     "content": "Bist du sicher, dass du den Mount **{mount}** von **{name}** entfernen möchtest?"
+                  }
+                }
+              }
+            },
+            "devices": {
+              "title": "Geräte",
+              "page": {
+                "title": "Server-Geräte",
+                "toast": {
+                  "added": "Gerät hinzugefügt.",
+                  "deleted": "Gerät entfernt."
+                },
+                "modal": {
+                  "add": {
+                    "title": "Gerät hinzufügen"
+                  },
+                  "remove": {
+                    "title": "Entfernen des Geräts bestätigen",
+                    "content": "Bist du sicher, dass du das Gerät **{device}** von **{name}** entfernen möchtest?"
                   }
                 }
               }
@@ -3778,6 +4068,25 @@
                       }
                     }
                   },
+                  "devices": {
+                    "title": "Geräte",
+                    "page": {
+                      "title": "Egg-Geräte",
+                      "toast": {
+                        "added": "Gerät hinzugefügt.",
+                        "deleted": "Gerät entfernt."
+                      },
+                      "modal": {
+                        "add": {
+                          "title": "Gerät hinzufügen"
+                        },
+                        "delete": {
+                          "title": "Entfernen des Geräts bestätigen",
+                          "content": "Bist du sicher, dass du das Gerät **{device}** von **{egg}** entfernen möchtest?"
+                        }
+                      }
+                    }
+                  },
                   "servers": {
                     "title": "Server",
                     "page": {
@@ -4001,9 +4310,16 @@
               "page": {
                 "titleCreate": "Datenbank-Agent-Host erstellen",
                 "titleUpdate": "Datenbank-Agent-Host aktualisieren",
+                "tooltip": {
+                  "errorWhileFetchingVersion": "Fehler beim Abrufen der Version",
+                  "updateAvailable": "{version} (Update verfügbar)"
+                },
                 "form": {
                   "typePublicHost": "Öffentlicher Host",
-                  "typePublicPort": "Öffentlicher Port"
+                  "typePublicPort": "Öffentlicher Port",
+                  "memoryDescription": "Der gesamte Arbeitsspeicher, der Datenbank-Instanzen auf diesem Host zur Verfügung steht.",
+                  "diskDescription": "Der gesamte Speicherplatz, der Datenbank-Instanzen auf diesem Host zur Verfügung steht.",
+                  "unlimitedTooltip": "0 setzt kein Limit."
                 },
                 "alert": {
                   "urlMissingPort": "Kein Port angegeben. Das Panel verbindet sich mit diesem Host über Port {port}. Der Datenbank-Agent lauscht standardmäßig auf Port {agentPort}, füge ihn also zur URL hinzu, außer ein Reverse-Proxy auf Port {port} leitet an den Agent weiter."
@@ -4463,6 +4779,10 @@
                 "modal": {
                   "delete": {
                     "title": "Löschen der Backup-Konfiguration bestätigen"
+                  },
+                  "removeProvider": {
+                    "title": "Entfernen der Provider-Einstellungen bestätigen",
+                    "content": "Beim Speichern werden die **{provider}**-Einstellungen entfernt. Bereits vorhandene Backups, die auf diesen Konfigurations-Optionen basieren, werden nicht mehr funktionieren."
                   }
                 },
                 "s3": {
@@ -4779,6 +5099,76 @@
             }
           }
         },
+        "devices": {
+          "title": "Geräte",
+          "resourceName": "Gerät",
+          "tabs": {
+            "general": {
+              "page": {
+                "titleCreate": "Gerät erstellen",
+                "titleUpdate": "Gerät aktualisieren",
+                "alert": "Gerätezugriff ist eine mächtige und potenziell gefährliche Funktion. Unsachgemäße Nutzung kann zu Datenverlust oder Sicherheitslücken führen (einschließlich Container-Ausbrüchen). Stelle sicher, dass du die Auswirkungen verstehst, bevor du Geräte erstellst oder aktualisierst.",
+                "form": {
+                  "userAttachable": "Vom Benutzer einbindbar",
+                  "permissions": "Berechtigungen",
+                  "permissionsDescription": "Gerätezugriff: r zum Lesen, w zum Schreiben und m zum Erstellen von Gerätedateien."
+                },
+                "modal": {
+                  "delete": {
+                    "title": "Gerät-Löschung bestätigen"
+                  }
+                }
+              }
+            },
+            "eggs": {
+              "title": "Eggs",
+              "page": {
+                "title": "Geräte-Eggs",
+                "toast": {
+                  "added": "Egg hinzugefügt.",
+                  "removed": "Egg entfernt."
+                },
+                "modal": {
+                  "add": {
+                    "title": "Egg hinzufügen",
+                    "form": {
+                      "egg": "Egg"
+                    }
+                  },
+                  "remove": {
+                    "title": "Entfernen des Geräte-Eggs bestätigen",
+                    "content": "Bist du sicher, dass du das Gerät **{device}** von **{name}** entfernen möchtest?"
+                  }
+                }
+              }
+            },
+            "nodes": {
+              "title": "Nodes",
+              "page": {
+                "title": "Geräte-Nodes",
+                "toast": {
+                  "added": "Node hinzugefügt.",
+                  "removed": "Node entfernt."
+                },
+                "modal": {
+                  "add": {
+                    "title": "Node hinzufügen"
+                  },
+                  "remove": {
+                    "title": "Entfernen des Geräte-Nodes bestätigen",
+                    "content": "Bist du sicher, dass du das Gerät **{device}** von **{name}** entfernen möchtest?"
+                  }
+                }
+              }
+            },
+            "servers": {
+              "title": "Server",
+              "page": {
+                "title": "Geräte-Server"
+              }
+            }
+          }
+        },
         "roles": {
           "title": "Rollen",
           "resourceName": "Rolle",
@@ -5011,7 +5401,10 @@
             "connect": "Verbinden",
             "connectSftp": "über SFTP",
             "connectVscode": "über VS Code",
-            "openInNewWindow": "In neuem Fenster öffnen",
+            "open": "Öffnen",
+            "openInNewTab": "In neuem Tab öffnen",
+            "openInPopup": "In Popup öffnen",
+            "openInVirtualWindow": "In virtuellem Fenster öffnen",
             "rename": "Umbenennen",
             "copy": "Kopieren",
             "fingerprint": "Fingerabdruck",
@@ -5585,7 +5978,10 @@
             },
             "cell": {
               "setNull": "Auf NULL setzen",
+              "picker": "Wert auswählen",
               "null": "NULL",
+              "true": "TRUE",
+              "false": "FALSE",
               "empty": "leer",
               "truncated": "Dieser Wert ist zu groß, um vollständig geladen zu werden, und kann nicht bearbeitet werden.",
               "editorHint": "{enter} übernimmt den Wert, {shiftEnter} fügt eine neue Zeile ein."
@@ -5739,6 +6135,10 @@
                 "kill": "Verwaltete Datenbank wurde beendet."
               },
               "modal": {
+                "forceKillBulk": {
+                  "title": "Datenbanken zwangsweise beenden",
+                  "content": "Wenn du **{databaseInstances}** zwangsweise beendest, kann dies zu Datenverlust führen."
+                },
                 "forceKill": {
                   "title": "Datenbank zwangsweise beenden",
                   "content": "Das zwangsweise Beenden einer Datenbank kann zu Datenverlust führen."
@@ -5819,6 +6219,13 @@
                   "applied": "Template-Update angewendet."
                 }
               },
+              "deleteDatabaseInstances": {
+                "title": "Löschen der verwalteten Datenbanken bestätigen",
+                "content": "Das Löschen einer verwalteten Datenbank ist dauerhaft und kann nicht rückgängig gemacht werden. Dies löscht **{databaseInstances}** und alle darin enthaltenen Daten endgültig.",
+                "alert": {
+                  "skipped": "Übersprungen: {databaseInstances}. Gesperrte verwaltete Datenbanken können nicht gelöscht werden."
+                }
+              },
               "deleteDatabaseInstance": {
                 "title": "Löschen der verwalteten Datenbank bestätigen",
                 "content": "Das Löschen einer verwalteten Datenbank ist dauerhaft und kann nicht rückgängig gemacht werden. Dies löscht die Datenbank **{name}** und alle zugehörigen Daten unwiderruflich.",
@@ -5881,6 +6288,13 @@
               "content": "Die Neuerstellung einer Datenbank löscht dauerhaft alle Daten in der Datenbank **{name}** und erstellt eine neue mit denselben Verbindungsdetails.",
               "toast": {
                 "recreated": "Datenbank neu erstellt."
+              }
+            },
+            "deleteDatabases": {
+              "title": "Löschen der Datenbanken bestätigen",
+              "content": "Das Löschen einer Datenbank ist dauerhaft und kann nicht rückgängig gemacht werden. Dies löscht **{databases}** endgültig und entfernt alle zugehörigen Daten.",
+              "alert": {
+                "skipped": "Übersprungen: {databases}. Gesperrte Datenbanken können nicht gelöscht werden."
               }
             },
             "deleteDatabase": {
@@ -5984,6 +6398,10 @@
             "calendar": {
               "title": "Kalender der anstehenden Ausführungen",
               "truncatedWarning": "Einige anstehende Ausführungen wurden weggelassen, damit der Kalender reaktionsfähig bleibt."
+            },
+            "deleteSchedules": {
+              "title": "Löschen der Zeitpläne bestätigen",
+              "content": "Bist du sicher, dass du **{schedules}** von diesem Server löschen möchtest?"
             },
             "deleteSchedule": {
               "title": "Löschen des Zeitplans bestätigen",
@@ -6652,6 +7070,10 @@
                 "updated": "Subuser aktualisiert."
               }
             },
+            "removeSubusers": {
+              "title": "Entfernen der Subuser bestätigen",
+              "content": "Bist du sicher, dass du **{subusers}** von diesem Server entfernen möchtest?"
+            },
             "removeSubuser": {
               "title": "Entfernen des Subusers bestätigen",
               "content": "Bist du sicher, dass du **{username}** von diesem Server entfernen möchtest?",
@@ -6676,6 +7098,7 @@
           "table": {
             "columns": {
               "kind": "Art",
+              "retention": "Aufbewahrung",
               "locked": "Gesperrt?"
             }
           },
@@ -6688,7 +7111,11 @@
             "browse": "Durchsuchen",
             "exportToFiles": "In Dateien exportieren",
             "createBackup": "Backup erstellen",
-            "createGroup": "Backup-Gruppe erstellen"
+            "createGroup": "Backup-Gruppe erstellen",
+            "moveToGroup": "In Gruppe verschieben",
+            "removeFromGroup": "Aus Gruppe entfernen",
+            "lock": "Sperren",
+            "unlock": "Entsperren"
           },
           "toast": {
             "downloadStarted": "Download gestartet.",
@@ -6718,6 +7145,13 @@
             },
             "exportBackup": {
               "title": "Backup in Dateien exportieren"
+            },
+            "deleteBackups": {
+              "title": "Löschen der Backups bestätigen",
+              "content": "Bist du sicher, dass du **{backups}** von diesem Server löschen möchtest?",
+              "alert": {
+                "skipped": "Übersprungen: {backups}. Gesperrte Backups, nicht abgeschlossene Backups und Backups, die bereits gelöscht werden, können nicht gelöscht werden."
+              }
             },
             "deleteBackup": {
               "title": "Löschen des Backups bestätigen",
@@ -6792,6 +7226,13 @@
             "unsetPrimary": "Allocation nicht mehr primär."
           },
           "modal": {
+            "removeAllocations": {
+              "title": "Entfernen der Allocations bestätigen",
+              "content": "Bist du sicher, dass du **{allocations}** von diesem Server entfernen möchtest?",
+              "alert": {
+                "skipped": "Übersprungen: {allocations}. Die primäre Allocation kann nicht entfernt werden."
+              }
+            },
             "removeAllocation": {
               "title": "Entfernen der Allocation bestätigen",
               "content": "Bist du sicher, dass du **{allocation}** von diesem Server entfernen möchtest?"
@@ -7051,8 +7492,50 @@
                 "attached": "{name} wurde in deinen Server eingebunden."
               }
             },
+            "detachMounts": {
+              "title": "Mounts trennen",
+              "content": "Möchtest du **{mounts}** von diesem Server trennen?",
+              "alert": {
+                "skipped": "Übersprungen: {mounts}. Nicht eingebundene Mounts können nicht getrennt werden."
+              }
+            },
             "detachMount": {
               "title": "Mount trennen",
+              "content": "Möchtest du **{name}** von `{target}` trennen?",
+              "toast": {
+                "detached": "{name} wurde von deinem Server getrennt."
+              }
+            }
+          }
+        },
+        "devices": {
+          "title": "Geräte",
+          "table": {
+            "columns": {
+              "attached": "Eingebunden"
+            }
+          },
+          "button": {
+            "attach": "Einbinden",
+            "detach": "Trennen"
+          },
+          "modal": {
+            "attachDevice": {
+              "title": "Gerät einbinden",
+              "content": "Möchtest du **{name}** in `{target}` einbinden?",
+              "toast": {
+                "attached": "{name} wurde in deinen Server eingebunden."
+              }
+            },
+            "detachDevices": {
+              "title": "Geräte trennen",
+              "content": "Möchtest du **{devices}** von diesem Server trennen?",
+              "alert": {
+                "skipped": "Übersprungen: {devices}. Nicht eingebundene Geräte können nicht getrennt werden."
+              }
+            },
+            "detachDevice": {
+              "title": "Gerät trennen",
               "content": "Möchtest du **{name}** von `{target}` trennen?",
               "toast": {
                 "detached": "{name} wurde von deinem Server getrennt."
@@ -7107,6 +7590,7 @@
             "modal": {
               "title": "Server neu installieren",
               "button": "Neu installieren",
+              "startOnCompletion": "Server nach Abschluss der Neuinstallation starten",
               "toast": {
                 "reinstalling": "Server wird neu installiert..."
               }

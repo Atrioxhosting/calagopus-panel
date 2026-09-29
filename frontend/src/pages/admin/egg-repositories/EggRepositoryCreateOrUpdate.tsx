@@ -44,9 +44,9 @@ export default function EggRepositoryCreateOrUpdate({
     z.infer<typeof adminEggRepositorySchema>
   >({
     form,
-    createFn: () => createEggRepository(adminEggRepositoryUpdateSchema.parse(form.getValues())),
+    createFn: () => createEggRepository(form.getTransformedValues()),
     updateFn: contextEggRepository
-      ? () => updateEggRepository(contextEggRepository.uuid, adminEggRepositoryUpdateSchema.parse(form.getValues()))
+      ? () => updateEggRepository(contextEggRepository.uuid, form.getTransformedValues())
       : undefined,
     deleteFn: contextEggRepository ? () => deleteEggRepository(contextEggRepository.uuid) : undefined,
     doUpdate: !!contextEggRepository,

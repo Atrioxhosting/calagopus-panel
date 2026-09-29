@@ -22,6 +22,7 @@ import {
   getNodeDefaultApiPort,
   isNodeAIO,
 } from '@/lib/domain/node.ts';
+import { findChangedLockedPaths } from '@/lib/lockedConfigPaths.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminNodeSchema } from '@/lib/schemas/admin/nodes.ts';
 import { useResource } from '@/plugins/resource/useResource.ts';
@@ -30,6 +31,7 @@ import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import NodeInitialSetupSection from './NodeInitialSetupSection.tsx';
 import NodeLiveConfigurationSection from './NodeLiveConfigurationSection.tsx';
+import NodePairingSection from './NodePairingSection.tsx';
 import { VerifyResult } from './VerifyStatusAlert.tsx';
 
 export default function AdminNodeConfiguration({ node }: { node: z.infer<typeof adminNodeSchema> }) {
@@ -37,9 +39,11 @@ export default function AdminNodeConfiguration({ node }: { node: z.infer<typeof 
   const { addToast } = useToast();
   const canReadToken = useAdminCan('nodes.read-token');
   const canUpdate = useAdminCan('nodes.update');
+  const canResetToken = useAdminCan('nodes.reset-token');
 
   const isAIO = isNodeAIO(node);
   const showInitialSetup = canReadToken && !isAIO;
+  const showPairing = canResetToken && !isAIO;
 
   const [remote, setRemote] = useState(window.location.origin);
   const [apiPort, setApiPort] = useState(() => getNodeDefaultApiPort(node));
@@ -106,12 +110,12 @@ export default function AdminNodeConfiguration({ node }: { node: z.infer<typeof 
 
   useEffect(() => {
     if (liveConfig) {
-      setYaml(dump(liveConfig, { lineWidth: -1 }));
+      setYaml(dump(liveConfig.config, { lineWidth: -1 }));
     }
   }, [liveConfig]);
 
   const doSave = () => {
-    if (!canUpdate || yaml === null || liveConfigError !== null) return;
+    if (!canUpdate || !liveConfig || yaml === null || liveConfigError !== null) return;
 
     let parsed: object;
     try {
@@ -124,13 +128,17 @@ export default function AdminNodeConfiguration({ node }: { node: z.infer<typeof 
       return;
     }
 
+    const ignoredPaths = findChangedLockedPaths(liveConfig.lockedPaths, liveConfig.config, parsed);
+
     setSaving(true);
     updateNodeConfig(node.uuid, parsed)
       .then((applied) => {
-        if (applied) {
-          addToast(t('pages.admin.nodes.tabs.configuration.page.toast.applied', {}), 'success');
-        } else {
+        if (!applied) {
           addToast(t('pages.admin.nodes.tabs.configuration.page.toast.submittedNotApplied', {}), 'warning');
+        } else if (ignoredPaths.length > 0) {
+          addToast(t('elements.lockedConfigPaths.toast.ignored', { paths: ignoredPaths.join(', ') }), 'warning');
+        } else {
+          addToast(t('pages.admin.nodes.tabs.configuration.page.toast.applied', {}), 'success');
         }
       })
       .catch((err) => {
@@ -146,6 +154,12 @@ export default function AdminNodeConfiguration({ node }: { node: z.infer<typeof 
       registry={window.extensionContext.extensionRegistry.pages.admin.nodes.view.configuration.subContainer}
       registryProps={{ node }}
     >
+      {showPairing && (
+        <div className='mb-6'>
+          <NodePairingSection node={node} />
+        </div>
+      )}
+
       {showInitialSetup && !revealed ? (
         <Stack>
           <Alert color='yellow' icon={<FontAwesomeIcon icon={faExclamationTriangle} />}>
@@ -184,7 +198,14 @@ export default function AdminNodeConfiguration({ node }: { node: z.infer<typeof 
           <NodeLiveConfigurationSection
             nodeUrl={node.url}
             connectPort={connectPort}
-            liveConfig={{ yaml, setYaml, liveConfigError, saving, doSave }}
+            liveConfig={{
+              yaml,
+              setYaml,
+              lockedPaths: liveConfig?.lockedPaths ?? [],
+              liveConfigError,
+              saving,
+              doSave,
+            }}
           />
         </Stack>
       )}

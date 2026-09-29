@@ -51,14 +51,14 @@ mod put {
 
         permissions.has_admin_permission("extensions.manage")?;
 
-        let distr = match shared::heavy::write_extension(&mut tokio_util::io::StreamReader::new(
+        let staged = match shared::heavy::stage_extension(&mut tokio_util::io::StreamReader::new(
             body.into_data_stream().map_err(std::io::Error::other),
         ))
         .await
         {
-            Ok(distr) => distr,
+            Ok(staged) => staged,
             Err(err) => {
-                let (err, status) = shared::response::extract_readable_error(&err)
+                let (err, status) = shared::response::extract_readable_message(&err)
                     .unwrap_or_else(|| (err.to_string(), StatusCode::BAD_REQUEST));
 
                 return ApiResponse::error(format!("failed to process extension archive: {err}"))
@@ -67,35 +67,47 @@ mod put {
             }
         };
 
-        if let Err(err) = distr.metadata_toml.check_panel_version(false) {
-            let _ = shared::heavy::remove_extension(&distr.metadata_toml.package_name).await;
-
+        if let Err(err) = staged
+            .distr
+            .metadata_toml
+            .check_panel_version(Some(&shared::heavy::build_target_version().await))
+        {
             return ApiResponse::error(format!("extension {err}"))
                 .with_status(StatusCode::BAD_REQUEST)
                 .ok();
         }
 
-        if distr.metadata_toml.license_text.is_some() && !params.accept_license {
-            let _ = shared::heavy::remove_extension(&distr.metadata_toml.package_name).await;
-
+        if staged.distr.metadata_toml.license_text.is_some() && !params.accept_license {
             return ApiResponse::new_serialized(Response {
                 extension: shared::extensions::PendingExtension {
-                    package_name: distr.metadata_toml.package_name.to_compact_string(),
-                    metadata_toml: distr.metadata_toml,
-                    description: distr.cargo_toml.package.description.into(),
-                    authors: distr
+                    package_name: staged.distr.metadata_toml.package_name.to_compact_string(),
+                    metadata_toml: staged.distr.metadata_toml,
+                    description: staged.distr.cargo_toml.package.description.into(),
+                    authors: staged
+                        .distr
                         .cargo_toml
                         .package
                         .authors
                         .into_iter()
                         .map(|a| a.into())
                         .collect(),
-                    version: distr.cargo_toml.package.version,
+                    version: staged.distr.cargo_toml.package.version,
                 },
                 needs_license_acceptance: true,
             })
             .ok();
         }
+
+        let distr = match staged.install().await {
+            Ok(distr) => distr,
+            Err(err) => {
+                tracing::error!("failed to install extension: {:?}", err);
+
+                return ApiResponse::error("failed to install extension")
+                    .with_status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .ok();
+            }
+        };
 
         activity_logger
             .log(

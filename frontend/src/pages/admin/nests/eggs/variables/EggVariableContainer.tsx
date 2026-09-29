@@ -64,12 +64,7 @@ export default function EggVariableContainer({
     setLoading(true);
 
     if (contextVariable?.uuid) {
-      updateEggVariable(
-        contextNest.uuid,
-        contextEgg.uuid,
-        contextVariable.uuid,
-        adminEggVariableUpdateSchema.parse(form.values),
-      )
+      updateEggVariable(contextNest.uuid, contextEgg.uuid, contextVariable.uuid, form.getTransformedValues())
         .then(() => {
           addToast(t('pages.admin.nests.tabs.eggs.page.tabs.variables.page.toast.updated', {}), 'success');
         })
@@ -80,7 +75,7 @@ export default function EggVariableContainer({
           setLoading(false);
         });
     } else {
-      createEggVariable(contextNest.uuid, contextEgg.uuid, adminEggVariableUpdateSchema.parse(form.values))
+      createEggVariable(contextNest.uuid, contextEgg.uuid, form.getTransformedValues())
         .then((variable) => {
           setEggVariables([...eggVariables.filter((v) => v.uuid || v.order !== contextVariable!.order), variable]);
           addToast(t('pages.admin.nests.tabs.eggs.page.tabs.variables.page.toast.created', {}), 'success');

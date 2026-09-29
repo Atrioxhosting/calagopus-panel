@@ -6,6 +6,7 @@ import { BackupConfigurationsRegistry } from './backupConfigurations/index.ts';
 import { DatabaseAgentHostsRegistry } from './databaseAgentHosts/index.ts';
 import { DatabaseAgentTemplatesRegistry } from './databaseAgentTemplates/index.ts';
 import { DatabaseHostsRegistry } from './databaseHosts/index.ts';
+import { DevicesRegistry } from './devices/index.ts';
 import { EggRepositoriesRegistry } from './eggRepositories/index.ts';
 import { HomeRegistry } from './home/index.ts';
 import { LocationsRegistry } from './locations/index.ts';
@@ -28,6 +29,7 @@ export class AdminRegistry implements Registry {
     this.roles.mergeFrom(other.roles);
     this.eggRepositories.mergeFrom(other.eggRepositories);
     this.mounts.mergeFrom(other.mounts);
+    this.devices.mergeFrom(other.devices);
     this.announcements.mergeFrom(other.announcements);
     this.databaseHosts.mergeFrom(other.databaseHosts);
     this.oauthProviders.mergeFrom(other.oauthProviders);
@@ -51,6 +53,7 @@ export class AdminRegistry implements Registry {
   public roles: RolesRegistry = new RolesRegistry();
   public eggRepositories: EggRepositoriesRegistry = new EggRepositoriesRegistry();
   public mounts: MountsRegistry = new MountsRegistry();
+  public devices: DevicesRegistry = new DevicesRegistry();
   public announcements: AnnouncementsRegistry = new AnnouncementsRegistry();
   public databaseHosts: DatabaseHostsRegistry = new DatabaseHostsRegistry();
   public oauthProviders: OAuthProvidersRegistry = new OAuthProvidersRegistry();
@@ -94,6 +97,11 @@ export class AdminRegistry implements Registry {
 
   public enterMounts(callback: (registry: MountsRegistry) => unknown): this {
     callback(this.mounts);
+    return this;
+  }
+
+  public enterDevices(callback: (registry: DevicesRegistry) => unknown): this {
+    callback(this.devices);
     return this;
   }
 

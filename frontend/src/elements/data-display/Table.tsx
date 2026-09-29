@@ -15,27 +15,38 @@ import {
 import classNames from 'classnames';
 import { forwardRef, ReactNode, useEffect, useState } from 'react';
 import Spinner from '@/elements/feedback/Spinner.tsx';
+import Checkbox from '@/elements/input/Checkbox.tsx';
 import { type LazyString, resolveString } from '@/lib/lazy.ts';
 import { matchesShortcut } from '@/plugins/quick-actions/useKeyboardShortcuts.ts';
-import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import { getTranslations, useTranslations } from '@/providers/TranslationProvider.tsx';
 
 export interface TableHeaderProps {
   name?: LazyString;
   hint?: LazyString;
+  content?: ReactNode;
+  className?: string;
   rightSection?: ReactNode;
   onClick?: () => void;
 }
 
-export const TableHeader = ({ name, hint, rightSection, onClick }: TableHeaderProps) => {
+export const TableHeader = ({ name, hint, content, className, rightSection, onClick }: TableHeaderProps) => {
+  if (content !== undefined) {
+    return (
+      <MantineTable.Th className={classNames('py-2', className)} onClick={onClick}>
+        {content}
+      </MantineTable.Th>
+    );
+  }
+
   const resolvedName = resolveString(name);
   if (!resolvedName) {
-    return <MantineTable.Th className='py-2' />;
+    return <MantineTable.Th className={classNames('py-2', className)} />;
   }
 
   const resolvedHint = resolveString(hint);
 
   return (
-    <MantineTable.Th className='font-normal! text-nowrap' onClick={onClick}>
+    <MantineTable.Th className={classNames('font-normal! text-nowrap', className)} onClick={onClick}>
       <div className='flex flex-row items-center gap-2'>
         {resolvedHint ? (
           <div className='flex flex-col'>
@@ -194,7 +205,7 @@ export const ErrorItems = ({ error }: { error: string }) => {
 };
 
 interface TableProps {
-  columns: LazyString[] | TableHeaderProps[];
+  columns: (LazyString | TableHeaderProps)[];
   loading?: boolean;
   error?: string | null;
   pagination?: Pagination<unknown>;
@@ -280,3 +291,55 @@ export default function Table({
     </div>
   );
 }
+
+interface TableSelectionHeaderProps {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+export const tableSelectionHeader = ({
+  checked,
+  indeterminate,
+  onChange,
+}: TableSelectionHeaderProps): TableHeaderProps => {
+  const { t } = getTranslations();
+
+  return {
+    className: 'pl-4 w-10 text-center',
+    content: (
+      <Checkbox
+        checked={checked}
+        indeterminate={indeterminate}
+        onChange={(e) => onChange(e.target.checked)}
+        aria-label={t('common.button.selectAll', {})}
+        classNames={{ input: 'cursor-pointer!' }}
+      />
+    ),
+  };
+};
+
+interface TableSelectionCellProps {
+  id: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+export const TableSelectionCell = ({ id, checked, disabled, onChange }: TableSelectionCellProps) => {
+  const { t } = useTranslations();
+
+  return (
+    <TableData className='pl-4 relative cursor-pointer w-10 text-center'>
+      <Checkbox
+        id={id}
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        onClick={(e) => e.stopPropagation()}
+        aria-label={t('common.table.selectRow', {})}
+        classNames={{ input: 'cursor-pointer!' }}
+      />
+    </TableData>
+  );
+};

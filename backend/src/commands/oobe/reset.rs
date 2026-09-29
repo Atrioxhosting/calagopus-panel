@@ -28,9 +28,12 @@ impl shared::extensions::commands::CliCommand<ResetArgs> for ResetCommand {
                 if args.step == "register" {
                     let mut settings = state.settings.get_mut().await?;
                     settings.app.registration_enabled = true;
+                    settings.app.password_login_enabled = true;
                     settings.save().await?;
 
-                    eprintln!("enabled user registration, the register step cannot run without it");
+                    eprintln!(
+                        "enabled user registration and password login, the register step cannot run without them"
+                    );
 
                     if shared::models::user::User::count(&state.database).await > 0 {
                         eprintln!(

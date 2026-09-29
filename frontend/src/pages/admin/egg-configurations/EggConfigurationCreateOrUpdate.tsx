@@ -65,13 +65,9 @@ export default function EggConfigurationCreateOrUpdate({
     z.infer<typeof adminEggConfigurationSchema>
   >({
     form,
-    createFn: () => createEggConfiguration(adminEggConfigurationUpdateSchema.parse(form.getValues())),
+    createFn: () => createEggConfiguration(form.getTransformedValues()),
     updateFn: contextEggConfiguration
-      ? () =>
-          updateEggConfiguration(
-            contextEggConfiguration.uuid,
-            adminEggConfigurationUpdateSchema.parse(form.getValues()),
-          )
+      ? () => updateEggConfiguration(contextEggConfiguration.uuid, form.getTransformedValues())
       : undefined,
     deleteFn: contextEggConfiguration ? () => deleteEggConfiguration(contextEggConfiguration.uuid) : undefined,
     doUpdate: !!contextEggConfiguration,

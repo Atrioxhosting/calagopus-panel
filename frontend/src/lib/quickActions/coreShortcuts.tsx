@@ -199,6 +199,18 @@ function buildCoreShortcutDefinitions(): ShortcutDefinition[] {
       defaultBinding: binding('ArrowRight', ['shift']),
     },
     {
+      id: 'table.selectAll',
+      category: table,
+      description: () => getTranslations().t('pages.account.shortcuts.table.selectAll', {}),
+      defaultBinding: binding('a', ['ctrlOrMeta']),
+    },
+    {
+      id: 'table.deselectAll',
+      category: table,
+      description: () => getTranslations().t('pages.account.shortcuts.table.deselectAll', {}),
+      defaultBinding: binding('Escape'),
+    },
+    {
       id: 'console.search',
       category: console,
       description: () => getTranslations().t('pages.account.shortcuts.console.searchContent', {}),

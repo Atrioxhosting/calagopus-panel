@@ -50,7 +50,7 @@ mod post {
     ) -> ApiResponseResult {
         permissions.has_server_permission("files.create")?;
 
-        if server.is_ignored(&data.root, true) {
+        if server.is_ignored_subtree(&data.root) {
             return ApiResponse::error("root directory not found")
                 .with_status(StatusCode::NOT_FOUND)
                 .ok();

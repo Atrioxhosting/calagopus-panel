@@ -26,6 +26,7 @@ import { Pagination } from '@/elements/data-display/Table.tsx';
 import { DndSortableList, SortableItem } from '@/elements/dnd/DragAndDrop.tsx';
 import BlockedOverlay from '@/elements/feedback/BlockedOverlay.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
+import Checkbox from '@/elements/input/Checkbox.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Collapse from '@/elements/layout/Collapse.tsx';
 import Divider from '@/elements/layout/Divider.tsx';
@@ -96,6 +97,7 @@ export default function ServerGroupItem({
   dragHandleProps,
   selectedServers,
   onServerSelectionChange,
+  onServersSelectionChange,
   onServerClick,
   sKeyPressedRef,
   getServerTo,
@@ -111,6 +113,7 @@ export default function ServerGroupItem({
   dragHandleProps?: ComponentProps<'button'>;
   selectedServers?: ObjectSet<z.infer<typeof serverSchema>, 'uuid'>;
   onServerSelectionChange?: (server: z.infer<typeof serverSchema>, selected: boolean) => void;
+  onServersSelectionChange?: (servers: z.infer<typeof serverSchema>[], selected: boolean) => void;
   onServerClick?: (server: z.infer<typeof serverSchema>, event: React.MouseEvent) => void;
   sKeyPressedRef: React.RefObject<boolean>;
   getServerTo?: (server: z.infer<typeof serverSchema>) => string;
@@ -209,6 +212,9 @@ export default function ServerGroupItem({
       .sort((a, b) => (positions.get(a.uuid) ?? 0) - (positions.get(b.uuid) ?? 0));
   }, [servers.data, serverGroup.serverOrder, pendingServer]);
 
+  const selectedPageCount = orderedServers.filter((server) => selectedServers?.has(server)).length;
+  const allSelected = orderedServers.length > 0 && selectedPageCount === orderedServers.length;
+
   const dndServers = useMemo(() => {
     const items = orderedServers
       .map((server) => ({ server, dndId: serverDndId(serverGroup.uuid, server.uuid) }))
@@ -299,7 +305,7 @@ export default function ServerGroupItem({
             isExpanded && 'border-b border-(--mantine-color-default-border)',
           )}
         >
-          <div className='flex flex-col my-3 sm:my-0'>
+          <div className='flex flex-col min-w-0 my-3 sm:my-0'>
             <div className='flex flex-row'>
               {dragHandleProps && (
                 <ActionIcon
@@ -339,11 +345,11 @@ export default function ServerGroupItem({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               leftSection={<FontAwesomeIcon icon={faSearch} />}
-              className='w-48 mt-1 sm:hidden'
+              className='w-full max-w-48 mt-1 sm:hidden'
             />
           </div>
 
-          <div className='flex flex-col sm:flex-row items-center gap-1 mb-1.5 sm:mb-0 py-2.5 flex-1 sm:flex-0 justify-end'>
+          <div className='flex flex-col sm:flex-row items-center gap-1 mb-1.5 sm:mb-0 py-2.5 shrink-0 justify-end'>
             <TextInput
               placeholder={t('common.input.search', {})}
               size='xs'
@@ -353,6 +359,18 @@ export default function ServerGroupItem({
               className='min-w-32 hidden sm:block'
             />
             <div className='flex flex-row items-center gap-1 w-full justify-end'>
+              {onServersSelectionChange && isExpanded && (
+                <Checkbox
+                  size='xs'
+                  className='mx-1 shrink-0'
+                  aria-label={t('common.button.selectAll', {})}
+                  title={t('common.button.selectAll', {})}
+                  checked={allSelected}
+                  indeterminate={selectedPageCount > 0 && !allSelected}
+                  disabled={loading || orderedServers.length === 0}
+                  onChange={(e) => onServersSelectionChange(orderedServers, e.currentTarget.checked)}
+                />
+              )}
               <Menu shadow='md' width={200} position='bottom-end'>
                 <Menu.Target>
                   <Tooltip label={t('pages.account.home.tooltip.groupActions', {})}>

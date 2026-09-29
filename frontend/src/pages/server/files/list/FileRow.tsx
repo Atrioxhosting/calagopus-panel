@@ -14,6 +14,7 @@ import { bytesProgressString, bytesToString } from '@/lib/format/size.ts';
 import { serverDirectoryEntrySchema } from '@/lib/schemas/server/files.ts';
 import { useDraggedFileMove } from '@/pages/server/files/hooks/useDraggedFileMove.ts';
 import useFileUpload from '@/pages/server/files/hooks/useFileUpload.ts';
+import useOpenFileInNewTab from '@/pages/server/files/hooks/useOpenFileInNewTab.ts';
 import FileRowContextMenu from '@/pages/server/files/list/FileRowContextMenu.tsx';
 import { canPreviewFile, FileSearchPreviewToggle } from '@/pages/server/files/list/FileSearchPreview.tsx';
 import FileUploadStatus from '@/pages/server/files/list/FileUploadStatus.tsx';
@@ -65,6 +66,7 @@ const FileRow = forwardRef<HTMLTableRowElement, FileRowProps>(function FileRow(
   const canOpenFile = useServerCan('files.read-content');
   const canUpdateFiles = useServerCan('files.update');
   const store = useFileManagerApi();
+  const openInNewTab = useOpenFileInNewTab();
   const browsingDirectory = useFileManagerStore((state) => state.browsingDirectory);
   const searchInfo = useFileManagerStore((state) => state.searchInfo);
   const browsingWritableDirectory = useFileManagerStore((state) => state.browsingWritableDirectory);
@@ -166,7 +168,13 @@ const FileRow = forwardRef<HTMLTableRowElement, FileRowProps>(function FileRow(
   };
 
   return (
-    <FileRowContextMenu file={file} openMode={openMode} upload={upload}>
+    <FileRowContextMenu
+      file={file}
+      openMode={openMode}
+      onOpen={() => handleOpen(openMode)}
+      directory={searchInfo?.root ?? browsingDirectory}
+      upload={upload}
+    >
       {({ items, openMenu }) => (
         <TableRow
           ref={ref}
@@ -193,6 +201,16 @@ const FileRow = forwardRef<HTMLTableRowElement, FileRowProps>(function FileRow(
             } else {
               handleClick(e);
             }
+          }}
+          onMouseDownCapture={(e) => {
+            if (e.button === 1) e.preventDefault();
+          }}
+          onAuxClick={(e) => {
+            if (e.button !== 1 || !canOpenFile || !openMode.openable || upload) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            openInNewTab(openMode, { browsingDirectory: searchInfo?.root ?? browsingDirectory });
           }}
         >
           {canOpenActionBar ? (

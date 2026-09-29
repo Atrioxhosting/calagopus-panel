@@ -105,11 +105,12 @@ impl NestEggMount {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM nest_egg_mounts
             JOIN mounts ON mounts.uuid = nest_egg_mounts.mount_uuid
-            WHERE nest_egg_mounts.egg_uuid = $1 AND ($2 IS NULL OR mounts.name ILIKE '%' || $2 || '%')
+            WHERE nest_egg_mounts.egg_uuid = $1 AND {search}
             ORDER BY nest_egg_mounts.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["mounts.name"], &["mounts.uuid"])
         )))
         .bind(egg_uuid)
         .bind(search)
@@ -145,11 +146,12 @@ impl NestEggMount {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM nest_egg_mounts
             JOIN nest_eggs ON nest_eggs.uuid = nest_egg_mounts.egg_uuid
-            WHERE nest_egg_mounts.mount_uuid = $1 AND ($2 IS NULL OR nest_eggs.name ILIKE '%' || $2 || '%')
+            WHERE nest_egg_mounts.mount_uuid = $1 AND {search}
             ORDER BY nest_egg_mounts.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["nest_eggs.name"], &["nest_eggs.uuid"])
         )))
         .bind(mount_uuid)
         .bind(search)

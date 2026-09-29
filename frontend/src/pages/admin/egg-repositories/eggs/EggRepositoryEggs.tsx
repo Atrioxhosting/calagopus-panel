@@ -2,13 +2,13 @@ import { Ref, useState } from 'react';
 import { z } from 'zod';
 import getEggRepositoryEggs from '@/api/admin/egg-repositories/eggs/getEggRepositoryEggs.ts';
 import AdminSubContentContainer from '@/elements/containers/AdminSubContentContainer.tsx';
-import Table from '@/elements/data-display/Table.tsx';
+import Table, { tableSelectionHeader } from '@/elements/data-display/Table.tsx';
 import SelectionArea from '@/elements/dnd/SelectionArea.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminEggRepositoryEggSchema, adminEggRepositorySchema } from '@/lib/schemas/admin/eggRepositories.ts';
 import { eggRepositoryEggTableColumns } from '@/lib/tableColumns.ts';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
-import { useObjectSetSelection } from '@/plugins/selection/useObjectSetSelection.ts';
+import { useTableSelection } from '@/plugins/selection/useTableSelection.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import EggRepositoryEggDrawer from './drawers/EggRepositoryEggDrawer.tsx';
 import EggActionBar from './EggActionBar.tsx';
@@ -34,7 +34,9 @@ export default function EggRepositoryEggs({
     fetcher: (page, search) => getEggRepositoryEggs(contextEggRepository.uuid, page, search),
   });
 
-  const { selected, add, remove, clear, selectionAreaProps } = useObjectSetSelection(eggRepositoryEggs?.data);
+  const { selected, add, remove, clear, selectAll, allSelected, selectionAreaProps } = useTableSelection({
+    items: eggRepositoryEggs?.data,
+  });
 
   return (
     <AdminSubContentContainer
@@ -56,12 +58,18 @@ export default function EggRepositoryEggs({
 
       <SelectionArea {...selectionAreaProps} disabled={drawerEgg !== null}>
         <Table
-          columns={eggRepositoryEggTableColumns()}
+          columns={[
+            tableSelectionHeader({
+              checked: allSelected,
+              indeterminate: selected.size > 0 && !allSelected,
+              onChange: (checked) => (checked ? selectAll() : clear()),
+            }),
+            ...eggRepositoryEggTableColumns().slice(1),
+          ]}
           loading={loading}
           error={error}
           pagination={eggRepositoryEggs}
           onPageSelect={setPage}
-          allowSelect={false}
         >
           {eggRepositoryEggs?.data.map((eggRepositoryEgg) => (
             <SelectionArea.Selectable key={eggRepositoryEgg.uuid} item={eggRepositoryEgg}>

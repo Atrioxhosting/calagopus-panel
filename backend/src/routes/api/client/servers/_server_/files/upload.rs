@@ -33,6 +33,7 @@ mod get {
     ))]
     pub async fn route(
         state: GetState,
+        request_host: shared::GetRequestHost,
         permissions: GetPermissionManager,
         user: GetUser,
         server: GetServer,
@@ -76,7 +77,9 @@ mod get {
             },
         )?;
 
-        let mut url = node.public_url(&state, "/upload/file").await?;
+        let mut url = node
+            .public_url(&state, request_host.as_deref(), "/upload/file")
+            .await?;
         url.set_query(Some(&format!("token={}", urlencoding::encode(&token))));
 
         ApiResponse::new_serialized(Response {

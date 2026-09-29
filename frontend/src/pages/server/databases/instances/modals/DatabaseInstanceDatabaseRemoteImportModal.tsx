@@ -1,5 +1,4 @@
 import { ModalProps } from '@mantine/core';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { z } from 'zod';
 import importDatabaseInstanceDatabaseRemote from '@/api/server/databases/instances/importDatabaseInstanceDatabaseRemote.ts';
 import Button from '@/elements/buttons/Button.tsx';
@@ -33,7 +32,7 @@ export default function DatabaseInstanceDatabaseRemoteImportModal({ instance, da
     z.infer<typeof serverDatabaseInstanceRemoteImportSchema>
   >({
     initialValues: { url: '', sourceDb: null, wipe: false },
-    validate: zod4Resolver(serverDatabaseInstanceRemoteImportSchema),
+    schema: serverDatabaseInstanceRemoteImportSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await importDatabaseInstanceDatabaseRemote(server.uuid, instance.uuid, database.uuid, values);

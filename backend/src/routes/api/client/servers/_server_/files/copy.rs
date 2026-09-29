@@ -58,7 +58,7 @@ mod post {
     ) -> ApiResponseResult {
         permissions.has_server_permission("files.create")?;
 
-        if server.is_ignored_either(&data.path) {
+        if server.is_ignored_subtree(&data.path) {
             return ApiResponse::error("file not found")
                 .with_status(StatusCode::NOT_FOUND)
                 .ok();

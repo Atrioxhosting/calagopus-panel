@@ -6,6 +6,7 @@ import { useTranslations } from '@/providers/TranslationProvider.tsx';
 export interface NodeLiveConfigState {
   yaml: string | null;
   setYaml: (value: string) => void;
+  lockedPaths: string[];
   liveConfigError: string | null;
   saving: boolean;
   doSave: () => void;
@@ -21,7 +22,7 @@ export default function NodeLiveConfigurationSection({
   liveConfig: NodeLiveConfigState;
 }) {
   const { t } = useTranslations();
-  const { yaml, setYaml, liveConfigError, saving, doSave } = liveConfig;
+  const { yaml, setYaml, lockedPaths, liveConfigError, saving, doSave } = liveConfig;
 
   return (
     <LiveYamlConfigSection
@@ -29,6 +30,7 @@ export default function NodeLiveConfigurationSection({
       saveLabel={t('pages.admin.nodes.tabs.configuration.page.button.save', {})}
       updateAction='nodes.update'
       yaml={yaml}
+      lockedPaths={lockedPaths}
       onYamlChange={setYaml}
       onSave={doSave}
       saving={saving}

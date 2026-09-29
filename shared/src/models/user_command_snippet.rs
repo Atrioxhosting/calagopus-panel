@@ -116,11 +116,16 @@ impl UserCommandSnippet {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM user_command_snippets
-            WHERE user_command_snippets.user_uuid = $1 AND ($2 IS NULL OR user_command_snippets.name ILIKE '%' || $2 || '%')
+            WHERE user_command_snippets.user_uuid = $1 AND {search}
             ORDER BY user_command_snippets.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(
+                2,
+                &["user_command_snippets.name"],
+                &["user_command_snippets.uuid"]
+            )
         )))
         .bind(user_uuid)
         .bind(search)

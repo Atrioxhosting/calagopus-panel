@@ -10,7 +10,7 @@ mod post {
     use shared::{
         ApiError, GetState,
         models::{
-            server::{GetServer, GetServerActivityLogger},
+            server::{GetServer, GetServerActivityLogger, ServerInstallOptions},
             user::GetPermissionManager,
         },
         response::{ApiResponse, ApiResponseResult},
@@ -20,6 +20,8 @@ mod post {
     #[derive(ToSchema, Deserialize)]
     pub struct Payload {
         truncate_directory: bool,
+        #[serde(default)]
+        start_on_completion: bool,
     }
 
     #[derive(ToSchema, Serialize)]
@@ -44,17 +46,28 @@ mod post {
         shared::Payload(data): shared::Payload<Payload>,
     ) -> ApiResponseResult {
         permissions.has_server_permission("settings.install")?;
+        if data.start_on_completion {
+            permissions.has_server_permission("control.start")?;
+        }
 
         tokio::spawn(async move {
             server
-                .install(&state, data.truncate_directory, None)
+                .install_with_options(
+                    &state,
+                    ServerInstallOptions {
+                        truncate_directory: data.truncate_directory,
+                        start_on_completion: data.start_on_completion,
+                        ..Default::default()
+                    },
+                )
                 .await?;
 
             activity_logger
                 .log(
                     "server:settings.install",
                     serde_json::json!({
-                        "truncate_directory": data.truncate_directory
+                        "truncate_directory": data.truncate_directory,
+                        "start_on_completion": data.start_on_completion,
                     }),
                 )
                 .await;

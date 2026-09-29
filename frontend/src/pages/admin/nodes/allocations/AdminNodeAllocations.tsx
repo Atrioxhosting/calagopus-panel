@@ -247,7 +247,6 @@ export default function AdminNodeAllocations({ node }: { node: z.infer<typeof ad
           error={error}
           pagination={nodeAllocations}
           onPageSelect={setPage}
-          allowSelect={false}
         >
           {nodeAllocations?.data.map((allocation) => (
             <SelectionArea.Selectable key={allocation.uuid} item={allocation}>

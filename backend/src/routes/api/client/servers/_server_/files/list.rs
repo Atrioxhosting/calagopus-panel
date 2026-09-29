@@ -77,7 +77,7 @@ mod get {
 
         permissions.has_server_permission("files.read")?;
 
-        if server.is_ignored(&params.directory, true) {
+        if server.is_ignored_subtree(&params.directory) {
             return ApiResponse::error("directory not found")
                 .with_status(StatusCode::NOT_FOUND)
                 .ok();

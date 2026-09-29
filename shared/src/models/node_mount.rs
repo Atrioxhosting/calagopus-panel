@@ -105,11 +105,12 @@ impl NodeMount {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM node_mounts
             JOIN mounts ON mounts.uuid = node_mounts.mount_uuid
-            WHERE node_mounts.node_uuid = $1 AND ($2 IS NULL OR mounts.name ILIKE '%' || $2 || '%')
+            WHERE node_mounts.node_uuid = $1 AND {search}
             ORDER BY node_mounts.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["mounts.name"], &["mounts.uuid"])
         )))
         .bind(node_uuid)
         .bind(search)
@@ -145,11 +146,12 @@ impl NodeMount {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM node_mounts
             JOIN nodes ON nodes.uuid = node_mounts.node_uuid
-            WHERE node_mounts.mount_uuid = $1 AND ($2 IS NULL OR nodes.name ILIKE '%' || $2 || '%')
+            WHERE node_mounts.mount_uuid = $1 AND {search}
             ORDER BY node_mounts.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["nodes.name"], &["nodes.uuid"])
         )))
         .bind(mount_uuid)
         .bind(search)

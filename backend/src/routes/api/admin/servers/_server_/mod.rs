@@ -18,6 +18,7 @@ mod bandwidth;
 mod billing_period;
 mod clear_state;
 mod databases;
+mod devices;
 mod logs;
 mod mounts;
 mod transfer;
@@ -150,7 +151,7 @@ mod delete {
         {
             tracing::error!("failed to delete server: {:?}", err);
 
-            let (err, status) = shared::response::extract_readable_error(&err)
+            let (err, status) = shared::response::extract_readable_message(&err)
                 .unwrap_or_else(|| (err.to_string(), StatusCode::EXPECTATION_FAILED));
 
             return ApiResponse::error(format!("failed to delete server: {err}"))
@@ -165,7 +166,7 @@ mod delete {
                 if let Err(err) = backup.delete(&state, Default::default()).await {
                     tracing::error!(server = %server.uuid, backup = %backup_uuid, "failed to delete backup: {:?}", err);
 
-                    let (err, status) = shared::response::extract_readable_error(&err)
+                    let (err, status) = shared::response::extract_readable_message(&err)
                         .unwrap_or_else(|| (err.to_string(), StatusCode::EXPECTATION_FAILED));
 
                     if !data.force {
@@ -257,6 +258,7 @@ mod patch {
                     "pinned_cpus": server.pinned_cpus,
                     "startup": server.startup,
                     "image": server.image,
+                    "labels": server.labels,
                     "timezone": server.timezone,
 
                     "hugepages_passthrough_enabled": server.hugepages_passthrough_enabled,
@@ -286,6 +288,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .nest("/bandwidth", bandwidth::router(state))
         .nest("/billing-period", billing_period::router(state))
         .nest("/mounts", mounts::router(state))
+        .nest("/devices", devices::router(state))
         .nest("/transfer", transfer::router(state))
         .nest("/allocations", allocations::router(state))
         .nest("/clear-state", clear_state::router(state))

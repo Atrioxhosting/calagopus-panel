@@ -5,14 +5,16 @@ import TitleCard from '@/elements/data-display/TitleCard.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import { useGlobalStore } from '@/stores/global.ts';
 import PasswordLoginToggleButton from './actions/PasswordLoginToggleButton.tsx';
 import { AccountCardProps } from './DashboardAccount.tsx';
 
 export default function PasswordLoginContainer({ requireTwoFactorActivation }: AccountCardProps) {
   const { t } = useTranslations();
   const { user } = useAuth();
+  const passwordLoginEnabled = useGlobalStore((state) => state.settings.app.passwordLoginEnabled);
 
-  if (!user!.hasPassword) return null;
+  if (!user!.hasPassword || !passwordLoginEnabled) return null;
 
   return (
     <TitleCard

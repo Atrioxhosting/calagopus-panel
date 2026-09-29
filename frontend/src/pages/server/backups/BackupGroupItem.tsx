@@ -1,6 +1,6 @@
 import { faPen, faSearch, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { ComponentProps, useState } from 'react';
+import { ComponentProps, Ref, useState } from 'react';
 import { z } from 'zod';
 import { getEmptyPaginationSet } from '@/api/axios.ts';
 import getBackupGroupBackups from '@/api/server/backups/groups/getBackupGroupBackups.ts';
@@ -8,13 +8,15 @@ import ActionIcon from '@/elements/buttons/ActionIcon.tsx';
 import Button from '@/elements/buttons/Button.tsx';
 import BackupRetentionBadge from '@/elements/data-display/BackupRetentionBadge.tsx';
 import Badge from '@/elements/data-display/Badge.tsx';
-import Table, { Pagination } from '@/elements/data-display/Table.tsx';
+import Table, { Pagination, tableSelectionHeader } from '@/elements/data-display/Table.tsx';
+import SelectionArea from '@/elements/dnd/SelectionArea.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import ScrollingText from '@/elements/ScrollingText.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { serverBackupGroupSchema, serverBackupSchema } from '@/lib/schemas/server/backups.ts';
+import BackupActionBar from '@/pages/server/backups/BackupActionBar.tsx';
 import BackupRow from '@/pages/server/backups/BackupRow.tsx';
 import BackupCreateModal from '@/pages/server/backups/modals/BackupCreateModal.tsx';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
@@ -25,14 +27,22 @@ import BackupGroupCard from './BackupGroupCard.tsx';
 import { BackupColumns } from './columns.ts';
 import BackupGroupDeleteModal from './modals/BackupGroupDeleteModal.tsx';
 import BackupGroupEditModal from './modals/BackupGroupEditModal.tsx';
+import { useBackupSelection } from './useBackupSelection.ts';
 
 export default function BackupGroupItem({
   group,
+  groups,
   columns,
+  activeScope,
+  setActiveScope,
   dragHandleProps,
 }: {
   group: z.infer<typeof serverBackupGroupSchema>;
+  /** Left out for the drag preview, which renders a copy of the card with no selection. */
+  groups?: z.infer<typeof serverBackupGroupSchema>[];
   columns: BackupColumns;
+  activeScope?: string | null;
+  setActiveScope?: (scope: string | null) => void;
   dragHandleProps?: ComponentProps<'button'>;
 }) {
   const { t, tItem } = useTranslations();
@@ -52,6 +62,25 @@ export default function BackupGroupItem({
     modifyParams: false,
   });
 
+  const canSelect =
+    useServerCan(['backups.update', 'backups.delete']) && groups !== undefined && setActiveScope !== undefined;
+
+  const {
+    selected: selectedBackups,
+    toggle: toggleBackup,
+    clear: clearSelection,
+    selectAll,
+    allSelected,
+    scopeProps,
+    selectionAreaProps,
+  } = useBackupSelection({
+    scope: group.uuid,
+    activeScope,
+    setActiveScope,
+    items: backups.data,
+    enabled: canSelect,
+  });
+
   const allLocked = group.usableBackups > 0 && group.usableUnlockedBackups === 0;
 
   return (
@@ -65,6 +94,7 @@ export default function BackupGroupItem({
       <BackupGroupDeleteModal group={group} opened={openModal === 'delete'} onClose={() => setOpenModal(null)} />
 
       <BackupGroupCard
+        {...scopeProps}
         storageKey={group.uuid}
         dragHandleProps={dragHandleProps}
         header={
@@ -128,11 +158,38 @@ export default function BackupGroupItem({
             )}
           </div>
         ) : (
-          <Table flush columns={columns.headers} pagination={backups}>
-            {backups.data.map((backup) => (
-              <BackupRow backup={backup} columns={columns} key={backup.uuid} />
-            ))}
-          </Table>
+          <SelectionArea {...selectionAreaProps} disabled={!canSelect}>
+            <Table
+              flush
+              columns={
+                canSelect
+                  ? [
+                      tableSelectionHeader({
+                        checked: allSelected,
+                        indeterminate: selectedBackups.size > 0 && !allSelected,
+                        onChange: (checked) => (checked ? selectAll() : clearSelection()),
+                      }),
+                      ...columns.headers,
+                    ]
+                  : columns.headers
+              }
+              pagination={backups}
+            >
+              {backups.data.map((backup) => (
+                <SelectionArea.Selectable key={backup.uuid} item={backup}>
+                  {(innerRef: Ref<HTMLElement>) => (
+                    <BackupRow
+                      backup={backup}
+                      columns={columns}
+                      ref={innerRef as Ref<HTMLTableRowElement>}
+                      isSelected={selectedBackups.has(backup.uuid)}
+                      onSelectionChange={canSelect ? (selected) => toggleBackup(backup, selected) : undefined}
+                    />
+                  )}
+                </SelectionArea.Selectable>
+              ))}
+            </Table>
+          </SelectionArea>
         )}
 
         {backups.total > backups.perPage && (
@@ -141,6 +198,10 @@ export default function BackupGroupItem({
           </div>
         )}
       </BackupGroupCard>
+
+      {canSelect && groups && (
+        <BackupActionBar selectedBackups={selectedBackups} groups={groups} clearSelection={clearSelection} />
+      )}
     </>
   );
 }

@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import updateDatabaseInstanceUserDatabases from '@/api/server/databases/instances/updateDatabaseInstanceUserDatabases.ts';
@@ -44,7 +43,7 @@ export default function DatabaseInstanceUserPermissionsModal({ instance, user, d
     z.infer<typeof serverDatabaseInstanceUserDatabasesUpdateSchema>
   >({
     initialValues: { databases: currentGrants },
-    validate: zod4Resolver(serverDatabaseInstanceUserDatabasesUpdateSchema),
+    schema: serverDatabaseInstanceUserDatabasesUpdateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await updateDatabaseInstanceUserDatabases(server.uuid, instance.uuid, user.uuid, values);

@@ -82,6 +82,7 @@ mod get {
     ))]
     pub async fn route(
         state: GetState,
+        request_host: shared::GetRequestHost,
         permissions: GetPermissionManager,
         user: GetUser,
         mut server: GetServer,
@@ -91,7 +92,14 @@ mod get {
         permissions.has_server_permission("files.read-content")?;
 
         for file in &params.files {
-            if server.is_ignored(Path::new(&params.root).join(file), params.directory) {
+            let path = Path::new(&params.root).join(file);
+            let ignored = if params.directory {
+                server.is_ignored_subtree(&path)
+            } else {
+                server.is_ignored(&path, false)
+            };
+
+            if ignored {
                 return ApiResponse::new_serialized(ApiError::new_value(&["file not found"]))
                     .with_status(StatusCode::NOT_FOUND)
                     .ok();
@@ -148,6 +156,7 @@ mod get {
             let mut url = node
                 .public_url(
                     &state,
+                    request_host.as_deref(),
                     if params.directory {
                         "/download/directory"
                     } else {
@@ -197,7 +206,9 @@ mod get {
                 },
             )?;
 
-            let mut url = node.public_url(&state, "/download/files").await?;
+            let mut url = node
+                .public_url(&state, request_host.as_deref(), "/download/files")
+                .await?;
             url.set_query(Some(&format!(
                 "token={}&archive_format={}",
                 urlencoding::encode(&token),

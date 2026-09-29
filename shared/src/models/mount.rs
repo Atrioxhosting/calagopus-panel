@@ -135,11 +135,12 @@ impl Mount {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM mounts
-            WHERE ($1 IS NULL OR mounts.name ILIKE '%' || $1 || '%')
+            WHERE {search}
             ORDER BY mounts.created
             LIMIT $2 OFFSET $3
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(1, &["mounts.name"], &["mounts.uuid"])
         )))
         .bind(search)
         .bind(per_page)

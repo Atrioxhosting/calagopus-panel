@@ -1,7 +1,6 @@
 import { faArrowDown } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ModalProps } from '@mantine/core';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { join } from 'pathe';
 import { useEffect } from 'react';
 import { z } from 'zod';
@@ -34,7 +33,7 @@ export default function SymlinkNameModal({ file, ...props }: Props) {
       link: '',
       target: '',
     },
-    validate: zod4Resolver(serverFilesSymlinkCreateSchema),
+    schema: serverFilesSymlinkCreateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await createSymlink(server.uuid, browsingDirectory, values.link, values.target);

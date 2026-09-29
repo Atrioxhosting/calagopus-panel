@@ -1,8 +1,7 @@
 import { forwardRef } from 'react';
 import { z } from 'zod';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import TableLink from '@/elements/data-display/TableLink.tsx';
-import Checkbox from '@/elements/input/Checkbox.tsx';
 import { ContextMenuChildrenProps, ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
@@ -12,14 +11,13 @@ import { adminNestSchema } from '@/lib/schemas/admin/nests.ts';
 interface EggRowProps {
   nest: z.infer<typeof adminNestSchema>;
   egg: z.infer<typeof adminEggSchema>;
-  showSelection?: boolean;
   isSelected?: boolean;
   onSelectionChange?: (selected: boolean) => void;
   contextMenuProps?: ContextMenuChildrenProps;
 }
 
 const EggRow = forwardRef<HTMLTableRowElement, EggRowProps>(function EggRow(
-  { nest, egg, showSelection, isSelected, onSelectionChange, contextMenuProps },
+  { nest, egg, isSelected = false, onSelectionChange, contextMenuProps },
   ref,
 ) {
   return (
@@ -41,18 +39,8 @@ const EggRow = forwardRef<HTMLTableRowElement, EggRowProps>(function EggRow(
       }}
       ref={ref}
     >
-      {showSelection && (
-        <TableData className='pl-4 relative cursor-pointer w-10 text-center'>
-          <Checkbox
-            id={egg.uuid}
-            checked={isSelected}
-            onChange={(e) => {
-              onSelectionChange?.(e.target.checked);
-            }}
-            onClick={(e) => e.stopPropagation()}
-            classNames={{ input: 'cursor-pointer!' }}
-          />
-        </TableData>
+      {onSelectionChange !== undefined && (
+        <TableSelectionCell id={egg.uuid} checked={isSelected} onChange={onSelectionChange} />
       )}
 
       <TableData>

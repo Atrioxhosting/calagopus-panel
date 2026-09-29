@@ -11,6 +11,8 @@ import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { AdminNode, AdminNodeDatabaseAgentHost } from '@/lib/schemas/admin/nodes.ts';
+import DatabaseAgentHostDeploymentBadge from '@/pages/admin/database-agent-hosts/DatabaseAgentHostDeploymentBadge.tsx';
+import DatabaseAgentHostHealthIcon from '@/pages/admin/database-agent-hosts/DatabaseAgentHostHealthIcon.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -75,11 +77,20 @@ export default function NodeDatabaseAgentHostRow({
             }}
           >
             <TableData>
+              <DatabaseAgentHostHealthIcon databaseAgentHost={databaseAgentHost.databaseAgentHost} />
+            </TableData>
+
+            <TableData>
               <TableLink to={`/admin/database-agent-hosts/${databaseAgentHost.databaseAgentHost.uuid}`}>
                 <Code>{databaseAgentHost.databaseAgentHost.uuid}</Code>
               </TableLink>
             </TableData>
-            <TableData>{databaseAgentHost.databaseAgentHost.name}</TableData>
+            <TableData>
+              <span className='flex gap-2 items-center'>
+                {databaseAgentHost.databaseAgentHost.name}&nbsp;
+                <DatabaseAgentHostDeploymentBadge databaseAgentHost={databaseAgentHost.databaseAgentHost} />
+              </span>
+            </TableData>
 
             <TableData>
               <FormattedTimestamp timestamp={databaseAgentHost.created} />

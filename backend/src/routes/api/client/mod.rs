@@ -374,7 +374,15 @@ pub async fn auth(
         drop(settings);
 
         cookies.add(
-            match UserSession::get_cookie(&state, session_id.value().to_string()).await {
+            match UserSession::get_cookie(
+                &state,
+                req.extensions()
+                    .get::<shared::RequestHost>()
+                    .and_then(|host| host.as_deref()),
+                session_id.value().to_string(),
+            )
+            .await
+            {
                 Ok(cookie) => cookie,
                 Err(err) => return Ok(ApiResponse::from(err).into_response()),
             },

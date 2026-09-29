@@ -1,15 +1,18 @@
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useState } from 'react';
+import { Ref, useState } from 'react';
 import getCommandSnippets from '@/api/me/command-snippets/getCommandSnippets.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import AccountContentContainer from '@/elements/containers/AccountContentContainer.tsx';
-import Table from '@/elements/data-display/Table.tsx';
+import Table, { tableSelectionHeader } from '@/elements/data-display/Table.tsx';
+import SelectionArea from '@/elements/dnd/SelectionArea.tsx';
 import ConditionalTooltip from '@/elements/overlays/ConditionalTooltip.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
+import { useTableSelection } from '@/plugins/selection/useTableSelection.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useGlobalStore } from '@/stores/global.ts';
+import CommandSnippetActionBar from './CommandSnippetActionBar.tsx';
 import CommandSnippetRow from './CommandSnippetRow.tsx';
 import CommandSnippetCreateModal from './modals/CommandSnippetCreateModal.tsx';
 
@@ -26,10 +29,20 @@ export default function DashboardCommandSnippets() {
     search,
     setSearch,
     setPage,
+    refetch,
   } = useSearchablePaginatedTable({
     queryKey: queryKeys.user.commandSnippets.all(),
     fetcher: getCommandSnippets,
   });
+
+  const {
+    selected: selectedCommandSnippets,
+    toggle: toggleCommandSnippet,
+    clear: clearSelection,
+    selectAll,
+    allSelected,
+    selectionAreaProps,
+  } = useTableSelection({ items: commandSnippets?.data });
 
   return (
     <AccountContentContainer
@@ -59,22 +72,44 @@ export default function DashboardCommandSnippets() {
     >
       <CommandSnippetCreateModal opened={openModal === 'create'} onClose={() => setOpenModal(null)} />
 
-      <Table
-        columns={[
-          t('common.table.columns.name', {}),
-          t('common.table.columns.eggs', {}),
-          t('common.table.columns.created', {}),
-          '',
-        ]}
-        loading={loading}
-        pagination={commandSnippets}
-        onPageSelect={setPage}
-        error={error}
-      >
-        {commandSnippets?.data.map((snippet) => (
-          <CommandSnippetRow key={snippet.uuid} commandSnippet={snippet} />
-        ))}
-      </Table>
+      <CommandSnippetActionBar
+        selectedCommandSnippets={selectedCommandSnippets}
+        clearSelection={clearSelection}
+        onFinished={refetch}
+      />
+
+      <SelectionArea {...selectionAreaProps}>
+        <Table
+          columns={[
+            tableSelectionHeader({
+              checked: allSelected,
+              indeterminate: selectedCommandSnippets.size > 0 && !allSelected,
+              onChange: (checked) => (checked ? selectAll() : clearSelection()),
+            }),
+            t('common.table.columns.name', {}),
+            t('common.table.columns.eggs', {}),
+            t('common.table.columns.created', {}),
+            '',
+          ]}
+          loading={loading}
+          pagination={commandSnippets}
+          onPageSelect={setPage}
+          error={error}
+        >
+          {commandSnippets?.data.map((snippet) => (
+            <SelectionArea.Selectable key={snippet.uuid} item={snippet}>
+              {(innerRef: Ref<HTMLElement>) => (
+                <CommandSnippetRow
+                  commandSnippet={snippet}
+                  ref={innerRef as Ref<HTMLTableRowElement>}
+                  isSelected={selectedCommandSnippets.has(snippet.uuid)}
+                  onSelectionChange={(selected) => toggleCommandSnippet(snippet, selected)}
+                />
+              )}
+            </SelectionArea.Selectable>
+          ))}
+        </Table>
+      </SelectionArea>
     </AccountContentContainer>
   );
 }

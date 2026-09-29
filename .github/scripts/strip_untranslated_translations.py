@@ -20,9 +20,11 @@ def load_json(path: Path) -> dict:
 
 
 def dump_json(path: Path, data: dict) -> None:
-    with path.open("w", encoding="utf-8") as f:
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    with tmp_path.open("w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
         f.write("\n")
+    tmp_path.replace(path)
 
 
 def strip_untranslated(source: dict, target: dict) -> tuple[dict, int]:

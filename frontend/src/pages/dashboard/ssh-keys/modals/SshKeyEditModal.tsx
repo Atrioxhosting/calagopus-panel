@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import updateSshKey from '@/api/me/ssh-keys/updateSshKey.ts';
@@ -32,7 +31,7 @@ export default function SshKeyEditModal({ sshKey, ...props }: Props) {
     initialValues: {
       name: sshKey.name,
     },
-    validate: zod4Resolver(schema),
+    schema: schema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await updateSshKey(sshKey.uuid, values);

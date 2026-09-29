@@ -7,6 +7,7 @@ import { AdminCan } from '@/elements/Can.tsx';
 import AccountContentContainer from '@/elements/containers/AccountContentContainer.tsx';
 import { Pagination } from '@/elements/data-display/Table.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
+import Checkbox from '@/elements/input/Checkbox.tsx';
 import Switch from '@/elements/input/Switch.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Divider from '@/elements/layout/Divider.tsx';
@@ -83,6 +84,9 @@ export default function DashboardHomeAll() {
     deps: [serverListShowOthers],
   });
 
+  const selectedPageCount = servers?.data.filter((server) => selectedServers.has(server)).length ?? 0;
+  const allSelected = selectedPageCount > 0 && selectedPageCount === servers?.data.length;
+
   const handleServerSelectionChange = (server: z.infer<typeof serverSchema>, selected: boolean) => {
     setSelectedServers((prev) => {
       const newSet = prev.clone();
@@ -116,12 +120,36 @@ export default function DashboardHomeAll() {
       <DashboardHomeTitle />
 
       <Group mb='md' justify='space-between'>
-        <TextInput
-          placeholder={t('common.input.search', {})}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className='w-full md:w-62.5'
-        />
+        <Group wrap='nowrap' className='w-full md:w-auto'>
+          <Checkbox
+            aria-label={t('common.button.selectAll', {})}
+            title={t('common.button.selectAll', {})}
+            className='shrink-0'
+            checked={allSelected}
+            indeterminate={selectedPageCount > 0 && !allSelected}
+            disabled={loading || !servers?.data.length}
+            onChange={(e) => {
+              const checked = e.currentTarget.checked;
+              setSelectedServers((previous) => {
+                const next = previous.clone();
+                for (const server of servers?.data ?? []) {
+                  if (checked) {
+                    next.add(server);
+                  } else {
+                    next.delete(server);
+                  }
+                }
+                return next;
+              });
+            }}
+          />
+          <TextInput
+            placeholder={t('common.input.search', {})}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className='flex-1 min-w-0 md:w-62.5'
+          />
+        </Group>
         <AdminCan action='servers.read'>
           <Switch
             label={t('pages.account.home.tabs.allServers.page.input.showOtherUsersServers', {})}

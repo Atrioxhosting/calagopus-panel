@@ -103,7 +103,7 @@ export default function DashboardApiKeysUpdate() {
         queryClient.invalidateQueries({ queryKey: queryKeys.user.apiKeys.all() });
 
         if (callbackUrl) {
-          window.location.href = callbackUrl.toString();
+          window.location.replace(callbackUrl.toString());
         } else {
           addToast(t('pages.account.apiKeys.modal.updateApiKey.toast.updated', {}), 'success');
           setUpdated(true);

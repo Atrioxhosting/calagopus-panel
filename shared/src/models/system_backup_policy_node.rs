@@ -111,11 +111,12 @@ impl SystemBackupPolicyNode {
             JOIN nodes ON nodes.uuid = system_backup_policy_nodes.node_uuid
             WHERE
                 system_backup_policy_nodes.system_backup_policy_uuid = $1
-                AND ($2 IS NULL OR nodes.name ILIKE '%' || $2 || '%')
+                AND {search}
             ORDER BY system_backup_policy_nodes.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["nodes.name"], &["nodes.uuid"])
         )))
         .bind(system_backup_policy_uuid)
         .bind(search)

@@ -59,12 +59,11 @@ export default function DatabaseAgentTemplateCreateOrUpdate({
   >({
     form,
     createFn: () =>
-      adminDatabaseAgentTemplateCreateSchema.parseAsync(form.getValues()).then(createDatabaseAgentTemplate),
+      createDatabaseAgentTemplate(
+        form.getTransformedValues() as z.infer<typeof adminDatabaseAgentTemplateCreateSchema>,
+      ),
     updateFn: contextDatabaseAgentTemplate
-      ? () =>
-          adminDatabaseAgentTemplateUpdateSchema
-            .parseAsync(form.getValues())
-            .then((values) => updateDatabaseAgentTemplate(contextDatabaseAgentTemplate.uuid, values))
+      ? () => updateDatabaseAgentTemplate(contextDatabaseAgentTemplate.uuid, form.getTransformedValues())
       : undefined,
     deleteFn: contextDatabaseAgentTemplate
       ? () => deleteDatabaseAgentTemplate(contextDatabaseAgentTemplate.uuid)

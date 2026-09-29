@@ -125,11 +125,16 @@ impl ServerBackupGroup {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM server_backup_groups
-            WHERE server_backup_groups.server_uuid = $1 AND ($2 IS NULL OR server_backup_groups.name ILIKE '%' || $2 || '%')
+            WHERE server_backup_groups.server_uuid = $1 AND {search}
             ORDER BY server_backup_groups.order_, server_backup_groups.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(
+                2,
+                &["server_backup_groups.name"],
+                &["server_backup_groups.uuid"]
+            )
         )))
         .bind(server_uuid)
         .bind(search)

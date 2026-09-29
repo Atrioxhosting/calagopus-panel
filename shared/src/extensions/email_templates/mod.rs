@@ -39,7 +39,7 @@ pub struct FetchedEmailTemplate {
 
 impl EmailTemplate {
     pub async fn get(&self, state: &crate::State) -> Result<FetchedEmailTemplate, anyhow::Error> {
-        let db_content: Option<(bool, String, String)> = state
+        let db_content: Option<(bool, Option<String>, Option<String>)> = state
             .cache
             .cached(
                 &format!("email_templates::{}", self.identifier),
@@ -65,8 +65,12 @@ impl EmailTemplate {
             Some((enabled, subject, content)) => FetchedEmailTemplate {
                 identifier: self.identifier,
                 available_variables: self.available_variables.clone(),
-                subject: Cow::Owned(subject),
-                content: Cow::Owned(content),
+                subject: subject
+                    .map(Cow::Owned)
+                    .unwrap_or(Cow::Borrowed(self.default_subject)),
+                content: content
+                    .map(Cow::Owned)
+                    .unwrap_or(Cow::Borrowed(self.default_content)),
                 enabled,
             },
             None => FetchedEmailTemplate {
@@ -93,12 +97,6 @@ impl EmailTemplate {
             Some(inner) => (true, inner),
         };
 
-        let insert_subject = subject_val
-            .clone()
-            .unwrap_or_else(|| self.default_subject.to_string());
-        let insert_content = content_val
-            .clone()
-            .unwrap_or_else(|| self.default_content.to_string());
         let insert_enabled = data.enabled.unwrap_or(self.default_enabled);
 
         sqlx::query(
@@ -106,25 +104,21 @@ impl EmailTemplate {
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (identifier) DO UPDATE SET
                 subject = CASE
-                    WHEN $5 THEN COALESCE($6, $7)
+                    WHEN $5 THEN $2
                     ELSE email_templates.subject
                 END,
                 content = CASE
-                    WHEN $8 THEN COALESCE($9, $10)
+                    WHEN $6 THEN $3
                     ELSE email_templates.content
                 END,
-                enabled = COALESCE($11, email_templates.enabled)",
+                enabled = COALESCE($7, email_templates.enabled)",
         )
         .bind(self.identifier)
-        .bind(&insert_subject)
-        .bind(&insert_content)
+        .bind(subject_val.as_deref())
+        .bind(content_val.as_deref())
         .bind(insert_enabled)
         .bind(subject_set)
-        .bind(subject_val.as_deref())
-        .bind(self.default_subject)
         .bind(content_set)
-        .bind(content_val.as_deref())
-        .bind(self.default_content)
         .bind(data.enabled)
         .execute(state.database.write())
         .await?;

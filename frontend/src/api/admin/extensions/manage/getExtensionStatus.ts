@@ -38,6 +38,7 @@ const extensionSupervisorStatusSchema = z.object({
 
 const extensionStatusSchema = z.object({
   isBuilding: z.boolean(),
+  runningPanelVersion: z.string(),
   supervisor: extensionSupervisorStatusSchema.nullable(),
   pendingExtensions: z.array(adminBackendExtensionSchema),
   removedExtensions: z.array(adminBackendExtensionSchema),

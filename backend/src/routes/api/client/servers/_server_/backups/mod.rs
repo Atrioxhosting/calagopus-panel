@@ -123,9 +123,15 @@ mod get {
             .await
         }?;
 
+        let retention_statuses =
+            ServerBackup::retention_statuses(&state.database, &backups.data).await?;
+
         ApiResponse::new_serialized(Response {
             backups: backups
-                .try_async_map(|backup| backup.into_api_object(&state, ()))
+                .try_async_map(|backup| {
+                    let retention_status = retention_statuses.get(&backup.uuid).cloned();
+                    backup.into_api_object(&state, retention_status)
+                })
                 .await?,
         })
         .ok()
@@ -427,7 +433,216 @@ mod post {
         }
 
         ApiResponse::new_serialized(Response {
-            backup: backup.into_api_object(&state, ()).await?,
+            backup: backup.into_api_object(&state, None).await?,
+        })
+        .ok()
+    }
+}
+
+mod delete {
+    use axum::http::StatusCode;
+    use garde::Validate;
+    use serde::{Deserialize, Serialize};
+    use shared::{
+        ApiError, GetState,
+        models::{
+            server::{GetServer, GetServerActivityLogger},
+            server_backup::{
+                DeleteServerBackupOptions, ServerBackup, ServerBackupKind, ServerBackupSelector,
+            },
+            user::GetPermissionManager,
+        },
+        response::{ApiResponse, ApiResponseResult},
+    };
+    use utoipa::ToSchema;
+
+    #[derive(ToSchema, Validate, Deserialize)]
+    pub struct Payload {
+        #[garde(dive)]
+        selector: ServerBackupSelector,
+    }
+
+    #[derive(ToSchema, Serialize)]
+    struct Response {
+        queued: usize,
+        skipped: usize,
+    }
+
+    #[utoipa::path(delete, path = "/", responses(
+        (status = OK, body = inline(Response)),
+        (status = BAD_REQUEST, body = ApiError),
+        (status = UNAUTHORIZED, body = ApiError),
+    ), params(
+        (
+            "server" = uuid::Uuid,
+            description = "The server ID",
+            example = "123e4567-e89b-12d3-a456-426614174000",
+        ),
+    ), request_body = inline(Payload))]
+    pub async fn route(
+        state: GetState,
+        permissions: GetPermissionManager,
+        server: GetServer,
+        activity_logger: GetServerActivityLogger,
+        shared::Payload(data): shared::Payload<Payload>,
+    ) -> ApiResponseResult {
+        if let Err(errors) = shared::utils::validate_data(&data) {
+            return ApiResponse::new_serialized(ApiError::new_strings_value(errors))
+                .with_status(StatusCode::BAD_REQUEST)
+                .ok();
+        }
+
+        permissions.has_server_permission("backups.read")?;
+        permissions.has_server_permission("backups.delete")?;
+
+        let options = DeleteServerBackupOptions::default();
+        let (claimed, skipped) = ServerBackup::claim_deletions_by_selector(
+            &state,
+            server.uuid,
+            &data.selector,
+            &options,
+        )
+        .await?;
+
+        let queued = claimed.len();
+
+        if queued > 0 {
+            let state = state.0.clone();
+
+            tokio::spawn(async move {
+                for backup in
+                    ServerBackup::dispatch_claimed_deletions(&state, claimed, &options).await
+                {
+                    activity_logger
+                        .log(
+                            match backup.kind {
+                                ServerBackupKind::Server => "server:backup.delete",
+                                ServerBackupKind::DatabaseInstance => {
+                                    "server:database-backup.delete"
+                                }
+                            },
+                            serde_json::json!({
+                                "source": "user",
+                                "uuid": backup.uuid,
+                                "name": backup.name,
+                                "database_instance_uuid": backup.database_instance_uuid,
+                            }),
+                        )
+                        .await;
+                }
+            });
+        }
+
+        ApiResponse::new_serialized(Response { queued, skipped }).ok()
+    }
+}
+
+mod patch {
+    use axum::http::StatusCode;
+    use garde::Validate;
+    use serde::{Deserialize, Serialize};
+    use shared::{
+        ApiError, GetState,
+        models::{
+            server::{GetServer, GetServerActivityLogger},
+            server_backup::{
+                ServerBackup, ServerBackupKind, ServerBackupSelector, UpdateServerBackupOptions,
+            },
+            server_backup_group::ServerBackupGroup,
+            user::GetPermissionManager,
+        },
+        response::{ApiResponse, ApiResponseResult},
+    };
+    use utoipa::ToSchema;
+
+    #[derive(ToSchema, Validate, Deserialize)]
+    pub struct Payload {
+        #[garde(dive)]
+        selector: ServerBackupSelector,
+        #[garde(skip)]
+        #[serde(default, with = "::serde_with::rust::double_option")]
+        backup_group_uuid: Option<Option<uuid::Uuid>>,
+        #[garde(skip)]
+        locked: Option<bool>,
+    }
+
+    #[derive(ToSchema, Serialize)]
+    struct Response {
+        updated: usize,
+        skipped: usize,
+    }
+
+    #[utoipa::path(patch, path = "/", responses(
+        (status = OK, body = inline(Response)),
+        (status = BAD_REQUEST, body = ApiError),
+        (status = NOT_FOUND, body = ApiError),
+        (status = UNAUTHORIZED, body = ApiError),
+    ), params(
+        (
+            "server" = uuid::Uuid,
+            description = "The server ID",
+            example = "123e4567-e89b-12d3-a456-426614174000",
+        ),
+    ), request_body = inline(Payload))]
+    pub async fn route(
+        state: GetState,
+        permissions: GetPermissionManager,
+        server: GetServer,
+        activity_logger: GetServerActivityLogger,
+        shared::Payload(data): shared::Payload<Payload>,
+    ) -> ApiResponseResult {
+        if let Err(errors) = shared::utils::validate_data(&data) {
+            return ApiResponse::new_serialized(ApiError::new_strings_value(errors))
+                .with_status(StatusCode::BAD_REQUEST)
+                .ok();
+        }
+
+        permissions.has_server_permission("backups.read")?;
+        permissions.has_server_permission("backups.update")?;
+
+        if let Some(Some(group_uuid)) = data.backup_group_uuid
+            && ServerBackupGroup::by_server_uuid_uuid(&state.database, server.uuid, group_uuid)
+                .await?
+                .is_none()
+        {
+            return ApiResponse::error("backup group not found")
+                .with_status(StatusCode::NOT_FOUND)
+                .ok();
+        }
+
+        let (updated, skipped) = ServerBackup::update_by_selector(
+            &state,
+            server.uuid,
+            &data.selector,
+            UpdateServerBackupOptions {
+                name: None,
+                backup_group_uuid: data.backup_group_uuid,
+                locked: data.locked,
+            },
+        )
+        .await?;
+
+        for backup in &updated {
+            activity_logger
+                .log(
+                    match backup.kind {
+                        ServerBackupKind::Server => "server:backup.update",
+                        ServerBackupKind::DatabaseInstance => "server:database-backup.update",
+                    },
+                    serde_json::json!({
+                        "uuid": backup.uuid,
+                        "name": backup.name,
+                        "database_instance_uuid": backup.database_instance_uuid,
+                        "backup_group_uuid": backup.backup_group_uuid,
+                        "locked": backup.locked,
+                    }),
+                )
+                .await;
+        }
+
+        ApiResponse::new_serialized(Response {
+            updated: updated.len(),
+            skipped,
         })
         .ok()
     }
@@ -437,6 +652,8 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
     OpenApiRouter::new()
         .routes(routes!(get::route))
         .routes(routes!(post::route))
+        .routes(routes!(delete::route))
+        .routes(routes!(patch::route))
         .nest("/groups", groups::router(state))
         .nest("/system", system::router(state))
         .nest("/unlock", unlock::router(state))

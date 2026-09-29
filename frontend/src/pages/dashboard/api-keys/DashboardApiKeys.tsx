@@ -1,10 +1,11 @@
 import { faCode, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useState } from 'react';
+import { Ref, useState } from 'react';
 import getApiKeys from '@/api/me/api-keys/getApiKeys.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import AccountContentContainer from '@/elements/containers/AccountContentContainer.tsx';
-import Table from '@/elements/data-display/Table.tsx';
+import Table, { tableSelectionHeader } from '@/elements/data-display/Table.tsx';
+import SelectionArea from '@/elements/dnd/SelectionArea.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import ConditionalTooltip from '@/elements/overlays/ConditionalTooltip.tsx';
 import Anchor from '@/elements/typography/Anchor.tsx';
@@ -12,8 +13,10 @@ import { queryKeys } from '@/lib/queryKeys.ts';
 import ApiKeyCreateOrUpdateModal from '@/pages/dashboard/api-keys/modals/ApiKeyCreateOrUpdateModal.tsx';
 import ApiKeyTokenModal from '@/pages/dashboard/api-keys/modals/ApiKeyTokenModal.tsx';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
+import { useTableSelection } from '@/plugins/selection/useTableSelection.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useGlobalStore } from '@/stores/global.ts';
+import ApiKeyActionBar from './ApiKeyActionBar.tsx';
 import ApiKeyRow from './ApiKeyRow.tsx';
 
 export default function DashboardApiKeys() {
@@ -30,10 +33,20 @@ export default function DashboardApiKeys() {
     search,
     setSearch,
     setPage,
+    refetch,
   } = useSearchablePaginatedTable({
     queryKey: queryKeys.user.apiKeys.all(),
     fetcher: getApiKeys,
   });
+
+  const {
+    selected: selectedApiKeys,
+    toggle: toggleApiKey,
+    clear: clearSelection,
+    selectAll,
+    allSelected,
+    selectionAreaProps,
+  } = useTableSelection({ items: apiKeys?.data });
 
   return (
     <AccountContentContainer
@@ -75,26 +88,44 @@ export default function DashboardApiKeys() {
       />
       <ApiKeyTokenModal token={createdToken} onClose={() => setCreatedToken(null)} />
 
-      <Table
-        columns={[
-          t('common.table.columns.name', {}),
-          t('pages.account.apiKeys.table.columns.key', {}),
-          t('pages.account.apiKeys.table.columns.permissions', {}),
-          t('common.table.columns.status', {}),
-          t('common.table.columns.lastUsed', {}),
-          t('pages.account.apiKeys.table.columns.expires', {}),
-          t('common.table.columns.created', {}),
-          '',
-        ]}
-        loading={loading}
-        pagination={apiKeys}
-        onPageSelect={setPage}
-        error={error}
-      >
-        {apiKeys?.data.map((key) => (
-          <ApiKeyRow key={key.uuid} apiKey={key} />
-        ))}
-      </Table>
+      <ApiKeyActionBar selectedApiKeys={selectedApiKeys} clearSelection={clearSelection} onFinished={refetch} />
+
+      <SelectionArea {...selectionAreaProps}>
+        <Table
+          columns={[
+            tableSelectionHeader({
+              checked: allSelected,
+              indeterminate: selectedApiKeys.size > 0 && !allSelected,
+              onChange: (checked) => (checked ? selectAll() : clearSelection()),
+            }),
+            t('common.table.columns.name', {}),
+            t('pages.account.apiKeys.table.columns.key', {}),
+            t('pages.account.apiKeys.table.columns.permissions', {}),
+            t('common.table.columns.status', {}),
+            t('common.table.columns.lastUsed', {}),
+            t('pages.account.apiKeys.table.columns.expires', {}),
+            t('common.table.columns.created', {}),
+            '',
+          ]}
+          loading={loading}
+          pagination={apiKeys}
+          onPageSelect={setPage}
+          error={error}
+        >
+          {apiKeys?.data.map((key) => (
+            <SelectionArea.Selectable key={key.uuid} item={key}>
+              {(innerRef: Ref<HTMLElement>) => (
+                <ApiKeyRow
+                  apiKey={key}
+                  ref={innerRef as Ref<HTMLTableRowElement>}
+                  isSelected={selectedApiKeys.has(key.uuid)}
+                  onSelectionChange={(selected) => toggleApiKey(key, selected)}
+                />
+              )}
+            </SelectionArea.Selectable>
+          ))}
+        </Table>
+      </SelectionArea>
     </AccountContentContainer>
   );
 }

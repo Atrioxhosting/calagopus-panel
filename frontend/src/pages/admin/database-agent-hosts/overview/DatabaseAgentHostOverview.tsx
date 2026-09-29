@@ -84,10 +84,18 @@ export default function DatabaseAgentHostOverview({ databaseAgentHost }: { datab
                 </Text>
               </InfoRow>
               <InfoRow label={t('common.form.memory', {})}>
-                <Text size='sm'>{bytesToString(mbToBytes(databaseAgentHost.memory))}</Text>
+                <Text size='sm'>
+                  {databaseAgentHost.memory === 0
+                    ? t('pages.admin.databaseAgentHosts.tabs.overview.page.label.noLimit', {})
+                    : bytesToString(mbToBytes(databaseAgentHost.memory))}
+                </Text>
               </InfoRow>
               <InfoRow label={t('common.form.disk', {})}>
-                <Text size='sm'>{bytesToString(mbToBytes(databaseAgentHost.disk))}</Text>
+                <Text size='sm'>
+                  {databaseAgentHost.disk === 0
+                    ? t('pages.admin.databaseAgentHosts.tabs.overview.page.label.noLimit', {})
+                    : bytesToString(mbToBytes(databaseAgentHost.disk))}
+                </Text>
               </InfoRow>
               {databaseAgentHost.description && (
                 <InfoRow label={t('common.form.description', {})}>
@@ -180,11 +188,13 @@ export default function DatabaseAgentHostOverview({ databaseAgentHost }: { datab
                 limit={capacity.limits.memory}
                 noLimitLabel={t('pages.admin.databaseAgentHosts.tabs.overview.page.label.noLimit', {})}
                 footer={
-                  <p className='text-xs'>
-                    {t('pages.admin.databaseAgentHosts.tabs.overview.page.label.free', {
-                      size: bytesToString(mbToBytes(Math.max(capacity.limits.memory - capacity.allocated.memory, 0))),
-                    })}
-                  </p>
+                  capacity.limits.memory === 0 ? undefined : (
+                    <p className='text-xs'>
+                      {t('pages.admin.databaseAgentHosts.tabs.overview.page.label.free', {
+                        size: bytesToString(mbToBytes(Math.max(capacity.limits.memory - capacity.allocated.memory, 0))),
+                      })}
+                    </p>
+                  )
                 }
               />
               <CapacityCard
@@ -194,11 +204,13 @@ export default function DatabaseAgentHostOverview({ databaseAgentHost }: { datab
                 limit={capacity.limits.disk}
                 noLimitLabel={t('pages.admin.databaseAgentHosts.tabs.overview.page.label.noLimit', {})}
                 footer={
-                  <p className='text-xs'>
-                    {t('pages.admin.databaseAgentHosts.tabs.overview.page.label.free', {
-                      size: bytesToString(mbToBytes(Math.max(capacity.limits.disk - capacity.allocated.disk, 0))),
-                    })}
-                  </p>
+                  capacity.limits.disk === 0 ? undefined : (
+                    <p className='text-xs'>
+                      {t('pages.admin.databaseAgentHosts.tabs.overview.page.label.free', {
+                        size: bytesToString(mbToBytes(Math.max(capacity.limits.disk - capacity.allocated.disk, 0))),
+                      })}
+                    </p>
+                  )
                 }
               />
               <CapacityCard

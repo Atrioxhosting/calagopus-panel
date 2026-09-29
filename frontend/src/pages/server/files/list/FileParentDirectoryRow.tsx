@@ -1,7 +1,8 @@
 import classNames from 'classnames';
 import { join } from 'pathe';
-import { useSearchParams } from 'react-router';
+import { createSearchParams, useSearchParams } from 'react-router';
 import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { openUrl } from '@/lib/network/url.ts';
 import { useDraggedFileMove } from '@/pages/server/files/hooks/useDraggedFileMove.ts';
 import FileRowIcon from '@/pages/server/files/list/FileRowIcon.tsx';
 import { useFileManagerApi, useFileManagerStore } from '@/stores/fileManager.ts';
@@ -25,6 +26,15 @@ function FileParentDirectoryRow() {
       className='cursor-pointer select-none'
       bg={parentIsDropTarget ? 'var(--mantine-color-green-light)' : undefined}
       onClick={openParentDirectory}
+      onMouseDownCapture={(e) => {
+        if (e.button === 1) e.preventDefault();
+      }}
+      onAuxClick={(e) => {
+        if (e.button !== 1) return;
+
+        e.preventDefault();
+        openUrl(`${window.location.pathname}?${createSearchParams({ directory: parentDirectory })}`);
+      }}
       {...getDropHandlers(parentDirectory)}
     >
       <td className='pl-4 relative w-10 py-2'></td>

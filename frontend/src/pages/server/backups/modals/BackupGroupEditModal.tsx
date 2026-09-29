@@ -2,7 +2,6 @@ import { faCircleInfo } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import updateBackupGroup from '@/api/server/backups/groups/updateBackupGroup.ts';
@@ -39,7 +38,7 @@ export default function BackupGroupEditModal({ group, ...props }: Props) {
       retention: group.retention,
     },
     validateInputOnBlur: true,
-    validate: zod4Resolver(serverBackupGroupUpdateSchema),
+    schema: serverBackupGroupUpdateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await updateBackupGroup(server.uuid, group.uuid, values);

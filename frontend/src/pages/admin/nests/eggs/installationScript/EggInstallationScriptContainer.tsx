@@ -44,7 +44,7 @@ export default function EggInstallationScriptContainer({
   const doUpdate = () => {
     setLoading(true);
 
-    updateEggScript(contextNest.uuid, contextEgg.uuid, adminEggConfigScriptSchema.parse(form.values))
+    updateEggScript(contextNest.uuid, contextEgg.uuid, form.getTransformedValues())
       .then(() => {
         addToast(t('pages.admin.nests.tabs.eggs.page.tabs.installationScript.page.toast.updated', {}), 'success');
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.eggs.detail(contextEgg.uuid) });

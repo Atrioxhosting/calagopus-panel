@@ -15,6 +15,7 @@ mod get {
     #[derive(ToSchema, Serialize)]
     struct Response {
         is_building: bool,
+        running_panel_version: &'static str,
         supervisor: Option<shared::heavy::Status>,
         pending_extensions: Vec<shared::extensions::PendingExtension>,
         removed_extensions: Vec<shared::extensions::PendingExtension>,
@@ -112,6 +113,7 @@ mod get {
                 Some(shared::heavy::SupervisorState::Queued)
                     | Some(shared::heavy::SupervisorState::Building { .. })
             ),
+            running_panel_version: shared::VERSION,
             supervisor,
             pending_extensions,
             removed_extensions,

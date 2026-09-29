@@ -178,7 +178,7 @@ mod delete {
                     err
                 );
 
-                let (err, status) = shared::response::extract_readable_error(&err)
+                let (err, status) = shared::response::extract_readable_message(&err)
                     .unwrap_or_else(|| (err.to_string(), StatusCode::EXPECTATION_FAILED));
 
                 return ApiResponse::error(format!("failed to delete database agent: {err}"))

@@ -55,13 +55,10 @@ export default function DatabaseAgentHostCreateOrUpdate({
     z.infer<typeof adminDatabaseAgentHostSchema>
   >({
     form,
-    createFn: () => createDatabaseAgentHost(adminDatabaseAgentHostCreateSchema.parse(form.getValues())),
+    createFn: () =>
+      createDatabaseAgentHost(form.getTransformedValues() as z.infer<typeof adminDatabaseAgentHostCreateSchema>),
     updateFn: contextDatabaseAgentHost
-      ? () =>
-          updateDatabaseAgentHost(
-            contextDatabaseAgentHost.uuid,
-            adminDatabaseAgentHostUpdateSchema.parse(form.getValues()),
-          )
+      ? () => updateDatabaseAgentHost(contextDatabaseAgentHost.uuid, form.getTransformedValues())
       : undefined,
     deleteFn: contextDatabaseAgentHost
       ? () => deleteDatabaseAgentHost(contextDatabaseAgentHost.uuid, { force: deleteDoForce })

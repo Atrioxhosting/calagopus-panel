@@ -1,14 +1,15 @@
 import { ModalProps } from '@mantine/core';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useNavigate } from 'react-router';
 import { z } from 'zod';
 import installServer from '@/api/server/settings/installServer.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import Switch from '@/elements/input/Switch.tsx';
+import Stack from '@/elements/layout/Stack.tsx';
 import FormModal from '@/elements/modals/FormModal.tsx';
 import { ModalFooter } from '@/elements/modals/Modal.tsx';
 import { serverSettingsReinstallSchema } from '@/lib/schemas/server/settings.ts';
 import { useModalForm } from '@/plugins/form/useModalForm.ts';
+import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
@@ -19,14 +20,16 @@ export default function SettingsReinstallModal({ ...props }: ModalProps) {
   const server = useServerStore((state) => state.server);
   const updateServer = useServerStore((state) => state.updateServer);
   const navigate = useNavigate();
+  const canStart = useServerCan('control.start');
 
   const { form, handleClose, handleSubmit, loading, isDirty } = useModalForm<
     z.infer<typeof serverSettingsReinstallSchema>
   >({
     initialValues: {
       truncateDirectory: false,
+      startOnCompletion: false,
     },
-    validate: zod4Resolver(serverSettingsReinstallSchema),
+    schema: serverSettingsReinstallSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await installServer(server.uuid, values);
@@ -45,11 +48,20 @@ export default function SettingsReinstallModal({ ...props }: ModalProps) {
       onClose={handleClose}
       onSubmit={handleSubmit}
     >
-      <Switch
-        label={t('common.form.truncateDirectory', {})}
-        name='truncate'
-        {...form.getInputProps('truncateDirectory', { type: 'checkbox' })}
-      />
+      <Stack>
+        <Switch
+          label={t('common.form.truncateDirectory', {})}
+          name='truncate'
+          {...form.getInputProps('truncateDirectory', { type: 'checkbox' })}
+        />
+        {canStart && (
+          <Switch
+            label={t('pages.server.settings.reinstall.modal.startOnCompletion', {})}
+            name='startOnCompletion'
+            {...form.getInputProps('startOnCompletion', { type: 'checkbox' })}
+          />
+        )}
+      </Stack>
 
       <ModalFooter>
         <Button color='red' type='submit' loading={loading} disabled={!form.isValid()}>

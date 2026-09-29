@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import updateSecurityKey from '@/api/me/security-keys/updateSecurityKey.ts';
@@ -32,7 +31,7 @@ export default function SecurityKeyEditModal({ securityKey, ...props }: Props) {
     initialValues: {
       name: securityKey.name,
     },
-    validate: zod4Resolver(schema),
+    schema: schema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await updateSecurityKey(securityKey.uuid, values);

@@ -176,6 +176,7 @@ impl UserEmailVerification {
 
     pub async fn send(
         state: &crate::State,
+        request_host: Option<&str>,
         user: &super::user::User,
         email: &str,
         token: &str,
@@ -185,7 +186,10 @@ impl UserEmailVerification {
 
             format!(
                 "{}/auth/verify-email?token={}",
-                settings.app.url.trim_end_matches('/'),
+                settings
+                    .app
+                    .url_for_host(request_host)
+                    .trim_end_matches('/'),
                 urlencoding::encode(token),
             )
         };

@@ -26,21 +26,29 @@ pub type GetServerActivityLogger = crate::extract::ConsumingExtension<ServerActi
 /// The path is resolved before matching so that alternative spellings of the same file
 /// (`/./x`, `//x`, `/a/../x`) cannot slip past an anchored pattern, since wings collapses
 /// those components before touching the filesystem.
+fn ignore_match_path(path: &std::path::Path) -> std::path::PathBuf {
+    let path = crate::cap::CapFilesystem::resolve_path(path);
+
+    match path.strip_prefix("/") {
+        Ok(relative) => relative.to_path_buf(),
+        Err(_) => path,
+    }
+}
+
 fn is_path_ignored(
-    overrides: &ignore::overrides::Override,
+    list: &crate::ignore_list::IgnoreList,
     path: impl AsRef<std::path::Path>,
     is_dir: bool,
 ) -> bool {
-    let path = crate::cap::CapFilesystem::resolve_path(path.as_ref());
+    list.is_ignored(&ignore_match_path(path.as_ref()), is_dir)
+}
 
-    if path == std::path::Path::new("/")
-        || path == std::path::Path::new("")
-        || path == std::path::Path::new(".")
-    {
-        return false;
-    }
-
-    overrides.matched(path, is_dir).is_whitelist()
+fn is_path_ignored_subtree(
+    list: &crate::ignore_list::IgnoreList,
+    path: impl AsRef<std::path::Path>,
+    is_dir: bool,
+) -> bool {
+    list.is_ignored_subtree(&ignore_match_path(path.as_ref()), is_dir)
 }
 
 #[derive(Clone)]
@@ -128,6 +136,13 @@ impl From<ServerAutoStartBehavior> for wings_api::ServerAutoStartBehavior {
 
 pub const MAX_TRANSFER_MULTIPLEX_CHANNELS: u64 = 16;
 
+#[derive(Clone, Default)]
+pub struct ServerInstallOptions {
+    pub truncate_directory: bool,
+    pub installation_script: Option<wings_api::InstallationScript>,
+    pub start_on_completion: bool,
+}
+
 pub struct ServerTransferOptions {
     pub destination_node: super::node::Node,
 
@@ -171,6 +186,7 @@ pub struct Server {
 
     pub startup: compact_str::CompactString,
     pub image: compact_str::CompactString,
+    pub labels: IndexMap<compact_str::CompactString, compact_str::CompactString>,
     pub auto_kill: wings_api::ServerConfigurationAutoKill,
     pub auto_start_behavior: ServerAutoStartBehavior,
     pub timezone: Option<compact_str::CompactString>,
@@ -186,7 +202,7 @@ pub struct Server {
     pub subuser_permissions: Option<Arc<Vec<compact_str::CompactString>>>,
     pub subuser_ignored_files: Option<Vec<compact_str::CompactString>>,
     #[serde(skip_serializing, skip_deserializing)]
-    subuser_ignored_files_overrides: Option<Box<ignore::overrides::Override>>,
+    subuser_ignored_files_list: Option<Box<crate::ignore_list::IgnoreList>>,
 
     pub created: chrono::NaiveDateTime,
     pub billing_period_id: Option<compact_str::CompactString>,
@@ -279,6 +295,10 @@ impl BaseModel for Server {
             (
                 "servers.image",
                 compact_str::format_compact!("{prefix}image"),
+            ),
+            (
+                "servers.labels",
+                compact_str::format_compact!("{prefix}labels"),
             ),
             (
                 "servers.auto_kill",
@@ -402,6 +422,9 @@ impl BaseModel for Server {
                 .try_get(compact_str::format_compact!("{prefix}pinned_cpus").as_str())?,
             startup: row.try_get(compact_str::format_compact!("{prefix}startup").as_str())?,
             image: row.try_get(compact_str::format_compact!("{prefix}image").as_str())?,
+            labels: serde_json::from_value(row.try_get::<serde_json::Value, _>(
+                compact_str::format_compact!("{prefix}labels").as_str(),
+            )?)?,
             auto_kill: serde_json::from_value(row.try_get::<serde_json::Value, _>(
                 compact_str::format_compact!("{prefix}auto_kill").as_str(),
             )?)?,
@@ -429,7 +452,7 @@ impl BaseModel for Server {
             subuser_ignored_files: row
                 .try_get::<Vec<compact_str::CompactString>, _>("ignored_files")
                 .ok(),
-            subuser_ignored_files_overrides: None,
+            subuser_ignored_files_list: None,
             created: row.try_get(compact_str::format_compact!("{prefix}created").as_str())?,
             billing_period_id: row
                 .try_get(compact_str::format_compact!("{prefix}billing_period_id").as_str())?,
@@ -698,11 +721,12 @@ impl Server {
             LEFT JOIN roles ON roles.uuid = users.role_uuid
             JOIN nest_eggs ON nest_eggs.uuid = servers.egg_uuid
             JOIN nests ON nests.uuid = nest_eggs.nest_uuid
-            WHERE servers.owner_uuid = $1 AND ($2 IS NULL OR servers.name ILIKE '%' || $2 || '%')
+            WHERE servers.owner_uuid = $1 AND {search}
             ORDER BY servers.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["servers.name"], &["servers.uuid"])
         )))
         .bind(owner_uuid)
         .bind(search)
@@ -747,11 +771,12 @@ impl Server {
             LEFT JOIN server_subusers ON server_subusers.server_uuid = servers.uuid AND server_subusers.user_uuid = $1
             WHERE servers.uuid = ANY($2)
                 AND (servers.owner_uuid = $1 OR server_subusers.user_uuid = $1 OR $6)
-                AND ($3 IS NULL OR servers.name ILIKE '%' || $3 || '%' OR users.username ILIKE '%' || $3 || '%' OR users.email ILIKE '%' || $3 || '%')
+                AND {search}
             ORDER BY array_position($2, servers.uuid), servers.created
             LIMIT $4 OFFSET $5
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(3, &["servers.name", "users.username", "users.email"], &["servers.uuid"])
         )))
         .bind(user.uuid)
         .bind(server_order)
@@ -801,11 +826,12 @@ impl Server {
             LEFT JOIN server_subusers ON server_subusers.server_uuid = servers.uuid AND server_subusers.user_uuid = $1
             WHERE
                 (servers.owner_uuid = $1 OR server_subusers.user_uuid = $1)
-                AND ($2 IS NULL OR servers.name ILIKE '%' || $2 || '%' OR users.username ILIKE '%' || $2 || '%' OR users.email ILIKE '%' || $2 || '%')
+                AND {search}
             ORDER BY servers.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["servers.name", "users.username", "users.email"], &["servers.uuid"])
         )))
         .bind(user_uuid)
         .bind(search)
@@ -874,11 +900,12 @@ impl Server {
             LEFT JOIN server_subusers ON server_subusers.server_uuid = servers.uuid AND server_subusers.user_uuid = $1
             WHERE
                 servers.owner_uuid != $1 AND (server_subusers.user_uuid IS NULL OR server_subusers.user_uuid != $1)
-                AND ($2 IS NULL OR servers.name ILIKE '%' || $2 || '%' OR users.username ILIKE '%' || $2 || '%' OR users.email ILIKE '%' || $2 || '%')
+                AND {search}
             ORDER BY servers.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["servers.name", "users.username", "users.email"], &["servers.uuid"])
         )))
         .bind(user_uuid)
         .bind(search)
@@ -930,11 +957,12 @@ impl Server {
                 AND NOT servers.suspended
                 AND servers.destination_node_uuid IS NULL
                 AND servers.status IS NULL
-                AND ($3 IS NULL OR servers.name ILIKE '%' || $3 || '%' OR users.username ILIKE '%' || $3 || '%' OR users.email ILIKE '%' || $3 || '%')
+                AND {search}
             ORDER BY servers.created
             LIMIT $4 OFFSET $5
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(3, &["servers.name", "users.username", "users.email"], &["servers.uuid"])
         )))
         .bind(user_uuid)
         .bind(server_uuid)
@@ -985,11 +1013,12 @@ impl Server {
                 AND NOT servers.suspended
                 AND servers.destination_node_uuid IS NULL
                 AND servers.status IS NULL
-                AND ($3 IS NULL OR servers.name ILIKE '%' || $3 || '%' OR users.username ILIKE '%' || $3 || '%' OR users.email ILIKE '%' || $3 || '%')
+                AND {search}
             ORDER BY servers.created
             LIMIT $4 OFFSET $5
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(3, &["servers.name", "users.username", "users.email"], &["servers.uuid"])
         )))
         .bind(user_uuid)
         .bind(server_uuid)
@@ -1031,11 +1060,12 @@ impl Server {
             LEFT JOIN roles ON roles.uuid = users.role_uuid
             JOIN nest_eggs ON nest_eggs.uuid = servers.egg_uuid
             JOIN nests ON nests.uuid = nest_eggs.nest_uuid
-            WHERE servers.node_uuid = $1 AND ($2 IS NULL OR servers.name ILIKE '%' || $2 || '%')
+            WHERE servers.node_uuid = $1 AND {search}
             ORDER BY servers.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["servers.name"], &["servers.uuid"])
         )))
         .bind(node_uuid)
         .bind(search)
@@ -1077,11 +1107,12 @@ impl Server {
             JOIN nest_eggs ON nest_eggs.uuid = servers.egg_uuid
             JOIN nests ON nests.uuid = nest_eggs.nest_uuid
             WHERE servers.node_uuid = $1 AND servers.destination_node_uuid IS NOT NULL
-                AND ($2 IS NULL OR servers.name ILIKE '%' || $2 || '%')
+                AND {search}
             ORDER BY servers.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["servers.name"], &["servers.uuid"])
         )))
         .bind(node_uuid)
         .bind(search)
@@ -1122,11 +1153,12 @@ impl Server {
             LEFT JOIN roles ON roles.uuid = users.role_uuid
             JOIN nest_eggs ON nest_eggs.uuid = servers.egg_uuid
             JOIN nests ON nests.uuid = nest_eggs.nest_uuid
-            WHERE servers.egg_uuid = $1 AND ($2 IS NULL OR servers.name ILIKE '%' || $2 || '%')
+            WHERE servers.egg_uuid = $1 AND {search}
             ORDER BY servers.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["servers.name"], &["servers.uuid"])
         )))
         .bind(egg_uuid)
         .bind(search)
@@ -1167,11 +1199,12 @@ impl Server {
             LEFT JOIN roles ON roles.uuid = users.role_uuid
             JOIN nest_eggs ON nest_eggs.uuid = servers.egg_uuid
             JOIN nests ON nests.uuid = nest_eggs.nest_uuid
-            WHERE servers.backup_configuration_uuid = $1 AND ($2 IS NULL OR servers.name ILIKE '%' || $2 || '%')
+            WHERE servers.backup_configuration_uuid = $1 AND {search}
             ORDER BY servers.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["servers.name"], &["servers.uuid"])
         )))
         .bind(backup_configuration_uuid)
         .bind(search)
@@ -1211,11 +1244,12 @@ impl Server {
             LEFT JOIN roles ON roles.uuid = users.role_uuid
             JOIN nest_eggs ON nest_eggs.uuid = servers.egg_uuid
             JOIN nests ON nests.uuid = nest_eggs.nest_uuid
-            WHERE $1 IS NULL OR servers.name ILIKE '%' || $1 || '%'
+            WHERE {search}
             ORDER BY servers.created
             LIMIT $2 OFFSET $3
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(1, &["servers.name"], &["servers.uuid"])
         )))
         .bind(search)
         .bind(per_page)
@@ -1404,6 +1438,29 @@ impl Server {
         truncate_directory: bool,
         installation_script: Option<wings_api::InstallationScript>,
     ) -> Result<(), anyhow::Error> {
+        self.install_with_options(
+            state,
+            ServerInstallOptions {
+                truncate_directory,
+                installation_script,
+                ..Default::default()
+            },
+        )
+        .await
+    }
+
+    /// Same as [`install`](Self::install) but takes a [`ServerInstallOptions`].
+    pub async fn install_with_options(
+        &self,
+        state: &crate::State,
+        options: ServerInstallOptions,
+    ) -> Result<(), anyhow::Error> {
+        let ServerInstallOptions {
+            truncate_directory,
+            installation_script,
+            start_on_completion,
+        } = options;
+
         let mut transaction = state.database.write().begin().await?;
 
         if !Self::try_set_status_by_uuid(
@@ -1428,7 +1485,7 @@ impl Server {
             .await?
             .api_client(&state.database)
             .await?
-            .post_servers_server_reinstall(
+            .post_servers_server_reinstall_with(
                 self.uuid,
                 &wings_api::servers_server_reinstall::post::RequestBody {
                     truncate_directory,
@@ -1444,6 +1501,10 @@ impl Server {
                             }
                         },
                     ),
+                },
+                &wings_api::servers_server_reinstall::post::Extra {
+                    start_on_completion,
+                    ..Default::default()
                 },
             )
             .await
@@ -1851,25 +1912,15 @@ impl Server {
         None
     }
 
-    pub fn is_ignored(&mut self, path: impl AsRef<std::path::Path>, is_dir: bool) -> bool {
-        if let Some(ignored_files) = &self.subuser_ignored_files {
-            if let Some(overrides) = &self.subuser_ignored_files_overrides {
-                return is_path_ignored(overrides, path, is_dir);
-            }
+    /// The compiled subuser list, or `None` for a caller without one. A list that
+    /// does not compile is `Some(None)`: it denies everything rather than hiding
+    /// less than it says.
+    fn subuser_ignored_files_list(&mut self) -> Option<Option<&crate::ignore_list::IgnoreList>> {
+        let ignored_files = self.subuser_ignored_files.as_ref()?;
 
-            let mut override_builder = ignore::overrides::OverrideBuilder::new("/");
-
-            for file in ignored_files {
-                override_builder.add(file).ok();
-            }
-
-            match override_builder.build() {
-                Ok(overrides) => {
-                    let ignored = is_path_ignored(&overrides, path, is_dir);
-                    self.subuser_ignored_files_overrides = Some(Box::new(overrides));
-
-                    return ignored;
-                }
+        if self.subuser_ignored_files_list.is_none() {
+            match crate::ignore_list::IgnoreList::try_from_lines(ignored_files) {
+                Ok(list) => self.subuser_ignored_files_list = Some(Box::new(list)),
                 Err(err) => {
                     tracing::error!(
                         server = %self.uuid,
@@ -1877,12 +1928,32 @@ impl Server {
                         err
                     );
 
-                    return true;
+                    return Some(None);
                 }
             }
         }
 
-        false
+        Some(self.subuser_ignored_files_list.as_deref())
+    }
+
+    /// Whether the subuser may not touch the entry itself.
+    pub fn is_ignored(&mut self, path: impl AsRef<std::path::Path>, is_dir: bool) -> bool {
+        match self.subuser_ignored_files_list() {
+            Some(Some(list)) => is_path_ignored(list, path, is_dir),
+            Some(None) => true,
+            None => false,
+        }
+    }
+
+    /// Whether the subuser may not reach anything beneath the directory either, for
+    /// the root of a request: wings still enters an excluded directory that holds a
+    /// re-included entry, so an operation below it can succeed.
+    pub fn is_ignored_subtree(&mut self, path: impl AsRef<std::path::Path>) -> bool {
+        match self.subuser_ignored_files_list() {
+            Some(Some(list)) => is_path_ignored_subtree(list, path, true),
+            Some(None) => true,
+            None => false,
+        }
     }
 
     pub fn is_ignored_either(&mut self, path: impl AsRef<std::path::Path>) -> bool {
@@ -1896,7 +1967,7 @@ impl Server {
         self,
         database: &crate::database::Database,
     ) -> Result<RemoteApiServer, anyhow::Error> {
-        let (variables, backups, schedules, mounts, allocations, firewall_rules) = tokio::try_join!(
+        let (variables, backups, schedules, mounts, devices, allocations, firewall_rules) = tokio::try_join!(
             sqlx::query!(
                 "SELECT nest_egg_variables.env_variable, COALESCE(server_variables.value, nest_egg_variables.default_value) AS value
                 FROM nest_egg_variables
@@ -1927,6 +1998,14 @@ impl Server {
                 WHERE server_mounts.server_uuid = $1",
                 self.uuid
             )
+            .fetch_all(database.read()),
+            sqlx::query(
+                "SELECT devices.source, devices.target, devices.permissions
+                FROM server_devices
+                JOIN devices ON devices.uuid = server_devices.device_uuid
+                WHERE server_devices.server_uuid = $1",
+            )
+            .bind(self.uuid)
             .fetch_all(database.read()),
             sqlx::query!(
                 "SELECT node_allocations.ip, node_allocations.port
@@ -2000,7 +2079,7 @@ impl Server {
                         )
                     })
                     .collect(),
-                labels: IndexMap::new(),
+                labels: self.labels,
                 backups: backups.into_iter().map(|b| b.uuid).collect(),
                 schedules: schedules
                     .into_iter()
@@ -2075,6 +2154,16 @@ impl Server {
                         read_only: m.read_only,
                     })
                     .collect(),
+                devices: devices
+                    .into_iter()
+                    .map(|d| {
+                        Ok::<_, sqlx::Error>(wings_api::Device {
+                            source: d.try_get("source")?,
+                            target: d.try_get("target")?,
+                            permissions: d.try_get("permissions")?,
+                        })
+                    })
+                    .try_collect_vec()?,
                 firewall: firewall::decode_rules(firewall_rules)?
                     .into_iter()
                     .map(Into::into)
@@ -2195,6 +2284,7 @@ impl super::IntoAdminApiObject for Server {
                 feature_limits,
                 startup: self.startup,
                 image: self.image,
+                labels: self.labels,
                 auto_kill: self.auto_kill,
                 auto_start_behavior: self.auto_start_behavior,
                 timezone: self.timezone,
@@ -2420,6 +2510,9 @@ pub struct CreateServerOptions {
     #[garde(length(chars, min = 2, max = 255))]
     #[schema(min_length = 2, max_length = 255)]
     pub image: compact_str::CompactString,
+    #[garde(custom(validate_labels))]
+    #[serde(default)]
+    pub labels: IndexMap<compact_str::CompactString, compact_str::CompactString>,
     #[garde(skip)]
     #[schema(value_type = Option<String>)]
     pub timezone: Option<chrono_tz::Tz>,
@@ -2526,6 +2619,7 @@ impl CreatableModel for Server {
                 .set("pinned_cpus", &options.pinned_cpus)
                 .set("startup", &options.startup)
                 .set("image", &options.image)
+                .set("labels", OrderedJson(&options.labels))
                 .set("timezone", options.timezone.as_ref().map(|t| t.name()))
                 .set(
                     "hugepages_passthrough_enabled",
@@ -2658,6 +2752,48 @@ fn validate_auto_kill(
     }
 }
 
+/// Wings writes `Service` and `ContainerType` onto every container it creates, after the labels
+/// coming from here, so a label under either key would be silently dropped instead of applied.
+const RESERVED_LABELS: [&str; 2] = ["Service", "ContainerType"];
+const MAX_LABELS: usize = 64;
+
+pub fn validate_labels(
+    labels: &IndexMap<compact_str::CompactString, compact_str::CompactString>,
+    _context: &(),
+) -> garde::Result {
+    if labels.len() > MAX_LABELS {
+        return Err(garde::Error::new(compact_str::format_compact!(
+            "a server cannot have more than {MAX_LABELS} labels"
+        )));
+    }
+
+    for (key, value) in labels {
+        if key.trim().is_empty() {
+            return Err(garde::Error::new("label keys cannot be empty"));
+        }
+
+        if RESERVED_LABELS.contains(&key.as_str()) {
+            return Err(garde::Error::new(compact_str::format_compact!(
+                "label {key} is reserved by wings"
+            )));
+        }
+
+        if key.chars().count() > 255 || value.chars().count() > 255 {
+            return Err(garde::Error::new(compact_str::format_compact!(
+                "label {key} and its value must each be at most 255 characters"
+            )));
+        }
+
+        if key.chars().chain(value.chars()).any(char::is_control) {
+            return Err(garde::Error::new(compact_str::format_compact!(
+                "label {key} cannot contain control characters"
+            )));
+        }
+    }
+
+    Ok(())
+}
+
 #[derive(ToSchema, Serialize, Deserialize, Validate, Clone, Default)]
 pub struct UpdateServerOptions {
     #[garde(skip)]
@@ -2706,6 +2842,8 @@ pub struct UpdateServerOptions {
     #[garde(length(chars, min = 2, max = 255))]
     #[schema(min_length = 2, max_length = 255)]
     pub image: Option<compact_str::CompactString>,
+    #[garde(inner(custom(validate_labels)))]
+    pub labels: Option<IndexMap<compact_str::CompactString, compact_str::CompactString>>,
     #[garde(custom(validate_auto_kill))]
     #[schema(inline)]
     pub auto_kill: Option<wings_api::ServerConfigurationAutoKill>,
@@ -2819,6 +2957,7 @@ impl UpdatableModel for Server {
             .set("pinned_cpus", options.pinned_cpus.as_ref())
             .set("startup", options.startup.as_ref())
             .set("image", options.image.as_ref())
+            .set("labels", options.labels.as_ref().map(OrderedJson))
             .set(
                 "auto_kill",
                 options
@@ -2900,6 +3039,9 @@ impl UpdatableModel for Server {
         }
         if let Some(image) = options.image {
             self.image = image;
+        }
+        if let Some(labels) = options.labels {
+            self.labels = labels;
         }
         if let Some(auto_kill) = options.auto_kill {
             self.auto_kill = auto_kill;
@@ -3149,6 +3291,7 @@ pub struct AdminApiServer {
 
     pub startup: compact_str::CompactString,
     pub image: compact_str::CompactString,
+    pub labels: IndexMap<compact_str::CompactString, compact_str::CompactString>,
     #[schema(inline)]
     pub auto_kill: wings_api::ServerConfigurationAutoKill,
     pub auto_start_behavior: ServerAutoStartBehavior,
@@ -3212,21 +3355,19 @@ pub struct ApiServer {
 
 #[cfg(test)]
 mod tests {
-    use super::is_path_ignored;
+    use super::{is_path_ignored, is_path_ignored_subtree, validate_labels};
+    use crate::ignore_list::IgnoreList;
+    use compact_str::CompactString;
+    use indexmap::IndexMap;
 
-    fn overrides(patterns: &[&str]) -> ignore::overrides::Override {
-        let mut builder = ignore::overrides::OverrideBuilder::new("/");
-
-        for pattern in patterns {
-            builder.add(pattern).unwrap();
-        }
-
-        builder.build().unwrap()
+    fn compile(patterns: &[&str]) -> IgnoreList {
+        IgnoreList::try_from_lines(patterns).unwrap()
     }
 
+    // is_path_ignored
     #[test]
     fn an_anchored_pattern_matches_every_spelling_of_the_path() {
-        let overrides = overrides(&["/config/secrets.yml"]);
+        let list = compile(&["/config/secrets.yml"]);
 
         for path in [
             "/config/secrets.yml",
@@ -3237,10 +3378,28 @@ mod tests {
             "/../config/secrets.yml",
             "config/secrets.yml",
         ] {
-            assert!(is_path_ignored(&overrides, path, false), "{path}");
+            assert!(is_path_ignored(&list, path, false), "{path}");
         }
 
-        assert!(!is_path_ignored(&overrides, "/config/public.yml", false));
+        assert!(!is_path_ignored(&list, "/config/public.yml", false));
+    }
+
+    #[test]
+    fn a_denied_name_hides_its_subtree_and_a_reinclude_leaves_its_parents_enterable() {
+        let list = compile(&["secrets"]);
+
+        assert!(is_path_ignored(&list, "/secrets", true));
+        assert!(is_path_ignored(&list, "/secrets/deep/token.txt", false));
+        assert!(is_path_ignored(&list, "/game/secrets/token.txt", false));
+        assert!(!is_path_ignored(&list, "/secrets.txt", false));
+
+        let list = compile(&["*", "!/game/csgo/cfg"]);
+
+        assert!(is_path_ignored(&list, "/game/csgo", true));
+        assert!(!is_path_ignored_subtree(&list, "/game/csgo", true));
+        assert!(!is_path_ignored_subtree(&list, "/game/./csgo/", true));
+        assert!(is_path_ignored_subtree(&list, "/game/hl2", true));
+        assert!(!is_path_ignored(&list, "/game/csgo/cfg/server.cfg", false));
     }
 
     #[test]
@@ -3249,9 +3408,9 @@ mod tests {
         // the grant routes require a suffix rather than a subset.
         let caller = ["!/a/b", "/a/**"];
 
-        assert!(is_path_ignored(&overrides(&caller), "/a/b", false));
+        assert!(is_path_ignored(&compile(&caller), "/a/b", false));
         assert!(!is_path_ignored(
-            &overrides(&["/a/**", "!/a/b"]),
+            &compile(&["/a/**", "!/a/b"]),
             "/a/b",
             false
         ));
@@ -3263,7 +3422,7 @@ mod tests {
         ] {
             assert!(granted.ends_with(&caller));
             assert!(
-                is_path_ignored(&overrides(&granted), "/a/b", false),
+                is_path_ignored(&compile(&granted), "/a/b", false),
                 "{granted:?}"
             );
         }
@@ -3271,10 +3430,97 @@ mod tests {
 
     #[test]
     fn the_server_root_is_never_ignored() {
-        let overrides = overrides(&["*"]);
+        let list = compile(&["*"]);
 
         for path in ["/", "", ".", "/.", "/config/.."] {
-            assert!(!is_path_ignored(&overrides, path, true), "{path}");
+            assert!(!is_path_ignored(&list, path, true), "{path}");
+            assert!(!is_path_ignored_subtree(&list, path, true), "{path}");
+        }
+    }
+
+    // validate_labels
+    fn labels(pairs: &[(&str, &str)]) -> IndexMap<CompactString, CompactString> {
+        pairs
+            .iter()
+            .map(|(key, value)| (CompactString::from(*key), CompactString::from(*value)))
+            .collect()
+    }
+
+    #[test]
+    fn ordinary_labels_and_no_labels_at_all_are_accepted() {
+        assert!(
+            validate_labels(
+                &labels(&[("environment", "production"), ("owner", "team-a")]),
+                &()
+            )
+            .is_ok()
+        );
+        assert!(validate_labels(&labels(&[]), &()).is_ok());
+    }
+
+    #[test]
+    fn the_keys_wings_unconditionally_overwrites_are_rejected() {
+        for key in ["Service", "ContainerType"] {
+            assert!(
+                validate_labels(&labels(&[(key, "value")]), &()).is_err(),
+                "{key}"
+            );
+        }
+    }
+
+    #[test]
+    fn at_most_sixty_four_labels_are_accepted() {
+        let build = |count: usize| {
+            (0..count)
+                .map(|i| {
+                    (
+                        CompactString::from(format!("key-{i}")),
+                        CompactString::new("v"),
+                    )
+                })
+                .collect::<IndexMap<_, _>>()
+        };
+
+        assert!(validate_labels(&build(64), &()).is_ok());
+        assert!(validate_labels(&build(65), &()).is_err());
+    }
+
+    #[test]
+    fn keys_and_values_are_limited_to_255_characters_rather_than_bytes() {
+        let long = "é".repeat(255);
+        let too_long = "a".repeat(256);
+
+        assert!(validate_labels(&labels(&[(&long, "v")]), &()).is_ok());
+        assert!(validate_labels(&labels(&[("k", &long)]), &()).is_ok());
+
+        assert!(validate_labels(&labels(&[(&too_long, "v")]), &()).is_err());
+        assert!(validate_labels(&labels(&[("k", &too_long)]), &()).is_err());
+    }
+
+    #[test]
+    fn keys_that_are_empty_or_only_whitespace_are_rejected() {
+        for key in ["", " ", "   "] {
+            assert!(
+                validate_labels(&labels(&[(key, "value")]), &()).is_err(),
+                "{key:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn control_characters_are_rejected_in_keys_and_in_values() {
+        for control in ["\n", "\r", "\0", "\u{7}"] {
+            let key = format!("ke{control}y");
+            let value = format!("va{control}lue");
+
+            assert!(
+                validate_labels(&labels(&[(&key, "value")]), &()).is_err(),
+                "{key:?}"
+            );
+            assert!(
+                validate_labels(&labels(&[("key", &value)]), &()).is_err(),
+                "{value:?}"
+            );
         }
     }
 }

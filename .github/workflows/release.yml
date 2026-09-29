@@ -200,13 +200,18 @@ jobs:
           WINGS_RELEASE: ${{ github.ref_name }}
           WINGS_BINARY_PATH: bins/wings-release-bin
           # riscv64gc musl is not crt-static by default
-          RUSTFLAGS: "-C target-feature=+crt-static"
+          # opt-level=z enables LLVM's MachineOutliner on aarch64/riscv64; its whole-module
+          # suffix tree under fat LTO + codegen-units=1 OOMs the 16GB runner.
+          RUSTFLAGS: "-C target-feature=+crt-static -C llvm-args=-enable-machine-outliner=never"
         run: |
           cross build --release --target ${{ matrix.target }} -p $BIN_NAME
           cross build --release --target ${{ matrix.target }} -p $AIO_BIN_NAME
 
       - name: Build release binary (Windows)
         if: runner.os == 'Windows'
+        env:
+          # vendored openssl ships no ossl_static.pdb, so link.exe floods LNK4099
+          RUSTFLAGS: "-A linker_messages"
         run: cargo build --release --target ${{ matrix.target }} -p $env:BIN_NAME
 
       - name: Prepare binaries (Linux)

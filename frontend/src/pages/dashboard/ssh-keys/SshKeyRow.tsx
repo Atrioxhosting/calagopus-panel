@@ -1,11 +1,11 @@
 import { faPencil, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import deleteSshKey from '@/api/me/ssh-keys/deleteSshKey.ts';
 import CopyOnClick from '@/elements/CopyOnClick.tsx';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
@@ -16,7 +16,16 @@ import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import SshKeyEditModal from './modals/SshKeyEditModal.tsx';
 
-export default function SshKeyRow({ sshKey }: { sshKey: z.infer<typeof userSshKeySchema> }) {
+interface SshKeyRowProps {
+  sshKey: z.infer<typeof userSshKeySchema>;
+  isSelected?: boolean;
+  onSelectionChange?: (selected: boolean) => void;
+}
+
+const SshKeyRow = forwardRef<HTMLTableRowElement, SshKeyRowProps>(function SshKeyRow(
+  { sshKey, isSelected = false, onSelectionChange },
+  ref,
+) {
   const { t } = useTranslations();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
@@ -73,11 +82,17 @@ export default function SshKeyRow({ sshKey }: { sshKey: z.infer<typeof userSshKe
       >
         {({ items, openMenu }) => (
           <TableRow
+            ref={ref}
+            bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
             onContextMenu={(e) => {
               e.preventDefault();
               openMenu(e.clientX, e.clientY);
             }}
           >
+            {onSelectionChange !== undefined && (
+              <TableSelectionCell id={sshKey.uuid} checked={isSelected} onChange={onSelectionChange} />
+            )}
+
             <TableData>{sshKey.name}</TableData>
 
             <TableData>
@@ -96,4 +111,6 @@ export default function SshKeyRow({ sshKey }: { sshKey: z.infer<typeof userSshKe
       </ContextMenu>
     </>
   );
-}
+});
+
+export default SshKeyRow;

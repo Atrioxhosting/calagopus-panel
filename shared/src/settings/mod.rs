@@ -944,12 +944,15 @@ impl AsRef<[u8]> for ArcedIndexHtml {
 
 pub struct SettingsWriteGuard<'a> {
     parent: &'a Settings,
+    buffer_index: usize,
     settings: Option<RwLockWriteGuard<'a, SettingsBuffer>>,
     _writer_token: SemaphorePermit<'a>,
 }
 
 impl<'a> SettingsWriteGuard<'a> {
     pub async fn save(mut self) -> Result<(), crate::database::DatabaseError> {
+        let buffer_index = self.buffer_index;
+
         let mut settings_guard = self.settings.take().ok_or_else(|| {
             crate::database::DatabaseError::Any(anyhow::anyhow!(
                 "settings have already been saved or dropped"
@@ -973,17 +976,18 @@ impl<'a> SettingsWriteGuard<'a> {
         .execute(self.parent.database.write())
         .await?;
 
-        settings_guard.expires = std::time::Instant::now() + std::time::Duration::from_secs(60);
-
-        let _ = self
-            .parent
-            .cached_index
-            .fetch_update(Ordering::Release, Ordering::Relaxed, |i| Some((i + 1) % 2));
-
         let rendered_index_html = render_index_html(&settings_guard.settings)?;
         self.parent
             .rendered_index_html
             .store(ArcedIndexHtml(Arc::new(rendered_index_html)));
+
+        settings_guard.expires = std::time::Instant::now() + std::time::Duration::from_secs(60);
+
+        drop(settings_guard);
+
+        self.parent
+            .cached_index
+            .store(buffer_index, Ordering::Release);
 
         Ok(())
     }
@@ -1040,6 +1044,11 @@ struct SettingsBuffer {
 }
 
 pub struct Settings {
+    // Write protocol: every writer (refresh in `get`, `get_mut`, `invalidate_cache`)
+    // holds `write_serializing`, locks only the buffer that is INACTIVE at the index
+    // it loaded, and publishes it by flipping `cached_index`. Readers only ever lock
+    // the buffer `cached_index` points at. Locking the active buffer in place is what
+    // deadlocks against long-lived `SettingsReadGuard`s, so never do it.
     cached: [RwLock<SettingsBuffer>; 2],
     cached_index: AtomicUsize,
     write_serializing: Semaphore,
@@ -1120,23 +1129,26 @@ impl Settings {
         let _write_token = self.write_serializing.acquire().await?;
 
         let index = self.cached_index.load(Ordering::Acquire);
-        let current_buffer = &self.cached[index % 2];
-
-        if now < current_buffer.read().await.expires {
-            return Ok(SettingsReadGuard {
-                settings: current_buffer.read().await,
-            });
+        {
+            let guard = self.cached[index % 2].read().await;
+            if now < guard.expires {
+                return Ok(SettingsReadGuard { settings: guard });
+            }
         }
 
         let start = std::time::Instant::now();
         tracing::info!("settings cache expired, reloading from database");
 
         let settings = Self::fetch_settings(&self.database).await?;
-        let mut guard = current_buffer.write().await;
-        guard.settings = settings;
-        guard.expires = now + std::time::Duration::from_secs(60);
 
-        drop(guard);
+        let inactive_index = (index + 1) % 2;
+        {
+            let mut guard = self.cached[inactive_index].write().await;
+            guard.settings = settings;
+            guard.expires = now + std::time::Duration::from_secs(60);
+        }
+
+        self.cached_index.store(inactive_index, Ordering::Release);
 
         tracing::info!(
             "reloaded settings from database in {} ms",
@@ -1144,7 +1156,7 @@ impl Settings {
         );
 
         Ok(SettingsReadGuard {
-            settings: current_buffer.read().await,
+            settings: self.cached[inactive_index].read().await,
         })
     }
 
@@ -1156,23 +1168,41 @@ impl Settings {
     pub async fn get_webauthn(&self) -> Result<webauthn_rs::Webauthn, anyhow::Error> {
         let settings = self.get().await?;
 
-        Ok(webauthn_rs::WebauthnBuilder::new(
-            &settings.webauthn.rp_id,
-            &settings.webauthn.rp_origin.parse()?,
-        )?
-        .rp_name(&settings.app.name)
-        .timeout(std::time::Duration::from_secs(
-            settings.webauthn.authentication_timeout_seconds,
-        ))
-        .build()?)
+        let rp_origin: reqwest::Url = settings.webauthn.rp_origin.parse()?;
+        let mut builder = webauthn_rs::WebauthnBuilder::new(&settings.webauthn.rp_id, &rp_origin)?;
+
+        for url in settings.app.urls() {
+            let Ok(url) = reqwest::Url::parse(url) else {
+                continue;
+            };
+
+            if url.origin() == rp_origin.origin() {
+                continue;
+            }
+
+            // browsers reject credentials whose rp_id is not a registrable suffix of the page origin
+            if url.domain().is_some_and(|domain| {
+                domain == settings.webauthn.rp_id
+                    || domain.ends_with(&format!(".{}", settings.webauthn.rp_id))
+            }) {
+                builder = builder.append_allowed_origin(&url);
+            }
+        }
+
+        Ok(builder
+            .rp_name(&settings.app.name)
+            .timeout(std::time::Duration::from_secs(
+                settings.webauthn.authentication_timeout_seconds,
+            ))
+            .build()?)
     }
 
     pub async fn get_mut(&self) -> Result<SettingsWriteGuard<'_>, anyhow::Error> {
         let writer_token = self.write_serializing.acquire().await?;
 
         let active_index = self.cached_index.load(Ordering::Acquire);
-        let inactive_index = (active_index + 1) % 2;
-        let inactive_buffer = &self.cached[inactive_index];
+        let buffer_index = (active_index + 1) % 2;
+        let inactive_buffer = &self.cached[buffer_index];
 
         let mut guard = inactive_buffer.write().await;
 
@@ -1180,6 +1210,7 @@ impl Settings {
 
         Ok(SettingsWriteGuard {
             parent: self,
+            buffer_index,
             settings: Some(guard),
             _writer_token: writer_token,
         })
@@ -1274,7 +1305,9 @@ impl Settings {
             return;
         };
         let index = self.cached_index.load(Ordering::Acquire);
-        self.cached[index % 2].write().await.expires = std::time::Instant::now();
+        let inactive_index = (index + 1) % 2;
+        self.cached[inactive_index].write().await.expires = std::time::Instant::now();
+        self.cached_index.store(inactive_index, Ordering::Release);
     }
 }
 

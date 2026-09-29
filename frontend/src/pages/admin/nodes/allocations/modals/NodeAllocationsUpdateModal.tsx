@@ -4,6 +4,7 @@ import { z } from 'zod';
 import updateNodeAllocations from '@/api/admin/nodes/allocations/updateNodeAllocations.ts';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import Button from '@/elements/buttons/Button.tsx';
+import NodeAllocationIpInput from '@/elements/input/NodeAllocationIpInput.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import FormModal from '@/elements/modals/FormModal.tsx';
@@ -144,11 +145,12 @@ export default function NodeAllocationsUpdateModal({
       onSubmit={doUpdate}
     >
       <Stack>
-        <TextInput
+        <NodeAllocationIpInput
           withAsterisk
+          nodeUuid={node.uuid}
           label={t('common.table.columns.ip', {})}
           value={ip}
-          onChange={(e) => setIp(e.target.value)}
+          onChange={setIp}
         />
 
         <TextInput

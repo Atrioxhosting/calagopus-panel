@@ -234,11 +234,16 @@ impl DatabaseAgentTemplate {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM database_agent_templates
-            WHERE ($1 IS NULL OR database_agent_templates.name ILIKE '%' || $1 || '%')
+            WHERE {search}
             ORDER BY database_agent_templates.created
             LIMIT $2 OFFSET $3
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(
+                1,
+                &["database_agent_templates.name"],
+                &["database_agent_templates.uuid"]
+            )
         )))
         .bind(search)
         .bind(per_page)

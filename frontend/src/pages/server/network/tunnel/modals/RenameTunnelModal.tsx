@@ -1,5 +1,4 @@
 import { ModalProps } from '@mantine/core';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
@@ -29,7 +28,7 @@ export default function RenameTunnelModal({ name, alias, onRenamed, ...props }: 
 
   const { form, handleClose, handleSubmit, loading, isDirty } = useModalForm<z.infer<typeof serverTunnelRenameSchema>>({
     initialValues: { name },
-    validate: zod4Resolver(serverTunnelRenameSchema),
+    schema: serverTunnelRenameSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       try {

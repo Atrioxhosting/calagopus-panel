@@ -1,5 +1,6 @@
 import {
   faAnglesUp,
+  faArrowUpRightFromSquare,
   faClone,
   faCopy,
   faEnvelopesBulk,
@@ -14,16 +15,16 @@ import {
   faPause,
   faPlay,
   faTrash,
+  faWindowMaximize,
   faWindowRestore,
   faXmark,
 } from '@fortawesome/free-solid-svg-icons';
-import { join } from 'pathe';
-import { createSearchParams, MemoryRouter } from 'react-router';
+import { MemoryRouter } from 'react-router';
 import { FileOpenMode } from 'shared/src/registries/pages/server/files';
 import { z } from 'zod';
 import downloadFiles from '@/api/server/files/downloadFiles.ts';
 import ContextMenu, { ContextMenuItem } from '@/elements/overlays/ContextMenu.tsx';
-import { isArchiveType } from '@/lib/files/files.ts';
+import { fileOpenUrl, isArchiveType } from '@/lib/files/files.ts';
 import {
   cancelFileUpload,
   canResumeInSession,
@@ -31,6 +32,7 @@ import {
   resumeDetachedUpload,
   resumeUpload,
 } from '@/lib/files/uploadManager.ts';
+import { openPopup, openUrl } from '@/lib/network/url.ts';
 import { streamingArchiveFormat } from '@/lib/schemas/generic.ts';
 import { serverDirectoryEntrySchema } from '@/lib/schemas/server/files.ts';
 import { FileUploadState } from '@/pages/server/files/hooks/useFileUpload.ts';
@@ -62,6 +64,7 @@ function pickFileToResume(key: string): void {
 interface FileRowContextMenuProps {
   file: z.infer<typeof serverDirectoryEntrySchema>;
   openMode: FileOpenMode;
+  onOpen: () => void;
   directory?: string;
   writableDirectory?: boolean;
   upload?: FileUploadState;
@@ -72,6 +75,7 @@ interface FileRowContextMenuProps {
 export default function FileRowContextMenu({
   file,
   openMode,
+  onOpen,
   directory,
   writableDirectory,
   upload,
@@ -101,6 +105,38 @@ export default function FileRowContextMenu({
   const openModal = (modal: Parameters<ReturnType<typeof store.getState>['doOpenModal']>[0]) => {
     prepareFileManager();
     store.getState().doOpenModal(modal, [file]);
+  };
+
+  const buildOpenUrl = () => {
+    prepareFileManager();
+
+    return fileOpenUrl(openMode, server, {
+      ...store.getState(),
+      browsingDirectory: activeDirectory,
+      browsingWritableDirectory: activeWritableDirectory,
+    });
+  };
+
+  const openInNewTab = () => {
+    const url = buildOpenUrl();
+    if (url) openUrl(url);
+  };
+
+  const openInPopup = () => {
+    const url = buildOpenUrl();
+    if (url) openPopup(url);
+  };
+
+  const openInVirtualWindow = () => {
+    const url = buildOpenUrl();
+    if (!url) return;
+
+    addWindow(
+      file.name,
+      <MemoryRouter initialEntries={[url]}>
+        <RouterRoutes isNormal={false} />
+      </MemoryRouter>,
+    );
   };
 
   const doDownload = (archiveFormat: z.infer<typeof streamingArchiveFormat>) => {
@@ -154,60 +190,43 @@ export default function FileRowContextMenu({
           type: 'divider',
           hidden: !local,
         },
-        {
-          type: 'action',
-          icon: faWindowRestore,
-          label: t('pages.server.files.button.openInNewWindow', {}),
-          hidden: !finePointer.matches || !openMode.openable || !!upload,
-          onClick: () => {
-            if (!openMode.openable) return;
-
-            prepareFileManager();
-            const fileManagerContext = {
-              ...store.getState(),
-              browsingDirectory: activeDirectory,
-              browsingWritableDirectory: activeWritableDirectory,
-            };
-
-            let url = new URL(window.location.href);
-            openMode.handleOpen({
-              fileManagerContext,
-              server,
-              setSearchParams(params) {
-                url.search = createSearchParams(
-                  typeof params === 'function' ? params(new URLSearchParams(url.search)) : params,
-                ).toString();
-              },
-              navigate(path) {
-                if (typeof path !== 'string') return;
-
-                url = new URL(path, url);
-              },
-              handleDirectoryOpen(path) {
-                url.search = createSearchParams({
-                  directory: join(fileManagerContext.browsingDirectory, path),
-                }).toString();
-              },
-              handleFileOpen(file, action, params) {
-                const searchParams = createSearchParams({
-                  directory: activeDirectory,
-                  file,
-                  ...params,
-                });
-
-                url = new URL(`/server/${server.uuidShort}/files/${action}?${searchParams}`, window.location.origin);
-              },
-            });
-
-            addWindow(
-              file.name,
-              <MemoryRouter initialEntries={[url.pathname + url.search]}>
-                <RouterRoutes isNormal={false} />
-              </MemoryRouter>,
-            );
-          },
-          canAccess: canReadContent,
-        },
+        finePointer.matches
+          ? {
+              type: 'action',
+              icon: faArrowUpRightFromSquare,
+              label: t('pages.server.files.button.open', {}),
+              hidden: !openMode.openable || !!upload,
+              onClick: onOpen,
+              items: [
+                {
+                  type: 'action',
+                  icon: faWindowRestore,
+                  label: t('pages.server.files.button.openInVirtualWindow', {}),
+                  onClick: openInVirtualWindow,
+                },
+                {
+                  type: 'action',
+                  icon: faWindowMaximize,
+                  label: t('pages.server.files.button.openInPopup', {}),
+                  onClick: openInPopup,
+                },
+                {
+                  type: 'action',
+                  icon: faArrowUpRightFromSquare,
+                  label: t('pages.server.files.button.openInNewTab', {}),
+                  onClick: openInNewTab,
+                },
+              ],
+              canAccess: canReadContent,
+            }
+          : {
+              type: 'action',
+              icon: faArrowUpRightFromSquare,
+              label: t('pages.server.files.button.openInNewTab', {}),
+              hidden: !openMode.openable || !!upload,
+              onClick: openInNewTab,
+              canAccess: canReadContent,
+            },
         {
           type: 'action',
           icon: faFilePen,

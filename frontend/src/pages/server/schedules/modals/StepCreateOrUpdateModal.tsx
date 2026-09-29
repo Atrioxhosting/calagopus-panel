@@ -1,5 +1,4 @@
 import { ModalProps } from '@mantine/core';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import createScheduleStep from '@/api/server/schedules/steps/createScheduleStep.ts';
@@ -88,7 +87,7 @@ export default function StepCreateOrUpdateModal({
       order: nextStepOrder ?? 1,
       action: scheduleStepDefaultMapping.send_command,
     },
-    validate: zod4Resolver(serverScheduleStepUpdateSchema),
+    schema: serverScheduleStepUpdateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       if (propStep) {

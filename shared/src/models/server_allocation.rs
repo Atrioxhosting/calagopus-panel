@@ -272,11 +272,13 @@ impl ServerAllocation {
                     OR host(node_allocations.ip) || ':' || node_allocations.port ILIKE '%' || $2 || '%'
                     OR (node_allocations.ip_alias IS NOT NULL AND node_allocations.ip_alias || ':' || node_allocations.port ILIKE '%' || $2 || '%')
                     OR server_allocations.notes ILIKE '%' || $2 || '%'
+                    OR {search_uuid}
                 )
             ORDER BY server_allocations.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search_uuid = super::uuid_search_sql(2, "server_allocations.uuid")
         )))
         .bind(server_uuid)
         .bind(search)

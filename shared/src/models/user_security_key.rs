@@ -148,11 +148,12 @@ impl UserSecurityKey {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM user_security_keys
-            WHERE user_security_keys.user_uuid = $1 AND user_security_keys.passkey IS NOT NULL AND ($2 IS NULL OR user_security_keys.name ILIKE '%' || $2 || '%')
+            WHERE user_security_keys.user_uuid = $1 AND user_security_keys.passkey IS NOT NULL AND {search}
             ORDER BY user_security_keys.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["user_security_keys.name"], &["user_security_keys.uuid"])
         )))
         .bind(user_uuid)
         .bind(search)

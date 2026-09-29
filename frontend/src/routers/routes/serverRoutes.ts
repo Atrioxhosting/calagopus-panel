@@ -21,6 +21,7 @@ import DatabaseInstanceExplorerView from '@/pages/server/databases/instances/Dat
 import DatabaseInstanceView from '@/pages/server/databases/instances/DatabaseInstanceView.tsx';
 import ServerDatabaseInstances from '@/pages/server/databases/instances/ServerDatabaseInstances.tsx';
 import ServerDatabases from '@/pages/server/databases/ServerDatabases.tsx';
+import ServerDevices from '@/pages/server/devices/ServerDevices.tsx';
 import FileSqliteQuery from '@/pages/server/files/editor/FileSqliteQuery.tsx';
 import ServerFiles from '@/pages/server/files/ServerFiles.tsx';
 import ServerMounts from '@/pages/server/mounts/ServerMounts.tsx';
@@ -188,7 +189,13 @@ const routes: ServerRouteDefinition[] = [
     icon: faFolderTree,
     path: '/mounts',
     element: ServerMounts,
-    permission: 'mounts.read',
+    permission: ['mounts.read', 'devices.read'],
+  },
+  {
+    name: undefined,
+    path: '/mounts/devices',
+    element: ServerDevices,
+    permission: 'devices.read',
   },
   {
     name: () => getTranslations().t('pages.server.settings.title', {}),

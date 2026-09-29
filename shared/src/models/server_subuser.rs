@@ -152,11 +152,12 @@ impl ServerSubuser {
             FROM server_subusers
             JOIN users ON users.uuid = server_subusers.user_uuid
             LEFT JOIN roles ON roles.uuid = users.role_uuid
-            WHERE server_subusers.server_uuid = $1 AND ($2 IS NULL OR users.username ILIKE '%' || $2 || '%')
+            WHERE server_subusers.server_uuid = $1 AND {search}
             ORDER BY server_subusers.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["users.username"], &["users.uuid"])
         )))
         .bind(server_uuid)
         .bind(search)

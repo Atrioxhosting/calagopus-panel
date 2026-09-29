@@ -1,0 +1,1 @@
+ALTER TABLE "servers" ADD COLUMN "labels" json DEFAULT '{}' NOT NULL;

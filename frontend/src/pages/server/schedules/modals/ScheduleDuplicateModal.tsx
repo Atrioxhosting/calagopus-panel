@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import duplicateSchedule from '@/api/server/schedules/duplicateSchedule.ts';
@@ -34,7 +33,7 @@ export default function ScheduleDuplicateModal({ schedule, ...props }: Props) {
     initialValues: {
       name: '',
     },
-    validate: zod4Resolver(duplicateScheduleSchema),
+    schema: duplicateScheduleSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await duplicateSchedule(server.uuid, schedule.uuid, values.name);

@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { z } from 'zod';
 import Button from '@/elements/buttons/Button.tsx';
 import Autocomplete from '@/elements/input/Autocomplete.tsx';
@@ -40,7 +39,7 @@ export default function ColumnCreateModal({
 
   const { form, handleClose, handleSubmit, loading, isDirty } = useModalForm<z.infer<typeof values>>({
     initialValues: { name: '', type: '', nullable: true },
-    validate: zod4Resolver(values),
+    schema: values,
     onClose: props.onClose,
     onSubmit: async (data) => {
       await api.createColumn({

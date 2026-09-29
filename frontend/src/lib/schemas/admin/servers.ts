@@ -3,11 +3,13 @@ import { adminBackupConfigurationSchema } from '@/lib/schemas/admin/backupConfig
 import { adminDatabaseAgentHostSchema } from '@/lib/schemas/admin/databaseAgentHosts.ts';
 import { adminDatabaseAgentTemplateSchema } from '@/lib/schemas/admin/databaseAgentTemplates.ts';
 import { adminDatabaseHostSchema } from '@/lib/schemas/admin/databaseHosts.ts';
+import { adminDeviceSchema } from '@/lib/schemas/admin/devices.ts';
 import { adminEggSchema } from '@/lib/schemas/admin/eggs.ts';
 import { adminMountSchema } from '@/lib/schemas/admin/mounts.ts';
 import { adminNestSchema } from '@/lib/schemas/admin/nests.ts';
 import { adminNodeSchema } from '@/lib/schemas/admin/nodes.ts';
 import { adminFullUserSchema } from '@/lib/schemas/admin/users.ts';
+import { serverBackupRetentionStatusSchema } from '@/lib/schemas/backupRetention.ts';
 import { databaseAgentType, databaseType } from '@/lib/schemas/generic.ts';
 import { serverAllocationSchema } from '@/lib/schemas/server/allocations.ts';
 import { serverBackupKind } from '@/lib/schemas/server/backups.ts';
@@ -50,6 +52,7 @@ export const adminServerSchema = z.looseObject({
   featureLimits: z.lazy(() => adminServerFeatureLimitsSchema),
   startup: z.string().min(1).max(8192),
   image: z.string().min(2).max(255),
+  labels: z.record(z.string(), z.string()),
   autoKill: z.object({
     enabled: z.boolean(),
     seconds: z.number(),
@@ -127,6 +130,7 @@ export const adminServerBackupSchema = z.looseObject({
   files: z.number(),
   metadata: z.record(z.string(), z.unknown()),
   deletionStatus: z.enum(['deleting', 'failed']).nullable(),
+  retentionStatus: serverBackupRetentionStatusSchema.nullable(),
   completed: z.coerce.date().nullable(),
   created: z.coerce.date(),
 });
@@ -199,6 +203,11 @@ export const adminServerMountSchema = z.looseObject({
   created: z.coerce.date().nullable(),
 });
 
+export const adminServerDeviceSchema = z.looseObject({
+  device: z.lazy(() => adminDeviceSchema),
+  created: z.coerce.date().nullable(),
+});
+
 export type AdminServer = z.infer<typeof adminServerSchema>;
 export type AdminServerLimits = z.infer<typeof adminServerLimitsSchema>;
 export type AdminServerFeatureLimits = z.infer<typeof adminServerFeatureLimitsSchema>;
@@ -210,3 +219,4 @@ export type AdminServerServerDatabase = z.infer<typeof adminServerServerDatabase
 export type AdminServerDatabaseAgent = z.infer<typeof adminServerDatabaseAgentSchema>;
 export type AdminServerServerDatabaseAgent = z.infer<typeof adminServerServerDatabaseAgentSchema>;
 export type AdminServerMount = z.infer<typeof adminServerMountSchema>;
+export type AdminServerDevice = z.infer<typeof adminServerDeviceSchema>;

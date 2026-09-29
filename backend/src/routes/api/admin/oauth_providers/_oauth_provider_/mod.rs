@@ -94,11 +94,13 @@ mod get {
 
 mod delete {
     use crate::routes::api::admin::oauth_providers::_oauth_provider_::GetOAuthProvider;
+    use axum::http::StatusCode;
     use serde::Serialize;
     use shared::{
         ApiError, GetState,
         models::{
-            DeletableModel, admin_activity::GetAdminActivityLogger, user::GetPermissionManager,
+            DeletableModel, admin_activity::GetAdminActivityLogger, oauth_provider::OAuthProvider,
+            user::GetPermissionManager,
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -126,6 +128,20 @@ mod delete {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("oauth-providers.delete")?;
 
+        if !state
+            .settings
+            .get_as(|s| s.app.password_login_enabled)
+            .await?
+            && !OAuthProvider::exists_usable_except(&state.database, Some(oauth_provider.uuid))
+                .await?
+        {
+            return ApiResponse::error(
+                "password login is disabled, cannot delete the last enabled oauth provider",
+            )
+            .with_status(StatusCode::CONFLICT)
+            .ok();
+        }
+
         oauth_provider.delete(&state, ()).await?;
 
         activity_logger
@@ -149,8 +165,10 @@ mod patch {
     use shared::{
         ApiError, GetState,
         models::{
-            UpdatableModel, admin_activity::GetAdminActivityLogger,
-            oauth_provider::UpdateOAuthProviderOptions, user::GetPermissionManager,
+            UpdatableModel,
+            admin_activity::GetAdminActivityLogger,
+            oauth_provider::{OAuthProvider, UpdateOAuthProviderOptions},
+            user::GetPermissionManager,
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -179,6 +197,21 @@ mod patch {
         shared::Payload(data): shared::Payload<UpdateOAuthProviderOptions>,
     ) -> ApiResponseResult {
         permissions.has_admin_permission("oauth-providers.update")?;
+
+        if data.enabled == Some(false)
+            && !state
+                .settings
+                .get_as(|s| s.app.password_login_enabled)
+                .await?
+            && !OAuthProvider::exists_usable_except(&state.database, Some(oauth_provider.uuid))
+                .await?
+        {
+            return ApiResponse::error(
+                "password login is disabled, cannot disable the last enabled oauth provider",
+            )
+            .with_status(StatusCode::CONFLICT)
+            .ok();
+        }
 
         match oauth_provider.update(&state, data).await {
             Ok(_) => {}

@@ -175,7 +175,7 @@ impl<'r> sqlx::Decode<'r, sqlx::Postgres> for DatabaseAgentType {
 }
 
 // mirrors db-agent config::FORBIDDEN_PATHS
-const FORBIDDEN_CONFIG_PATHS: &[&str] = &[
+pub const FORBIDDEN_CONFIG_PATHS: &[&str] = &[
     "ignore_config_updates",
     "ignore_upgrades",
     "socket_dir",
@@ -190,7 +190,9 @@ const FORBIDDEN_CONFIG_PATHS: &[&str] = &[
     "api.remote_import_blocked_cidrs",
 ];
 
-pub fn strip_config_paths(value: &mut serde_json::Value) {
+pub fn strip_config_paths(value: &mut serde_json::Value) -> Vec<&'static str> {
+    let mut stripped = Vec::new();
+
     for path in FORBIDDEN_CONFIG_PATHS {
         let mut cursor = &mut *value;
         let mut parts = path.split('.').peekable();
@@ -201,12 +203,15 @@ pub fn strip_config_paths(value: &mut serde_json::Value) {
             };
 
             if parts.peek().is_none() {
-                map.remove(part);
+                if map.remove(part).is_some() {
+                    stripped.push(*path);
+                }
                 break;
             }
 
             if map.get(part).is_some_and(|next| !next.is_object()) {
                 map.remove(part);
+                stripped.push(*path);
                 break;
             }
 
@@ -216,4 +221,6 @@ pub fn strip_config_paths(value: &mut serde_json::Value) {
             }
         }
     }
+
+    stripped
 }

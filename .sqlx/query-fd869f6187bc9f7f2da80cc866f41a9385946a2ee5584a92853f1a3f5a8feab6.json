@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT EXISTS (\n                SELECT 1\n                FROM oauth_providers\n                WHERE oauth_providers.enabled = true\n                    AND ($1::uuid IS NULL OR oauth_providers.uuid != $1)\n            ) AS \"exists!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "fd869f6187bc9f7f2da80cc866f41a9385946a2ee5584a92853f1a3f5a8feab6"
+}

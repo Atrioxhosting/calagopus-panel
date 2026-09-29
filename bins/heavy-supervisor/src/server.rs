@@ -453,6 +453,18 @@ pub async fn bind(path: &Path) -> anyhow::Result<UnixListener> {
         tokio::fs::create_dir_all(parent)
             .await
             .with_context(|| format!("creating {}", parent.display()))?;
+
+        let metadata = tokio::fs::symlink_metadata(parent)
+            .await
+            .with_context(|| format!("inspecting {}", parent.display()))?;
+        if !metadata.is_dir() {
+            anyhow::bail!("{} is not a directory", parent.display());
+        }
+
+        use std::os::unix::fs::PermissionsExt;
+        tokio::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700))
+            .await
+            .with_context(|| format!("restricting {}", parent.display()))?;
     }
 
     match tokio::fs::remove_file(path).await {

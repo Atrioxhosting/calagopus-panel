@@ -14,6 +14,7 @@ import {
   serverDatabaseFilterOperator,
   serverDatabaseSchemaTableSchema,
 } from '@/lib/schemas/server/databases.ts';
+import { useDatabaseExplorer } from '@/providers/contexts/databaseExplorerContext.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
 type BrowseFilter = z.infer<typeof serverDatabaseBrowseFilterSchema>;
@@ -21,6 +22,8 @@ type FilterOperator = z.infer<typeof serverDatabaseFilterOperator>;
 
 const BINARY_OPERATORS: FilterOperator[] = ['eq', 'ne', 'is_null', 'not_null'];
 const NULL_OPERATORS: FilterOperator[] = ['is_null', 'not_null'];
+const ENUM_OPERATORS: FilterOperator[] = ['eq', 'ne'];
+const ORDERED_ENUM_OPERATORS: FilterOperator[] = ['eq', 'ne', 'lt', 'lte', 'gt', 'gte'];
 
 export const parseFilters = (raw: string | null): BrowseFilter[] => {
   if (!raw) return [];
@@ -56,6 +59,7 @@ function FilterForm({
   onApply: (filter: BrowseFilter) => void;
 }) {
   const { t } = useTranslations();
+  const { engine } = useDatabaseExplorer();
   const [column, setColumn] = useState(initial?.column ?? table.columns[0]?.name ?? '');
   const [operator, setOperator] = useState<FilterOperator>(initial?.operator ?? 'eq');
   const [value, setValue] = useState(initial?.value ?? '');
@@ -63,6 +67,8 @@ function FilterForm({
   const binary = table.columns.find((entry) => entry.name === column)?.binary ?? false;
   const operators = serverDatabaseFilterOperator.options.filter((entry) => !binary || BINARY_OPERATORS.includes(entry));
   const needsValue = !NULL_OPERATORS.includes(operator);
+  const enumValues = table.columns.find((entry) => entry.name === column)?.enumValues;
+  const enumOperators = engine === 'postgres' ? ORDERED_ENUM_OPERATORS : ENUM_OPERATORS;
 
   const pickColumn = (name: string) => {
     setColumn(name);
@@ -100,13 +106,27 @@ function FilterForm({
           value={operator}
           onChange={(next) => next && setOperator(next as FilterOperator)}
         />
-        {needsValue && (
-          <TextInput
+        {needsValue && enumValues && enumOperators.includes(operator) ? (
+          <Select
             label={t('pages.server.databases.explorer.filter.value', {})}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            autoFocus
+            searchable
+            comboboxProps={{ withinPortal: false }}
+            data={enumValues.map((option) => ({
+              value: option,
+              label: option === '' ? t('pages.server.databases.explorer.cell.empty', {}) : option,
+            }))}
+            value={enumValues.includes(value) ? value : null}
+            onChange={(next) => next !== null && setValue(next)}
           />
+        ) : (
+          needsValue && (
+            <TextInput
+              label={t('pages.server.databases.explorer.filter.value', {})}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              autoFocus
+            />
+          )
         )}
         <Button type='submit'>{t('pages.server.databases.explorer.filter.apply', {})}</Button>
       </Stack>

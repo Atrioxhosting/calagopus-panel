@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { withUploadPath } from '@/lib/files/uploadPaths.ts';
 
 interface UseFileDragAndDropOptions {
   onDrop: (files: File[]) => Promise<void>;
@@ -9,11 +10,6 @@ const dataTransferHasFiles = (dataTransfer: DataTransfer | null) =>
   !!dataTransfer &&
   (Array.from(dataTransfer.types).includes('Files') ||
     Array.from(dataTransfer.items).some((item) => item.kind === 'file'));
-
-const withRelativePath = (file: File, relativePath: string) => {
-  Object.defineProperty(file, 'webkitRelativePath', { configurable: true, value: relativePath });
-  return file;
-};
 
 async function traverseDirectory(entry: FileSystemDirectoryEntry, files: File[], path: string = ''): Promise<void> {
   return new Promise((resolve) => {
@@ -33,7 +29,7 @@ async function traverseDirectory(entry: FileSystemDirectoryEntry, files: File[],
                 ? new Promise<void>((resolveFile) =>
                     (entry as FileSystemFileEntry).file(
                       (file) => {
-                        files.push(withRelativePath(file, `${path}/${file.name}`));
+                        files.push(withUploadPath(file, `${path}/${file.name}`));
                         resolveFile();
                       },
                       () => resolveFile(),

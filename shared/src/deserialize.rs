@@ -45,6 +45,25 @@ where
     Ok(value.filter(|s| !s.is_empty()))
 }
 
+/// Normalises a free-text search term so it can be matched against a uuid column as an
+/// anchored prefix
+pub fn deserialize_search_option<'de, D>(
+    deserializer: D,
+) -> Result<Option<compact_str::CompactString>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value: Option<compact_str::CompactString> =
+        Option::deserialize(deserializer).unwrap_or_default();
+
+    Ok(value
+        .map(|s| match uuid::Uuid::parse_str(s.trim()) {
+            Ok(uuid) => compact_str::format_compact!("{uuid}"),
+            Err(_) => s.trim().into(),
+        })
+        .filter(|s| !s.is_empty()))
+}
+
 pub fn deserialize_array_or_not<'de, D, T: DeserializeOwned>(
     deserializer: D,
 ) -> Result<Vec<T>, D::Error>

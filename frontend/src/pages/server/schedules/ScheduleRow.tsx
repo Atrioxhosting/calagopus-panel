@@ -1,7 +1,7 @@
 import { faClone, faFileDownload, faPlay, faPlayCircle, faShareAlt, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { dump } from 'js-yaml';
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
@@ -9,7 +9,7 @@ import deleteSchedule from '@/api/server/schedules/deleteSchedule.ts';
 import exportSchedule from '@/api/server/schedules/exportSchedule.ts';
 import triggerSchedule from '@/api/server/schedules/triggerSchedule.ts';
 import Badge from '@/elements/data-display/Badge.tsx';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
@@ -22,7 +22,17 @@ import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
 
-export default function ScheduleRow({ schedule }: { schedule: z.infer<typeof serverScheduleSchema> }) {
+interface ScheduleRowProps {
+  schedule: z.infer<typeof serverScheduleSchema>;
+  isSelected?: boolean;
+  onSelectionChange?: (selected: boolean) => void;
+  onClick?: (event: React.MouseEvent) => void;
+}
+
+const ScheduleRow = forwardRef<HTMLTableRowElement, ScheduleRowProps>(function ScheduleRow(
+  { schedule, isSelected = false, onSelectionChange, onClick },
+  ref,
+) {
   const { t } = useTranslations();
   const { addToast } = useToast();
   const navigate = useNavigate();
@@ -154,13 +164,22 @@ export default function ScheduleRow({ schedule }: { schedule: z.infer<typeof ser
       >
         {({ items, openMenu }) => (
           <TableRow
+            ref={ref}
             className='cursor-pointer'
+            bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
             onContextMenu={(e) => {
               e.preventDefault();
               openMenu(e.clientX, e.clientY);
             }}
-            onClick={() => navigate(navigateUrl)}
+            onClick={(e) => {
+              onClick?.(e);
+              if (!e.defaultPrevented) navigate(navigateUrl);
+            }}
           >
+            {onSelectionChange !== undefined && (
+              <TableSelectionCell id={schedule.uuid} checked={isSelected} onChange={onSelectionChange} />
+            )}
+
             <TableData>{schedule.name}</TableData>
 
             <TableData>
@@ -187,4 +206,6 @@ export default function ScheduleRow({ schedule }: { schedule: z.infer<typeof ser
       </ContextMenu>
     </>
   );
-}
+});
+
+export default ScheduleRow;

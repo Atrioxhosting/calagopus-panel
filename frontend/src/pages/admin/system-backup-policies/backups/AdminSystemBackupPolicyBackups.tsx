@@ -57,6 +57,7 @@ export default function AdminSystemBackupPolicyBackups({
           t('common.table.columns.checksum', {}),
           t('common.table.columns.size', {}),
           ...(isDatabaseKind ? [] : [t('common.table.columns.files', {})]),
+          t('pages.server.backups.table.columns.retention', {}),
           t('common.table.columns.created', {}),
           '',
         ]}

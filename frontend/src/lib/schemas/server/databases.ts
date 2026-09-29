@@ -54,6 +54,8 @@ export const serverDatabaseSchemaColumnSchema = z.object({
   autoIncrement: z.boolean(),
   generated: z.boolean(),
   binary: z.boolean(),
+  enumValues: z.array(z.string()).nullable(),
+  setValues: z.array(z.string()).nullable(),
 });
 
 export const serverDatabaseSchemaTableSchema = z.object({

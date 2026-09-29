@@ -109,7 +109,6 @@ export default function AdminNodeTransfers({ node }: { node: z.infer<typeof admi
           error={error}
           pagination={nodeTransferringServers?.servers}
           onPageSelect={setPage}
-          allowSelect={false}
         >
           {nodeTransferringServers?.servers.data.map((server) => (
             <SelectionArea.Selectable key={server.uuid} item={server}>

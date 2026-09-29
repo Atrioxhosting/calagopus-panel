@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { z } from 'zod';
 import importSshKeys from '@/api/me/ssh-keys/importSshKeys.ts';
 import Button from '@/elements/buttons/Button.tsx';
@@ -30,7 +29,7 @@ export default function SshKeyImportModal({ ...props }: ModalProps) {
       provider: 'github',
       username: '',
     },
-    validate: zod4Resolver(schema),
+    schema: schema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       const keys = await importSshKeys(values);

@@ -128,11 +128,12 @@ impl LocationDatabaseHost {
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM location_database_hosts
             JOIN database_hosts ON location_database_hosts.database_host_uuid = database_hosts.uuid
-            WHERE location_database_hosts.location_uuid = $1 AND ($2 IS NULL OR database_hosts.name ILIKE '%' || $2 || '%')
+            WHERE location_database_hosts.location_uuid = $1 AND {search}
             ORDER BY location_database_hosts.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["database_hosts.name"], &["database_hosts.uuid"])
         )))
         .bind(location_uuid)
         .bind(search)

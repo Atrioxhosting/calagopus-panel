@@ -18,6 +18,7 @@ import { useAdminCan } from '@/plugins/usePermissions.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import {
   BackupKindCells,
+  BackupRetentionCell,
   BackupStatusCells,
   getBackupState,
   useBackupDownload,
@@ -164,6 +165,8 @@ export default function AdminServerBackupRow({
             </TableData>
 
             <BackupStatusCells backup={backup} />
+
+            <BackupRetentionCell backup={backup} />
 
             <TableData>
               <FormattedTimestamp timestamp={backup.created} />

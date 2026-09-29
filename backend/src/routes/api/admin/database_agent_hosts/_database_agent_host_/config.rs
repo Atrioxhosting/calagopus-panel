@@ -15,6 +15,7 @@ mod get {
     #[derive(ToSchema, Serialize)]
     struct Response {
         config: db_agent_api::system_config::get::Response,
+        locked_paths: &'static [&'static str],
     }
 
     #[utoipa::path(get, path = "/", responses(
@@ -39,7 +40,11 @@ mod get {
             config.censor();
         }
 
-        ApiResponse::new_serialized(Response { config }).ok()
+        ApiResponse::new_serialized(Response {
+            config,
+            locked_paths: db_agent_api::FORBIDDEN_CONFIG_PATHS,
+        })
+        .ok()
     }
 }
 

@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import createBackup from '@/api/server/backups/createBackup.ts';
@@ -56,7 +55,7 @@ export default function BackupCreateModal({
       databaseInstanceUuid: createDefaults?.databaseInstanceUuid ?? null,
       ignoredFiles: [],
     },
-    validate: zod4Resolver(serverBackupCreateSchema),
+    schema: serverBackupCreateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await createBackup(server.uuid, values);

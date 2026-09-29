@@ -75,7 +75,7 @@ function PruneJobRow({ form, index, nodes }: { form: ResticForm; index: number; 
   );
 }
 
-export default function BackupRestic({ form }: { form: ResticForm }) {
+export default function BackupRestic({ form, onRemove }: { form: ResticForm; onRemove?: () => void }) {
   const { t } = useTranslations();
   const canReadNodes = useAdminCan('nodes.read');
   const pruneJobs = form.values.pruneJobs ?? [];
@@ -102,7 +102,10 @@ export default function BackupRestic({ form }: { form: ResticForm }) {
   ];
 
   return (
-    <BackupProviderSection title={t('pages.admin.backupConfigurations.tabs.general.page.restic.title', {})}>
+    <BackupProviderSection
+      title={t('pages.admin.backupConfigurations.tabs.general.page.restic.title', {})}
+      onRemove={onRemove}
+    >
       <Stack>
         <FormEngine form={form} fields={fields} />
 

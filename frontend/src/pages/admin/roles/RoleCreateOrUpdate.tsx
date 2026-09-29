@@ -46,10 +46,8 @@ export default function RoleCreateOrUpdate({ contextRole }: { contextRole?: z.in
 
   const { loading, doCreateOrUpdate, doDelete } = useResourceForm<RoleFormValues, z.infer<typeof roleSchema>>({
     form,
-    createFn: () => createRole(adminRoleUpdateSchema.parse(form.getValues())),
-    updateFn: contextRole
-      ? () => updateRole(contextRole.uuid, adminRoleUpdateSchema.parse(form.getValues()))
-      : undefined,
+    createFn: () => createRole(form.getTransformedValues()),
+    updateFn: contextRole ? () => updateRole(contextRole.uuid, form.getTransformedValues()) : undefined,
     deleteFn: contextRole ? () => deleteRole(contextRole.uuid) : undefined,
     doUpdate: !!contextRole,
     basePath: '/admin/roles',

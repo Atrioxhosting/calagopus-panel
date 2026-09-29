@@ -39,7 +39,9 @@ export default function ApplicationContainer() {
 
   const [previewLoading, setPreviewLoading] = useState(false);
   const [telemetryData, setTelemetryData] = useState<object | null>(null);
-  const [openModal, setOpenModal] = useState<'disableTelemetry' | 'enableRegistration' | null>(null);
+  const [openModal, setOpenModal] = useState<'disableTelemetry' | 'enableRegistration' | 'disablePasswordLogin' | null>(
+    null,
+  );
   const canReadAssets = useAdminCan('assets.read');
 
   const form = useFormEngine<AppFormValues>('admin.settings.application', {
@@ -80,6 +82,8 @@ export default function ApplicationContainer() {
       checked ? form.setFieldValue('telemetryEnabled', true) : setOpenModal('disableTelemetry'),
     onRegistrationToggle: (checked) =>
       checked ? setOpenModal('enableRegistration') : form.setFieldValue('registrationEnabled', false),
+    onPasswordLoginToggle: (checked) =>
+      checked ? form.setFieldValue('passwordLoginEnabled', true) : setOpenModal('disablePasswordLogin'),
   });
 
   return (
@@ -116,6 +120,18 @@ export default function ApplicationContainer() {
         }}
       >
         {tReact('pages.admin.settings.tabs.application.page.modal.enableRegistration.content', {})}
+      </ConfirmationModal>
+      <ConfirmationModal
+        opened={openModal === 'disablePasswordLogin'}
+        onClose={() => setOpenModal(null)}
+        title={t('pages.admin.settings.tabs.application.page.modal.disablePasswordLogin.title', {})}
+        confirm={t('common.button.disable', {})}
+        onConfirmed={() => {
+          form.setFieldValue('passwordLoginEnabled', false);
+          setOpenModal(null);
+        }}
+      >
+        {tReact('pages.admin.settings.tabs.application.page.modal.disablePasswordLogin.content', {})}
       </ConfirmationModal>
 
       <form onSubmit={form.onSubmit(submit)}>

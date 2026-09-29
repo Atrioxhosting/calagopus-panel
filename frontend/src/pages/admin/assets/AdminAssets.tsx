@@ -9,7 +9,7 @@ import Button from '@/elements/buttons/Button.tsx';
 import { AdminCan } from '@/elements/Can.tsx';
 import AdminContentContainer from '@/elements/containers/AdminContentContainer.tsx';
 import Card from '@/elements/data-display/Card.tsx';
-import Table from '@/elements/data-display/Table.tsx';
+import Table, { tableSelectionHeader } from '@/elements/data-display/Table.tsx';
 import SelectionArea from '@/elements/dnd/SelectionArea.tsx';
 import { parentPath } from '@/lib/path.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
@@ -57,6 +57,8 @@ export default function AdminAssets() {
   const assets = data?.assets;
 
   const selection = useAssetSelection(assets);
+  const selectedCount = selection.selectableAssets.filter((asset) => selection.selected.has(asset)).length;
+  const allSelected = selection.selectableAssets.length > 0 && selectedCount === selection.selectableAssets.length;
 
   const invalidateAssets = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: queryKeys.admin.assets.all() }).catch((e) => console.error(e));
@@ -169,11 +171,17 @@ export default function AdminAssets() {
 
       <SelectionArea onSelectedStart={onSelectedStart} onSelected={onSelected}>
         <Table
-          columns={assetTableColumns()}
+          columns={[
+            tableSelectionHeader({
+              checked: allSelected,
+              indeterminate: selectedCount > 0 && !allSelected,
+              onChange: (checked) => (checked ? selection.selectAll() : selection.clear()),
+            }),
+            ...assetTableColumns().slice(1),
+          ]}
           loading={loading}
           pagination={data?.pagination}
           onPageSelect={setPage}
-          allowSelect={false}
         >
           {assets?.map((asset) => (
             <SelectionArea.Selectable key={asset.name} item={asset}>

@@ -1,7 +1,7 @@
 // This file is auto-generated from OpenAPI spec. Do not edit manually.
 use super::*;
 use futures_util::TryStreamExt;
-use http_client::CLIENT;
+use http_client::{CLIENT, USER_AGENT};
 use reqwest::{Method, StatusCode};
 use serde::de::DeserializeOwned;
 use std::{
@@ -333,6 +333,10 @@ impl WingsClient {
         };
 
         let mut request = url.into_client_request().map_err(ApiHttpError::WebSocket)?;
+
+        request
+            .headers_mut()
+            .insert("User-Agent", HeaderValue::from_static(USER_AGENT));
 
         if !self.token.is_empty() {
             let value = HeaderValue::from_str(&format!("Bearer {}", self.token))
@@ -1189,6 +1193,24 @@ impl WingsClient {
         .await
     }
 
+    pub async fn post_servers_server_files_stat(
+        &self,
+        server: uuid::Uuid,
+        data: &super::servers_server_files_stat::post::RequestBody,
+    ) -> Result<super::servers_server_files_stat::post::Response, ApiHttpError> {
+        request_impl(
+            self,
+            Method::POST,
+            format!("/api/servers/{server}/files/stat"),
+            Some(&ServersServerFilesStatPostBody {
+                inner: data,
+                ignored: &self.ignored,
+            }),
+            None,
+        )
+        .await
+    }
+
     pub async fn post_servers_server_files_write(
         &self,
         server: uuid::Uuid,
@@ -1304,11 +1326,24 @@ impl WingsClient {
         server: uuid::Uuid,
         data: &super::servers_server_reinstall::post::RequestBody,
     ) -> Result<super::servers_server_reinstall::post::Response, ApiHttpError> {
+        self.post_servers_server_reinstall_with(server, data, &Default::default())
+            .await
+    }
+
+    pub async fn post_servers_server_reinstall_with(
+        &self,
+        server: uuid::Uuid,
+        data: &super::servers_server_reinstall::post::RequestBody,
+        extra: &super::servers_server_reinstall::post::Extra,
+    ) -> Result<super::servers_server_reinstall::post::Response, ApiHttpError> {
         request_impl(
             self,
             Method::POST,
             format!("/api/servers/{server}/reinstall"),
-            Some(data),
+            Some(&ServersServerReinstallPostBody {
+                inner: data,
+                start_on_completion: &extra.start_on_completion,
+            }),
             None,
         )
         .await
@@ -1511,6 +1546,10 @@ impl WingsClient {
         &self,
     ) -> Result<super::system_config::get::Response, ApiHttpError> {
         request_impl(self, Method::GET, "/api/system/config", None::<&()>, None).await
+    }
+
+    pub async fn get_system_ips(&self) -> Result<super::system_ips::get::Response, ApiHttpError> {
+        request_impl(self, Method::GET, "/api/system/ips", None::<&()>, None).await
     }
 
     pub async fn get_system_logs(&self) -> Result<super::system_logs::get::Response, ApiHttpError> {
@@ -1801,4 +1840,18 @@ struct ServersServerFilesSqliteQueryPostBody<'a> {
     #[serde(flatten)]
     inner: &'a super::servers_server_files_sqlite_query::post::RequestBody,
     ignored: &'a Vec<compact_str::CompactString>,
+}
+
+#[derive(Serialize)]
+struct ServersServerFilesStatPostBody<'a> {
+    #[serde(flatten)]
+    inner: &'a super::servers_server_files_stat::post::RequestBody,
+    ignored: &'a Vec<compact_str::CompactString>,
+}
+
+#[derive(Serialize)]
+struct ServersServerReinstallPostBody<'a> {
+    #[serde(flatten)]
+    inner: &'a super::servers_server_reinstall::post::RequestBody,
+    start_on_completion: &'a bool,
 }

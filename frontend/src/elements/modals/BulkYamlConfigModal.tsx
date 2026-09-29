@@ -22,7 +22,7 @@ export default function BulkYamlConfigModal({
   labels,
   ...props
 }: Omit<ModalProps, 'children'> & {
-  applyFn: (config: object) => Promise<number>;
+  applyFn: (config: object) => Promise<{ applied: number; ignoredPaths: string[] }>;
   onApplied: () => void;
   labels: BulkYamlConfigLabels;
 }) {
@@ -42,8 +42,11 @@ export default function BulkYamlConfigModal({
 
     setLoading(true);
     applyFn(parsed)
-      .then((applied) => {
+      .then(({ applied, ignoredPaths }) => {
         addToast(labels.applied(applied), 'success');
+        if (ignoredPaths.length > 0) {
+          addToast(t('elements.lockedConfigPaths.toast.ignored', { paths: ignoredPaths.join(', ') }), 'warning');
+        }
         onApplied();
         props.onClose();
       })

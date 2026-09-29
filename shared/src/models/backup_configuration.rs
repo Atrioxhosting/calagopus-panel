@@ -545,11 +545,16 @@ impl BackupConfiguration {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM backup_configurations
-            WHERE $1 IS NULL OR backup_configurations.name ILIKE '%' || $1 || '%'
+            WHERE {search}
             ORDER BY backup_configurations.created
             LIMIT $2 OFFSET $3
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(
+                1,
+                &["backup_configurations.name"],
+                &["backup_configurations.uuid"]
+            )
         )))
         .bind(search)
         .bind(per_page)

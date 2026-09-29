@@ -35,6 +35,7 @@ mod post {
     pub async fn route(
         state: GetState,
         ip: shared::GetIp,
+        request_host: shared::GetRequestHost,
         headers: HeaderMap,
         shared::Payload(data): shared::Payload<Payload>,
     ) -> ApiResponseResult {
@@ -66,6 +67,16 @@ mod post {
                 &data.email,
             )
             .await?;
+
+        if !state
+            .settings
+            .get_as(|s| s.app.password_login_enabled)
+            .await?
+        {
+            return ApiResponse::error("password login is disabled")
+                .with_status(StatusCode::BAD_REQUEST)
+                .ok();
+        }
 
         if let Err(error) = state.captcha.verify(ip, data.captcha).await {
             return ApiResponse::error(&error)
@@ -139,7 +150,7 @@ mod post {
                         user => user,
                         reset_link => format!(
                             "{}/auth/reset-password?token={}",
-                            settings.app.url,
+                            settings.app.url_for_host(request_host.as_deref()).trim_end_matches('/'),
                             urlencoding::encode(&token),
                         )
                     },

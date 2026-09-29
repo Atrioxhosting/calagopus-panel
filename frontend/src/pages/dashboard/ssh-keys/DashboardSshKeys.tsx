@@ -1,18 +1,21 @@
 import { faDownload, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useState } from 'react';
+import { Ref, useState } from 'react';
 import getSshKeys from '@/api/me/ssh-keys/getSshKeys.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import AccountContentContainer from '@/elements/containers/AccountContentContainer.tsx';
-import Table from '@/elements/data-display/Table.tsx';
+import Table, { tableSelectionHeader } from '@/elements/data-display/Table.tsx';
+import SelectionArea from '@/elements/dnd/SelectionArea.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import ConditionalTooltip from '@/elements/overlays/ConditionalTooltip.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
+import { useTableSelection } from '@/plugins/selection/useTableSelection.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useGlobalStore } from '@/stores/global.ts';
 import SshKeyCreateModal from './modals/SshKeyCreateModal.tsx';
 import SshKeyImportModal from './modals/SshKeyImportModal.tsx';
+import SshKeyActionBar from './SshKeyActionBar.tsx';
 import SshKeyRow from './SshKeyRow.tsx';
 
 export default function DashboardSshKeys() {
@@ -28,10 +31,20 @@ export default function DashboardSshKeys() {
     search,
     setSearch,
     setPage,
+    refetch,
   } = useSearchablePaginatedTable({
     queryKey: queryKeys.user.sshKeys.all(),
     fetcher: getSshKeys,
   });
+
+  const {
+    selected: selectedSshKeys,
+    toggle: toggleSshKey,
+    clear: clearSelection,
+    selectAll,
+    allSelected,
+    selectionAreaProps,
+  } = useTableSelection({ items: sshKeys?.data });
 
   return (
     <AccountContentContainer
@@ -77,22 +90,40 @@ export default function DashboardSshKeys() {
       <SshKeyCreateModal opened={openModal === 'create'} onClose={() => setOpenModal(null)} />
       <SshKeyImportModal opened={openModal === 'import'} onClose={() => setOpenModal(null)} />
 
-      <Table
-        columns={[
-          t('common.table.columns.name', {}),
-          t('pages.account.sshKeys.table.columns.fingerprint', {}),
-          t('common.table.columns.created', {}),
-          '',
-        ]}
-        loading={loading}
-        pagination={sshKeys}
-        onPageSelect={setPage}
-        error={error}
-      >
-        {sshKeys?.data.map((key) => (
-          <SshKeyRow key={key.uuid} sshKey={key} />
-        ))}
-      </Table>
+      <SshKeyActionBar selectedSshKeys={selectedSshKeys} clearSelection={clearSelection} onFinished={refetch} />
+
+      <SelectionArea {...selectionAreaProps}>
+        <Table
+          columns={[
+            tableSelectionHeader({
+              checked: allSelected,
+              indeterminate: selectedSshKeys.size > 0 && !allSelected,
+              onChange: (checked) => (checked ? selectAll() : clearSelection()),
+            }),
+            t('common.table.columns.name', {}),
+            t('pages.account.sshKeys.table.columns.fingerprint', {}),
+            t('common.table.columns.created', {}),
+            '',
+          ]}
+          loading={loading}
+          pagination={sshKeys}
+          onPageSelect={setPage}
+          error={error}
+        >
+          {sshKeys?.data.map((key) => (
+            <SelectionArea.Selectable key={key.uuid} item={key}>
+              {(innerRef: Ref<HTMLElement>) => (
+                <SshKeyRow
+                  sshKey={key}
+                  ref={innerRef as Ref<HTMLTableRowElement>}
+                  isSelected={selectedSshKeys.has(key.uuid)}
+                  onSelectionChange={(selected) => toggleSshKey(key, selected)}
+                />
+              )}
+            </SelectionArea.Selectable>
+          ))}
+        </Table>
+      </SelectionArea>
     </AccountContentContainer>
   );
 }

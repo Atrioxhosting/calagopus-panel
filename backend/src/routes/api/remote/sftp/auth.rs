@@ -65,6 +65,16 @@ mod post {
 
         let user = match data.r#type {
             AuthenticationType::Password => {
+                if !state
+                    .settings
+                    .get_as(|s| s.app.password_login_enabled)
+                    .await?
+                {
+                    return ApiResponse::error("password login is disabled")
+                        .with_status(StatusCode::EXPECTATION_FAILED)
+                        .ok();
+                }
+
                 match User::by_username_password(&state.database, user, &data.password).await? {
                     Some(user) if user.password_login_disabled => {
                         return ApiResponse::error("password login is disabled for this account")

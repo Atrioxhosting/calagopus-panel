@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import getBackupGroups from '@/api/server/backups/groups/getBackupGroups.ts';
@@ -43,7 +42,7 @@ export default function BackupEditModal({ backup, ...props }: Props) {
       locked: backup.isLocked,
       backupGroupUuid: backup.backupGroupUuid,
     },
-    validate: zod4Resolver(serverBackupEditSchema),
+    schema: serverBackupEditSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await updateBackup(server.uuid, backup.uuid, values);

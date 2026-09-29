@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { z } from 'zod';
 import createCommandSnippet from '@/api/me/command-snippets/createCommandSnippet.ts';
 import getUserEggs from '@/api/me/servers/eggs/getUserEggs.ts';
@@ -37,7 +36,7 @@ export default function CommandSnippetCreateModal({ ...props }: ModalProps) {
       eggs: [],
       command: 'say hello world',
     },
-    validate: zod4Resolver(userCommandSnippetUpdateSchema),
+    schema: userCommandSnippetUpdateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await createCommandSnippet(values);

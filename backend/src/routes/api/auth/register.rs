@@ -51,6 +51,7 @@ mod post {
     pub async fn route(
         state: GetState,
         ip: shared::GetIp,
+        request_host: shared::GetRequestHost,
         headers: axum::http::HeaderMap,
         cookies: Cookies,
         shared::Payload(data): shared::Payload<Payload>,
@@ -64,6 +65,11 @@ mod post {
         let settings = state.settings.get().await?;
         if !settings.app.registration_enabled {
             return ApiResponse::error("registration is disabled")
+                .with_status(StatusCode::BAD_REQUEST)
+                .ok();
+        }
+        if !settings.app.password_login_enabled {
+            return ApiResponse::error("password login is disabled")
                 .with_status(StatusCode::BAD_REQUEST)
                 .ok();
         }
@@ -131,8 +137,14 @@ mod post {
         {
             match UserEmailVerification::create(&state.database, user.uuid, &user.email).await {
                 Ok(token) => {
-                    if let Err(err) =
-                        UserEmailVerification::send(&state, &user, &user.email, &token).await
+                    if let Err(err) = UserEmailVerification::send(
+                        &state,
+                        request_host.as_deref(),
+                        &user,
+                        &user.email,
+                        &token,
+                    )
+                    .await
                     {
                         tracing::error!(
                             user = %user.uuid,
@@ -165,7 +177,7 @@ mod post {
         )
         .await?;
 
-        cookies.add(UserSession::get_cookie(&state, key).await?);
+        cookies.add(UserSession::get_cookie(&state, request_host.as_deref(), key).await?);
 
         ApiResponse::new_serialized(Response {
             user: user

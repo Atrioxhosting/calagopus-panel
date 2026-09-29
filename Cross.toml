@@ -8,9 +8,12 @@ passthrough = [
 # -mcpu=power9 and silently emits binaries that SIGILL on POWER8.
 [target.powerpc64le-unknown-linux-musl]
 image = "ghcr.io/rust-cross/rust-musl-cross:powerpc64le-musl"
+# The image ships rustc 1.95.0 at /root/.cargo/bin, ahead of the host toolchain cross
+# appends to PATH, which trips our rust-version. Drop it so the host's wins.
+pre-build = ["rm -rf /root/.cargo /root/.rustup"]
 
-# The image sets its linker in /root/.cargo/config.toml, which cross shadows by mounting
-# the host CARGO_HOME. Target-level passthrough merges with build.env above.
+# The image sets its linker in /root/.cargo/config.toml, which the pre-build above removes.
+# Target-level passthrough merges with build.env above.
 [target.powerpc64le-unknown-linux-musl.env]
 passthrough = [
     "CARGO_TARGET_POWERPC64LE_UNKNOWN_LINUX_MUSL_LINKER=powerpc64le-unknown-linux-musl-gcc",

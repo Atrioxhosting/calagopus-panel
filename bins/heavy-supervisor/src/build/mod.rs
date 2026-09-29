@@ -180,7 +180,6 @@ pub fn commands(config: &Config, zips: &[PathBuf]) -> Commands {
                         "extensions",
                         "add",
                         &zip.to_string_lossy(),
-                        "--skip-version-check",
                         "--accept-license",
                     ],
                 )

@@ -29,6 +29,7 @@ if (!difFile) {
 
 const isVerbose = process.argv.includes('--verbose');
 const isChecking = process.argv.includes('--check');
+const isFixing = process.argv.includes('--fix');
 let failedCheck = false;
 
 const extractVariables = (text) => {
@@ -36,6 +37,37 @@ const extractVariables = (text) => {
   const matches = text.match(/\{[^}]+\}/g) || [];
   return new Set(matches);
 };
+
+// Deletes a dotted key path from a nested translation object and prunes any
+// parent objects left empty behind it.
+function deleteKeyPath(obj: Record<string, unknown>, dottedKey: string): void {
+  const parts = dottedKey.split('.');
+  const stack: Record<string, unknown>[] = [obj];
+
+  for (let i = 0; i < parts.length - 1; i++) {
+    const next = stack[stack.length - 1][parts[i]];
+    if (typeof next !== 'object' || next === null) return;
+    stack.push(next as Record<string, unknown>);
+  }
+
+  delete stack[stack.length - 1][parts[parts.length - 1]];
+
+  for (let i = stack.length - 1; i > 0; i--) {
+    if (Object.keys(stack[i]).length === 0) {
+      delete stack[i - 1][parts[i - 1]];
+    } else {
+      break;
+    }
+  }
+}
+
+const removedKeys: { key: string; reason: string }[] = [];
+
+function removeKey(translationContent: Record<string, unknown>, key: string, reason: string): void {
+  deleteKeyPath(translationContent, key);
+  removedKeys.push({ key, reason });
+  console.log(`REMOVED\t${difFile}\t${key}\t${reason}`);
+}
 
 try {
   const translationContent = JSON.parse(await fs.readFile(difFile, 'utf-8'));
@@ -61,7 +93,6 @@ try {
 
       if (missingVars.length > 0) {
         console.log(`Missing variable(s) in key '${key}': ${missingVars.join(', ')}`);
-        failedCheck = true;
         if (isVerbose) {
           console.log('  Base string: ', JSON.stringify(baseMapping[key]));
           console.log('  Diff string: ', JSON.stringify(translationMapping[key]));
@@ -70,10 +101,17 @@ try {
 
       if (extraVars.length > 0) {
         console.log(`Extra variable(s) in key '${key}': ${extraVars.join(', ')}`);
-        failedCheck = true;
         if (isVerbose) {
           console.log('  Base string: ', JSON.stringify(baseMapping[key]));
           console.log('  Diff string: ', JSON.stringify(translationMapping[key]));
+        }
+      }
+
+      if (missingVars.length > 0 || extraVars.length > 0) {
+        if (isFixing) {
+          removeKey(translationContent, key, 'variable mismatch');
+        } else {
+          failedCheck = true;
         }
       }
     }
@@ -82,8 +120,16 @@ try {
   for (const key in translationMapping) {
     if (!(key in baseMapping)) {
       console.log(`Extra translation key: ${key}`);
-      failedCheck = true;
+      if (isFixing) {
+        removeKey(translationContent, key, 'extra key');
+      } else {
+        failedCheck = true;
+      }
     }
+  }
+
+  if (isFixing && removedKeys.length > 0) {
+    await fs.writeFile(difFile, `${JSON.stringify(translationContent, null, 2)}\n`, 'utf-8');
   }
 
   if (isChecking && failedCheck) {

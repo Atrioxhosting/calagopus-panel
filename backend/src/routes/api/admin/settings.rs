@@ -38,8 +38,11 @@ mod put {
     use shared::{
         ApiError, GetState,
         models::{
-            admin_activity::GetAdminActivityLogger, user::GetPermissionManager,
+            admin_activity::GetAdminActivityLogger,
+            oauth_provider::OAuthProvider,
+            user::{GetPermissionManager, GetUser},
             user_api_key::UserApiKey,
+            user_oauth_link::UserOAuthLink,
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -62,6 +65,8 @@ mod put {
         banner_light: Option<Option<compact_str::CompactString>>,
         #[garde(url)]
         url: Option<compact_str::CompactString>,
+        #[garde(length(max = 32), inner(inner(url)))]
+        additional_urls: Option<Vec<compact_str::CompactString>>,
         #[garde(
             length(chars, min = 2, max = 15),
             inner(custom(shared::utils::validate_language))
@@ -83,6 +88,8 @@ mod put {
         telemetry_enabled: Option<bool>,
         #[garde(skip)]
         registration_enabled: Option<bool>,
+        #[garde(skip)]
+        password_login_enabled: Option<bool>,
     }
 
     #[derive(ToSchema, Validate, Deserialize)]
@@ -253,6 +260,8 @@ mod put {
         remote: Option<shared::settings::ratelimits::RatelimitConfiguration>,
         #[garde(dive)]
         remote_sftp_auth: Option<shared::settings::ratelimits::RatelimitConfiguration>,
+        #[garde(dive)]
+        remote_enroll: Option<shared::settings::ratelimits::RatelimitConfiguration>,
         #[garde(length(max = 256))]
         #[schema(value_type = Option<Vec<String>>)]
         exempt_ips: Option<Vec<sqlx::types::ipnetwork::IpNetwork>>,
@@ -306,6 +315,7 @@ mod put {
     pub async fn route(
         state: GetState,
         permissions: GetPermissionManager,
+        user: GetUser,
         activity_logger: GetAdminActivityLogger,
         shared::Payload(data): shared::Payload<Payload>,
     ) -> ApiResponseResult {
@@ -349,7 +359,18 @@ mod put {
                 settings.app.banner_light = banner_light;
             }
             if let Some(url) = app.url {
-                settings.app.url = url;
+                settings.app.url = url.trim_end_matches('/').into();
+            }
+            if let Some(additional_urls) = app.additional_urls {
+                let mut deduped: Vec<compact_str::CompactString> = Vec::new();
+                for url in additional_urls {
+                    let url = url.trim_end_matches('/');
+                    if url != settings.app.url && !deduped.iter().any(|u| u == url) {
+                        deduped.push(url.into());
+                    }
+                }
+
+                settings.app.additional_urls = deduped;
             }
             if let Some(language) = app.language {
                 settings.app.language = language;
@@ -384,6 +405,9 @@ mod put {
             }
             if let Some(registration_enabled) = app.registration_enabled {
                 settings.app.registration_enabled = registration_enabled;
+            }
+            if let Some(password_login_enabled) = app.password_login_enabled {
+                settings.app.password_login_enabled = password_login_enabled;
             }
         }
         if let Some(metadata) = data.metadata {
@@ -599,6 +623,9 @@ mod put {
             if let Some(remote_sftp_auth) = ratelimits.remote_sftp_auth {
                 settings.ratelimits.remote_sftp_auth = remote_sftp_auth;
             }
+            if let Some(remote_enroll) = ratelimits.remote_enroll {
+                settings.ratelimits.remote_enroll = remote_enroll;
+            }
             if let Some(exempt_ips) = ratelimits.exempt_ips {
                 settings.ratelimits.exempt_ips = exempt_ips;
             }
@@ -620,6 +647,25 @@ mod put {
             }
         }
 
+        if !settings.app.password_login_enabled {
+            if !OAuthProvider::exists_usable_except(&state.database, None).await? {
+                return ApiResponse::error(
+                    "an enabled oauth provider is required before password login can be disabled",
+                )
+                .with_status(StatusCode::BAD_REQUEST)
+                .ok();
+            }
+
+            if !(user.has_security_key && settings.webauthn.enabled)
+                && !UserOAuthLink::exists_usable_by_user_uuid(&state.database, user.uuid).await?
+            {
+                return ApiResponse::error(
+                    "a link to an enabled oauth provider or a security key is required before password login can be disabled",
+                )
+                .with_status(StatusCode::BAD_REQUEST)
+                .ok();
+            }
+        }
         if settings.app.two_factor_accepted_methods.is_empty()
             && !matches!(
                 settings.app.two_factor_requirement,

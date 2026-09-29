@@ -40,10 +40,8 @@ export default ({ contextLocation }: { contextLocation?: z.infer<typeof adminLoc
     z.infer<typeof adminLocationSchema>
   >({
     form,
-    createFn: () => createLocation(adminLocationUpdateSchema.parse(form.getValues())),
-    updateFn: contextLocation
-      ? () => updateLocation(contextLocation.uuid, adminLocationUpdateSchema.parse(form.getValues()))
-      : undefined,
+    createFn: () => createLocation(form.getTransformedValues()),
+    updateFn: contextLocation ? () => updateLocation(contextLocation.uuid, form.getTransformedValues()) : undefined,
     deleteFn: contextLocation ? () => deleteLocation(contextLocation.uuid) : undefined,
     doUpdate: !!contextLocation,
     basePath: '/admin/locations',

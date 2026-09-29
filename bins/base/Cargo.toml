@@ -17,6 +17,4 @@ tower = { workspace = true }
 tower-http = { workspace = true }
 colored = { workspace = true }
 futures-util = { workspace = true }
-
-[target.'cfg(target_arch = "x86_64")'.dependencies]
 mimalloc = "0.1.52"

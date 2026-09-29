@@ -179,11 +179,13 @@ export default defineConfig({
       '/api': {
         target: `http://localhost:${process.env.BACKEND_PORT ?? 8000}`,
         changeOrigin: true,
+        xfwd: true,
         ws: true,
       },
       '/wings-proxy': {
         target: `http://localhost:${process.env.BACKEND_PORT ?? 8000}`,
         changeOrigin: true,
+        xfwd: true,
         ws: true,
       },
       '/assets': `http://localhost:${process.env.BACKEND_PORT ?? 8000}`,

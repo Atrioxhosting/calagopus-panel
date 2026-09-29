@@ -66,7 +66,7 @@ export default function ServerUpdate({ contextServer }: { contextServer: AdminSe
 
   const { loading, doCreateOrUpdate } = useResourceForm<ServerUpdateFormValues, AdminServer>({
     form,
-    updateFn: () => updateServer(contextServer.uuid, form.getValues()),
+    updateFn: () => updateServer(contextServer.uuid, form.getTransformedValues()),
     doUpdate: true,
     basePath: '/admin/servers',
     resourceName: t('pages.admin.servers.resourceName', {}),

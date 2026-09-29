@@ -1,6 +1,9 @@
+import { join } from 'pathe';
+import { createSearchParams } from 'react-router';
 import { FileOpenMode } from 'shared/src/registries/pages/server/files.ts';
 import { z } from 'zod';
 import { serverDirectoryEntrySchema } from '@/lib/schemas/server/files.ts';
+import { serverSchema } from '@/lib/schemas/server/server.ts';
 import { FileManagerContextType } from '@/providers/contexts/fileManagerContext.ts';
 import { getGlobalStore } from '@/stores/global.ts';
 
@@ -143,9 +146,50 @@ export function isOpenableFile(
     : { openable: false };
 }
 
-export function permissionStringToNumber(mode: string) {
+export function fileOpenUrl(
+  openMode: FileOpenMode,
+  server: z.infer<typeof serverSchema>,
+  fileManagerContext: FileManagerContextType,
+): string | null {
+  if (!openMode.openable) return null;
+
+  let url = new URL(window.location.href);
+
+  openMode.handleOpen({
+    server,
+    fileManagerContext,
+    setSearchParams(params) {
+      url.search = createSearchParams(
+        typeof params === 'function' ? params(new URLSearchParams(url.search)) : params,
+      ).toString();
+    },
+    navigate(path) {
+      if (typeof path !== 'string') return;
+
+      url = new URL(path, url);
+    },
+    handleDirectoryOpen(path) {
+      url.search = createSearchParams({
+        directory: join(fileManagerContext.browsingDirectory, path),
+      }).toString();
+    },
+    handleFileOpen(file, action, params) {
+      const searchParams = createSearchParams({
+        directory: fileManagerContext.browsingDirectory,
+        file,
+        ...params,
+      });
+
+      url = new URL(`/server/${server.uuidShort}/files/${action}?${searchParams}`, window.location.origin);
+    },
+  });
+
+  return url.pathname + url.search;
+}
+
+export function permissionStringToNumber(mode: string): number | null {
   if (mode.length !== 10) {
-    throw new Error('Invalid permission string length.');
+    return null;
   }
 
   const perms = mode.slice(1);

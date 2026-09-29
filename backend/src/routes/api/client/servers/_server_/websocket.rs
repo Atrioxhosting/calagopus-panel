@@ -33,6 +33,7 @@ mod get {
     ))]
     pub async fn route(
         state: GetState,
+        request_host: shared::GetRequestHost,
         auth: GetAuthMethod,
         user: GetUser,
         server: GetServer,
@@ -86,7 +87,11 @@ mod get {
         )?;
 
         let mut url = node
-            .public_url(&state, &format!("/api/servers/{}/ws", server.uuid))
+            .public_url(
+                &state,
+                request_host.as_deref(),
+                &format!("/api/servers/{}/ws", server.uuid),
+            )
             .await?;
         if url.scheme() == "http" {
             url.set_scheme("ws").unwrap();

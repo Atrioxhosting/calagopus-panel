@@ -21,6 +21,7 @@ import {
   getDatabaseAgentHostConfiguration,
   getDatabaseAgentHostConfigurationCommand,
 } from '@/lib/domain/databaseAgentHost.ts';
+import { findChangedLockedPaths } from '@/lib/lockedConfigPaths.ts';
 import { getUrlConnectPort, getUrlPortOr, urlIsMissingPort } from '@/lib/network/url.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminDatabaseAgentHostSchema } from '@/lib/schemas/admin/databaseAgentHosts.ts';
@@ -83,13 +84,15 @@ export default function AdminDatabaseAgentHostConfiguration({
 
   const [revealed, setRevealed] = useState(false);
   const [yaml, setYaml] = useState<string | null>(null);
+  const [liveConfig, setLiveConfig] = useState<Awaited<ReturnType<typeof getDatabaseAgentHostConfig>> | null>(null);
   const [liveConfigError, setLiveConfigError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     getDatabaseAgentHostConfig(databaseAgentHost.uuid)
-      .then((config) => {
-        setYaml(dump(config, { lineWidth: -1 }));
+      .then((result) => {
+        setLiveConfig(result);
+        setYaml(dump(result.config, { lineWidth: -1 }));
       })
       .catch((err) => {
         setLiveConfigError(httpErrorToHuman(err));
@@ -97,7 +100,7 @@ export default function AdminDatabaseAgentHostConfiguration({
   }, [databaseAgentHost.uuid]);
 
   const doSave = () => {
-    if (!canUpdate || yaml === null || liveConfigError !== null) return;
+    if (!canUpdate || !liveConfig || yaml === null || liveConfigError !== null) return;
 
     let parsed: object;
     try {
@@ -112,16 +115,20 @@ export default function AdminDatabaseAgentHostConfiguration({
       return;
     }
 
+    const ignoredPaths = findChangedLockedPaths(liveConfig.lockedPaths, liveConfig.config, parsed);
+
     setSaving(true);
     updateDatabaseAgentHostConfig(databaseAgentHost.uuid, parsed)
       .then((applied) => {
-        if (applied) {
-          addToast(t('pages.admin.databaseAgentHosts.tabs.configuration.page.toast.applied', {}), 'success');
-        } else {
+        if (!applied) {
           addToast(
             t('pages.admin.databaseAgentHosts.tabs.configuration.page.toast.submittedNotApplied', {}),
             'warning',
           );
+        } else if (ignoredPaths.length > 0) {
+          addToast(t('elements.lockedConfigPaths.toast.ignored', { paths: ignoredPaths.join(', ') }), 'warning');
+        } else {
+          addToast(t('pages.admin.databaseAgentHosts.tabs.configuration.page.toast.applied', {}), 'success');
         }
       })
       .catch((err) => {
@@ -184,6 +191,7 @@ export default function AdminDatabaseAgentHostConfiguration({
             saveLabel={t('pages.admin.databaseAgentHosts.tabs.configuration.page.button.save', {})}
             updateAction='database-agent-hosts.update'
             yaml={yaml}
+            lockedPaths={liveConfig?.lockedPaths ?? []}
             onYamlChange={setYaml}
             onSave={doSave}
             saving={saving}

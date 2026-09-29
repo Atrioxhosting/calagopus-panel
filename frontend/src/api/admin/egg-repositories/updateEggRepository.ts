@@ -9,6 +9,10 @@ export default async (
 ): Promise<void> => {
   await axiosInstance.patch(
     `/api/admin/egg-repositories/${eggRepositoryUuid}`,
-    serializeForApi(adminEggRepositoryUpdateSchema, data, formExtensionSchemas('admin.eggRepositories.createOrUpdate')),
+    serializeForApi(adminEggRepositoryUpdateSchema, data, [
+      ...formExtensionSchemas('admin.eggRepositories.createOrUpdate'),
+      ...formExtensionSchemas('admin.eggRepositories.credentialPassword'),
+      ...formExtensionSchemas('admin.eggRepositories.credentialPrivateKey'),
+    ]),
   );
 };

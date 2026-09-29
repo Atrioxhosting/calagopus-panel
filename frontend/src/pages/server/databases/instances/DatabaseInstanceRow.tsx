@@ -8,7 +8,7 @@ import {
   faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
@@ -17,7 +17,7 @@ import postDatabaseInstancePower, {
 } from '@/api/server/databases/instances/postDatabaseInstancePower.ts';
 import CopyOnClick from '@/elements/CopyOnClick.tsx';
 import Badge from '@/elements/data-display/Badge.tsx';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
@@ -32,7 +32,17 @@ import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
 import DatabaseInstanceDeleteModal from './modals/DatabaseInstanceDeleteModal.tsx';
 
-export default function DatabaseInstanceRow({ instance }: { instance: z.infer<typeof serverDatabaseInstanceSchema> }) {
+interface DatabaseInstanceRowProps {
+  instance: z.infer<typeof serverDatabaseInstanceSchema>;
+  isSelected?: boolean;
+  onSelectionChange?: (selected: boolean) => void;
+  onClick?: (event: React.MouseEvent) => void;
+}
+
+const DatabaseInstanceRow = forwardRef<HTMLTableRowElement, DatabaseInstanceRowProps>(function DatabaseInstanceRow(
+  { instance, isSelected = false, onSelectionChange, onClick },
+  ref,
+) {
   const { t } = useTranslations();
   const { addToast } = useToast();
   const navigate = useNavigate();
@@ -118,13 +128,22 @@ export default function DatabaseInstanceRow({ instance }: { instance: z.infer<ty
       >
         {({ items, openMenu }) => (
           <TableRow
+            ref={ref}
             className='cursor-pointer'
+            bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
             onContextMenu={(e) => {
               e.preventDefault();
               openMenu(e.clientX, e.clientY);
             }}
-            onClick={() => navigate(`/server/${server.uuidShort}/databases/instances/${instance.uuid}`)}
+            onClick={(e) => {
+              onClick?.(e);
+              if (!e.defaultPrevented) navigate(`/server/${server.uuidShort}/databases/instances/${instance.uuid}`);
+            }}
           >
+            {onSelectionChange !== undefined && (
+              <TableSelectionCell id={instance.uuid} checked={isSelected} onChange={onSelectionChange} />
+            )}
+
             <TableData>{instance.name}</TableData>
 
             <TableData>{databaseAgentTypeLabelMapping[instance.type]}</TableData>
@@ -162,4 +181,6 @@ export default function DatabaseInstanceRow({ instance }: { instance: z.infer<ty
       </ContextMenu>
     </>
   );
-}
+});
+
+export default DatabaseInstanceRow;

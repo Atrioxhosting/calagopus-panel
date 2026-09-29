@@ -312,6 +312,10 @@ nestify::nest! {
         pub generated: bool,
         #[schema(inline)]
         pub binary: bool,
+        #[schema(inline)]
+        pub enum_values: Option<Vec<compact_str::CompactString>>,
+        #[schema(inline)]
+        pub set_values: Option<Vec<compact_str::CompactString>>,
     }
 }
 

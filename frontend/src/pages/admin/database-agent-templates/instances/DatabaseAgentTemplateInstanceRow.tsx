@@ -2,9 +2,8 @@ import { forwardRef } from 'react';
 import { z } from 'zod';
 import CopyOnClick from '@/elements/CopyOnClick.tsx';
 import Badge from '@/elements/data-display/Badge.tsx';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import TableLink from '@/elements/data-display/TableLink.tsx';
-import Checkbox from '@/elements/input/Checkbox.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
@@ -20,7 +19,7 @@ interface DatabaseAgentTemplateInstanceRowProps {
 }
 
 const DatabaseAgentTemplateInstanceRow = forwardRef<HTMLTableRowElement, DatabaseAgentTemplateInstanceRowProps>(
-  function DatabaseAgentTemplateInstanceRow({ databaseAgent, isSelected, onSelectionChange }, ref) {
+  function DatabaseAgentTemplateInstanceRow({ databaseAgent, isSelected = false, onSelectionChange }, ref) {
     const { t } = useTranslations();
     const host = databaseAgent.host
       ? `${databaseAgent.host}${databaseAgent.port ? `:${databaseAgent.port}` : ''}`
@@ -39,17 +38,11 @@ const DatabaseAgentTemplateInstanceRow = forwardRef<HTMLTableRowElement, Databas
         }}
         ref={ref}
       >
-        <TableData className='pl-4 relative cursor-pointer w-10 text-center'>
-          <Checkbox
-            id={databaseAgent.uuid}
-            checked={isSelected}
-            onChange={(e) => {
-              onSelectionChange?.(e.target.checked);
-            }}
-            onClick={(e) => e.stopPropagation()}
-            classNames={{ input: 'cursor-pointer!' }}
-          />
-        </TableData>
+        <TableSelectionCell
+          id={databaseAgent.uuid}
+          checked={isSelected}
+          onChange={(selected) => onSelectionChange?.(selected)}
+        />
 
         <TableData>{databaseAgent.name}</TableData>
 

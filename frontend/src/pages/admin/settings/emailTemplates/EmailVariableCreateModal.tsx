@@ -1,5 +1,4 @@
 import { ModalProps } from '@mantine/core';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { z } from 'zod';
 import createEmailVariable from '@/api/admin/settings/email-templates/variables/createEmailVariable.ts';
 import Button from '@/elements/buttons/Button.tsx';
@@ -26,7 +25,7 @@ export default function EmailVariableCreateModal({
     z.infer<typeof adminSettingsEmailVariableCreateSchema>
   >({
     initialValues: { name: '', value: '', valueTranslations: {} },
-    validate: zod4Resolver(adminSettingsEmailVariableCreateSchema),
+    schema: adminSettingsEmailVariableCreateSchema,
     opened: props.opened,
     onClose: props.onClose,
     onSubmit: async (values) => {

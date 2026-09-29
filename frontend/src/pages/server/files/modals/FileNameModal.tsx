@@ -1,5 +1,4 @@
 import { ModalProps } from '@mantine/core';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { z } from 'zod';
 import Button from '@/elements/buttons/Button.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
@@ -20,7 +19,7 @@ export default function FileNameModal({ onFileName, ...props }: Props) {
     initialValues: {
       name: '',
     },
-    validate: zod4Resolver(serverFilesNameSchema),
+    schema: serverFilesNameSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await onFileName(values.name);

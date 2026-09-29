@@ -2,7 +2,6 @@ import { faMinus, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { z } from 'zod';
@@ -50,7 +49,7 @@ export default function ScheduleCreateOrUpdateModal({ propSchedule, onScheduleUp
         type: 'none',
       },
     },
-    validate: zod4Resolver(serverScheduleUpdateSchema),
+    schema: serverScheduleUpdateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       if (propSchedule?.uuid) {

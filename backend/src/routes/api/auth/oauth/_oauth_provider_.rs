@@ -114,6 +114,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
     OpenApiRouter::new()
         .route("/", get(|state: GetState,
             ip: shared::GetIp,
+            request_host: shared::GetRequestHost,
             headers: axum::http::HeaderMap,
             cookies: Cookies,
             params: Query<Params>,
@@ -159,6 +160,11 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
             state.cache.invalidate(&cache_key).await?;
 
             let settings = state.settings.get().await?;
+            let app_url = settings
+                .app
+                .url_for_host(request_host.as_deref())
+                .trim_end_matches('/')
+                .to_compact_string();
 
             let client = BasicClient::new(ClientId::new(oauth_provider.client_id.to_string()))
                 .set_client_secret(ClientSecret::new(
@@ -176,8 +182,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                     oauth2::AuthType::RequestBody
                 })
                 .set_redirect_uri(RedirectUrl::new(format!(
-                    "{}/api/auth/oauth/{}",
-                    settings.app.url.trim_end_matches('/'),
+                    "{app_url}/api/auth/oauth/{}",
                     oauth_provider.uuid
                 ))?);
             let session_cookie = settings.app.session_cookie.clone();
@@ -233,7 +238,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                     )
                     .await;
 
-                cookies.add(UserSession::get_cookie(&state, session_id.value().to_owned()).await?);
+                cookies.add(UserSession::get_cookie(&state, request_host.as_deref(), session_id.value().to_owned()).await?);
 
                 let token = client
                     .exchange_code(AuthorizationCode::new(params.0.code))
@@ -297,10 +302,8 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                     );
                 }
 
-                let settings = state.settings.get().await?;
-
                 ApiResponse::new(Body::empty())
-                    .with_header("Location", format!("{}/account/oauth-links", settings.app.url.trim_end_matches('/')))
+                    .with_header("Location", format!("{app_url}/account/oauth-links"))
                     .with_status(StatusCode::TEMPORARY_REDIRECT)
                     .ok()
             } else {
@@ -331,11 +334,10 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                         let methods = available_methods(&user, &settings);
 
                         if two_factor_unprovable(&user, &settings) && !oauth_provider.login_bypass_two_factor {
-                            let app_url = settings.app.url.clone();
                             drop(settings);
 
                             return ApiResponse::new(Body::empty())
-                                .with_header("Location", format!("{}/auth/login?error=security_key_required", app_url.trim_end_matches('/')))
+                                .with_header("Location", format!("{app_url}/auth/login?error=security_key_required"))
                                 .with_status(StatusCode::TEMPORARY_REDIRECT)
                                 .ok();
                         }
@@ -394,10 +396,8 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                             let auth_info = BASE64_ENGINE.encode(serde_json::to_string(&auth_info)?.as_bytes());
                             let auth_info = urlencoding::encode(&auth_info);
 
-                            let settings = state.settings.get().await?;
-
                             return ApiResponse::new(Body::empty())
-                                .with_header("Location", format!("{}/auth/login/checkpoint?data={auth_info}", settings.app.url.trim_end_matches('/')))
+                                .with_header("Location", format!("{app_url}/auth/login/checkpoint?data={auth_info}"))
                                 .with_status(StatusCode::TEMPORARY_REDIRECT)
                                 .ok();
                         }
@@ -416,7 +416,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                         )
                         .await?;
 
-                        cookies.add(UserSession::get_cookie(&state, key).await?);
+                        cookies.add(UserSession::get_cookie(&state, request_host.as_deref(), key).await?);
 
                         if let Err(err) = UserActivity::create(
                             &state,
@@ -456,10 +456,8 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                         .execute(state.database.write())
                         .await?;
 
-                        let settings = state.settings.get().await?;
-
                         ApiResponse::new(Body::empty())
-                            .with_header("Location", &settings.app.url)
+                            .with_header("Location", &*app_url)
                             .with_status(StatusCode::TEMPORARY_REDIRECT)
                             .ok()
                     }
@@ -467,7 +465,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                         let settings = state.settings.get().await?;
                         if oauth_provider.login_only {
                             return ApiResponse::new(Body::empty())
-                                .with_header("Location", format!("{}/auth/login?error=registration_disabled", settings.app.url.trim_end_matches('/')))
+                                .with_header("Location", format!("{app_url}/auth/login?error=registration_disabled"))
                                 .with_status(StatusCode::TEMPORARY_REDIRECT)
                                 .ok();
                         }
@@ -492,14 +490,13 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                             send_email: false,
                             language: settings.app.language.clone(),
                         };
-                        let app_url = settings.app.url.clone();
                         drop(settings);
 
                         let user = match User::create(&state, options).await {
                             Ok(user) => user,
                             Err(err) if err.is_unique_violation() => {
                                 return ApiResponse::new(Body::empty())
-                                    .with_header("Location", format!("{}/auth/login?error=user_already_exists", app_url.trim_end_matches('/')))
+                                    .with_header("Location", format!("{app_url}/auth/login?error=user_already_exists"))
                                     .with_status(StatusCode::TEMPORARY_REDIRECT)
                                     .ok();
                             }
@@ -533,10 +530,10 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                         )
                         .await?;
 
-                        cookies.add(UserSession::get_cookie(&state, key).await?);
+                        cookies.add(UserSession::get_cookie(&state, request_host.as_deref(), key).await?);
 
                         ApiResponse::new(Body::empty())
-                            .with_header("Location", app_url)
+                            .with_header("Location", &*app_url)
                             .with_status(StatusCode::TEMPORARY_REDIRECT)
                             .ok()
                     }

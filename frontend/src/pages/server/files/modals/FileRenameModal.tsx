@@ -1,5 +1,4 @@
 import { ModalProps } from '@mantine/core';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
@@ -42,7 +41,7 @@ export default function FileRenameModal({ file, ...props }: Props) {
     initialValues: {
       name: '',
     },
-    validate: zod4Resolver(serverFilesNameSchema),
+    schema: serverFilesNameSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       if (!file) return;

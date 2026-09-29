@@ -41,7 +41,7 @@ impl BackgroundTaskBuilder {
         let state = self.state.clone();
         let tasks = Arc::clone(&self.tasks);
 
-        self.tasks.write().await.insert(
+        let previous = self.tasks.write().await.insert(
             name,
             BackgroundTask {
                 name,
@@ -96,6 +96,14 @@ impl BackgroundTaskBuilder {
                 }),
             },
         );
+
+        if let Some(previous) = previous {
+            tracing::warn!(
+                name,
+                "background task registered twice, aborting the previous loop"
+            );
+            previous.task.abort();
+        }
     }
 
     /// Adds a background task that will be executed periodically, depending on the cron you provide, with the UTC timezone.
@@ -116,7 +124,7 @@ impl BackgroundTaskBuilder {
         let state = self.state.clone();
         let tasks = Arc::clone(&self.tasks);
 
-        self.tasks.write().await.insert(
+        let previous = self.tasks.write().await.insert(
             name,
             BackgroundTask {
                 name,
@@ -182,6 +190,14 @@ impl BackgroundTaskBuilder {
                 }),
             },
         );
+
+        if let Some(previous) = previous {
+            tracing::warn!(
+                name,
+                "background task registered twice, aborting the previous loop"
+            );
+            previous.task.abort();
+        }
     }
 }
 

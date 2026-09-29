@@ -22,6 +22,7 @@ mod patch {
     #[derive(ToSchema, Serialize)]
     struct Response {
         applied: usize,
+        ignored_paths: Vec<&'static str>,
     }
 
     #[utoipa::path(patch, path = "/", responses(
@@ -36,7 +37,7 @@ mod patch {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("nodes.update")?;
 
-        wings_api::strip_config_paths(&mut data.config);
+        let ignored_paths = wings_api::strip_config_paths(&mut data.config);
 
         let update_node = async |node: uuid::Uuid| -> Result<bool, anyhow::Error> {
             let node = Node::by_uuid_optional_cached(&state.database, node).await?;
@@ -92,7 +93,11 @@ mod patch {
             }
         }
 
-        ApiResponse::new_serialized(Response { applied }).ok()
+        ApiResponse::new_serialized(Response {
+            applied,
+            ignored_paths,
+        })
+        .ok()
     }
 }
 

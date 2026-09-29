@@ -39,6 +39,20 @@ export default function ExtensionStatusAlerts({
         </Alert>
       )}
 
+      {extensionStatus && supervisor && extensionStatus.runningPanelVersion !== supervisor.panelVersion && (
+        <Alert
+          color='yellow'
+          icon={<FontAwesomeIcon icon={faExclamationTriangle} />}
+          title={t('pages.admin.extensions.alert.versionMismatch.title', {})}
+          mb='md'
+        >
+          {t('pages.admin.extensions.alert.versionMismatch.content', {
+            runningVersion: extensionStatus.runningPanelVersion,
+            targetVersion: supervisor.panelVersion,
+          })}
+        </Alert>
+      )}
+
       {buildFailed && (
         <Alert
           color='red'

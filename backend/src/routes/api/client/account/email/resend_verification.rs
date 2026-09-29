@@ -29,6 +29,7 @@ mod post {
     pub async fn route(
         state: GetState,
         ip: shared::GetIp,
+        request_host: shared::GetRequestHost,
         permissions: GetPermissionManager,
         user: GetUser,
         activity_logger: GetUserActivityLogger,
@@ -105,7 +106,10 @@ mod post {
                 }
             };
 
-            if let Err(err) = UserEmailVerification::send(&state, &user, &email, &token).await {
+            if let Err(err) =
+                UserEmailVerification::send(&state, request_host.as_deref(), &user, &email, &token)
+                    .await
+            {
                 tracing::error!(
                     user = %user.uuid,
                     "failed to send email verification: {:#?}",

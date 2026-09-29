@@ -14,7 +14,7 @@ export function getFormId(form: object): FormId | undefined {
 
 export type ExtendableSchema = ZodType;
 
-export function resolveFormValidation(formId: FormId, schema?: ExtendableSchema) {
+export function resolveFormValidation<T, P = T>(formId: FormId, schema?: ExtendableSchema) {
   const slots = window.extensionContext.extensionRegistry.forms.getSlots(formId);
 
   const zodShape = slots.reduce<ZodFieldShape>((acc, s) => ({ ...acc, ...(s.zodShape ?? {}) }), {});
@@ -23,25 +23,34 @@ export function resolveFormValidation(formId: FormId, schema?: ExtendableSchema)
 
   return {
     initialValues,
-    validate: mergedSchema ? zod4Resolver(mergedSchema) : undefined,
+    ...schemaFormOptions<T, P>(mergedSchema),
   };
 }
 
-export interface UseFormEngineOptions<T extends Record<string, unknown>> extends Omit<UseFormInput<T>, 'validate'> {
+export function schemaFormOptions<T, P = T>(schema?: ExtendableSchema) {
+  return {
+    validate: schema ? zod4Resolver(schema) : undefined,
+    transformValues: schema ? (values: T) => schema.parse(values) as P : undefined,
+  };
+}
+
+export interface UseFormEngineOptions<T extends Record<string, unknown>, P = T>
+  extends Omit<UseFormInput<T, P>, 'validate' | 'transformValues'> {
   schema?: ExtendableSchema;
   initialValues: T;
 }
 
-export function useFormEngine<T extends Record<string, unknown>>(
+export function useFormEngine<T extends Record<string, unknown>, P = T>(
   formId: FormId,
-  { schema, initialValues, ...formInput }: UseFormEngineOptions<T>,
-): UseFormReturnType<T> {
-  const resolved = useMemo(() => resolveFormValidation(formId, schema), [formId, schema]);
+  { schema, initialValues, ...formInput }: UseFormEngineOptions<T, P>,
+): UseFormReturnType<T, P> {
+  const resolved = useMemo(() => resolveFormValidation<T, P>(formId, schema), [formId, schema]);
 
-  const form = useForm<T>({
+  const form = useForm<T, P>({
     ...formInput,
     initialValues: deepmerge(initialValues, resolved.initialValues) as T,
     validate: resolved.validate,
+    transformValues: resolved.transformValues,
   });
   formIds.set(form, formId);
 

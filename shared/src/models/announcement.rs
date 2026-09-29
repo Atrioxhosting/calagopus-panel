@@ -234,11 +234,12 @@ impl Announcement {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM announcements
-            WHERE ($1 IS NULL OR announcements.title ILIKE '%' || $1 || '%')
+            WHERE {search}
             ORDER BY announcements.created
             LIMIT $2 OFFSET $3
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(1, &["announcements.title"], &["announcements.uuid"])
         )))
         .bind(search)
         .bind(per_page)

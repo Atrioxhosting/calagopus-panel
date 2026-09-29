@@ -13,6 +13,7 @@ use shared::{
 };
 use utoipa_axum::{router::OpenApiRouter, routes};
 
+mod devices;
 mod duplicate;
 mod export;
 mod mounts;
@@ -269,6 +270,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .nest("/variables", variables::router(state))
         .nest("/move", r#move::router(state))
         .nest("/mounts", mounts::router(state))
+        .nest("/devices", devices::router(state))
         .nest("/export", export::router(state))
         .nest("/duplicate", duplicate::router(state))
         .route_layer(axum::middleware::from_fn_with_state(state.clone(), auth))

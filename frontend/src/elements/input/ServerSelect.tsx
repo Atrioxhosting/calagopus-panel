@@ -95,6 +95,7 @@ export default function ServerSelect<T extends ServerSelectItem = z.infer<typeof
         }
         onChange(v || null, server);
       }}
+      filter={({ options }) => options}
       searchable
       searchValue={servers.search}
       onSearchChange={servers.setSearch}

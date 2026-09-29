@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query';
+import { InfiniteData, QueryClient } from '@tanstack/react-query';
 import { join } from 'pathe';
 import { createRef, RefObject, startTransition } from 'react';
 import { z } from 'zod';
@@ -7,6 +7,7 @@ import { createContext } from 'zustand-utils';
 import { getEmptyPaginationSet, httpErrorToHuman } from '@/api/axios.ts';
 import { DirectoryResponse } from '@/api/server/files/loadDirectory.ts';
 import searchFiles from '@/api/server/files/searchFiles.ts';
+import statFiles from '@/api/server/files/statFiles.ts';
 import { ObjectSet } from '@/lib/objectSet.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { serverBackupSchema } from '@/lib/schemas/server/backups.ts';
@@ -153,6 +154,7 @@ export interface FileManagerStore {
 
   resetEntries: () => void;
   invalidateFilemanager: (notifyListeners?: boolean) => void;
+  patchDirectoryEntries: (directory: string, names: string[]) => Promise<void>;
   registerRefreshListener: (listener: () => void) => () => void;
   refreshDirectories: (directories: string[]) => void;
   registerDirectoryRefreshListener: (listener: (directories: string[]) => void) => () => void;
@@ -345,6 +347,7 @@ export const createFileManagerStore = (
           return {
             browsingDirectory: directory,
             selectedFiles: new ObjectSet('name'),
+            searchInfo: null,
             searchGeneration: state.searchGeneration + 1,
           };
         }),
@@ -543,6 +546,74 @@ export const createFileManagerStore = (
             queryKey: queryKeys.server(serverUuid).files.all(),
           })
           .catch((e) => console.error(e));
+      },
+      patchDirectoryEntries: async (directory, names) => {
+        if (names.length === 0) return;
+
+        const { serverUuid, queryClient } = get().externals;
+        if (get().searchInfo) {
+          get().invalidateFilemanager();
+          return;
+        }
+
+        let entries: z.infer<typeof serverDirectoryEntrySchema>[];
+        try {
+          entries = await statFiles(serverUuid, directory, names);
+        } catch {
+          get().invalidateFilemanager();
+          return;
+        }
+
+        const patched = new Map(entries.map((entry) => [entry.name, entry]));
+        if (names.some((name) => !patched.has(name))) {
+          get().invalidateFilemanager();
+          return;
+        }
+
+        if (get().externals.serverUuid !== serverUuid) return;
+
+        startTransition(() => {
+          queryClient.setQueriesData<InfiniteData<DirectoryResponse>>(
+            {
+              queryKey: queryKeys.server(serverUuid).files.all(),
+              predicate: (query) =>
+                (query.queryKey[3] as { browsingDirectory?: string } | undefined)?.browsingDirectory === directory,
+            },
+            (data) => {
+              if (!data) return data;
+
+              let changed = false;
+              const pages = data.pages.map((page) => {
+                if (!page.entries.data.some((entry) => patched.has(entry.name))) return page;
+
+                changed = true;
+                return {
+                  ...page,
+                  entries: {
+                    ...page.entries,
+                    data: page.entries.data.map((entry) => patched.get(entry.name) ?? entry),
+                  },
+                };
+              });
+
+              return changed ? { ...data, pages } : data;
+            },
+          );
+
+          if (get().browsingDirectory !== directory) return;
+
+          set((state) => ({
+            modalDirectoryEntries: state.modalDirectoryEntries.map((entry) => patched.get(entry.name) ?? entry),
+            selectedFiles: new ObjectSet(
+              'name',
+              state.selectedFiles.values().map((entry) => patched.get(entry.name) ?? entry),
+            ),
+            actingFiles: new ObjectSet(
+              'name',
+              state.actingFiles.values().map((entry) => patched.get(entry.name) ?? entry),
+            ),
+          }));
+        });
       },
       registerRefreshListener: (listener) => {
         refreshListeners.add(listener);

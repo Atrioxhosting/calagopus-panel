@@ -86,8 +86,10 @@ pub async fn handle_request(
     next: Next,
 ) -> Result<Response<Body>, StatusCode> {
     let ip = state.env.find_ip(req.headers(), connect_info);
+    let host = state.env.find_host(req.headers(), req.uri(), connect_info);
 
     req.extensions_mut().insert(ip);
+    req.extensions_mut().insert(shared::RequestHost(host));
 
     let limit = state.env.app_request_log_limit;
     let (log, suppressed) = if limit == 0 {
@@ -1112,10 +1114,11 @@ pub async fn handle_startup() -> Result<
     openapi.info.title = format!("{} API", settings.app.name);
     openapi.info.contact = None;
     openapi.info.license = None;
-    openapi.servers = Some(vec![
-        utoipa::openapi::Server::new("/"),
-        utoipa::openapi::Server::new(settings.app.url.clone()),
-    ]);
+    openapi.servers = Some(
+        std::iter::once(utoipa::openapi::Server::new("/"))
+            .chain(settings.app.urls().map(utoipa::openapi::Server::new))
+            .collect(),
+    );
 
     let components = openapi
         .components

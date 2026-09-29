@@ -144,11 +144,12 @@ impl Role {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM roles
-            WHERE ($1 IS NULL OR roles.name ILIKE '%' || $1 || '%')
+            WHERE {search}
             ORDER BY roles.created
             LIMIT $2 OFFSET $3
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(1, &["roles.name"], &["roles.uuid"])
         )))
         .bind(search)
         .bind(per_page)

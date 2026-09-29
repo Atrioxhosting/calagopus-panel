@@ -8,6 +8,17 @@ export const openUrl = (url: string, target = '_blank') => {
   document.body.removeChild(anchor);
 };
 
+export const openPopup = (url: string) => {
+  const popup = window.open(
+    url,
+    '_blank',
+    'popup=yes,width=1280,height=800,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes',
+  );
+  popup?.focus();
+
+  return popup;
+};
+
 const getExplicitUrlPort = (url: string) => {
   const authority = url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').split(/[/?#]/, 1)[0];
   const match = /:(\d+)$/.exec(authority.slice(authority.lastIndexOf('@') + 1));

@@ -7,6 +7,7 @@ import { BackupsRegistry } from './backups.ts';
 import { ConfigurationRegistry } from './configuration.ts';
 import { DatabaseAgentHostsRegistry } from './databaseAgentHosts.ts';
 import { DatabaseHostsRegistry } from './databaseHosts.ts';
+import { DevicesRegistry } from './devices.ts';
 import { LogsRegistry } from './logs.ts';
 import { MountsRegistry } from './mounts.ts';
 import { OverviewRegistry } from './overview.ts';
@@ -23,6 +24,7 @@ export class ViewRegistry implements Registry {
     this.logs.mergeFrom(other.logs);
     this.allocations.mergeFrom(other.allocations);
     this.mounts.mergeFrom(other.mounts);
+    this.devices.mergeFrom(other.devices);
     this.databaseHosts.mergeFrom(other.databaseHosts);
     this.databaseAgentHosts.mergeFrom(other.databaseAgentHosts);
     this.backups.mergeFrom(other.backups);
@@ -39,6 +41,7 @@ export class ViewRegistry implements Registry {
   public logs: LogsRegistry = new LogsRegistry();
   public allocations: AllocationsRegistry = new AllocationsRegistry();
   public mounts: MountsRegistry = new MountsRegistry();
+  public devices: DevicesRegistry = new DevicesRegistry();
   public databaseHosts: DatabaseHostsRegistry = new DatabaseHostsRegistry();
   public databaseAgentHosts: DatabaseAgentHostsRegistry = new DatabaseAgentHostsRegistry();
   public backups: BackupsRegistry = new BackupsRegistry();
@@ -79,6 +82,11 @@ export class ViewRegistry implements Registry {
 
   public enterMounts(callback: (registry: MountsRegistry) => unknown): this {
     callback(this.mounts);
+    return this;
+  }
+
+  public enterDevices(callback: (registry: DevicesRegistry) => unknown): this {
+    callback(this.devices);
     return this;
   }
 

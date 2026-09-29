@@ -1,0 +1,5 @@
+import { axiosInstance } from '@/api/axios.ts';
+
+export default async (nodeUuid: string, deviceUuid: string): Promise<void> => {
+  await axiosInstance.delete(`/api/admin/nodes/${nodeUuid}/devices/${deviceUuid}`);
+};

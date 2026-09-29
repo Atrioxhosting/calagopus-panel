@@ -380,7 +380,7 @@ function FileEditorComponent() {
   };
 
   const saveFile = (name?: string) => {
-    if (!hasEditor() || !browsingWritableDirectory || saving) return;
+    if ((!hasEditor() && !matchedFileEditorAction) || !browsingWritableDirectory || saving) return;
 
     if (!name && collabActiveRef.current) {
       if (collab.save()) {
@@ -402,7 +402,12 @@ function FileEditorComponent() {
       collabActiveRef.current = false;
     }
 
-    const currentContent = getEditorValue();
+    const currentContent: string | Blob =
+      matchedFileEditorAction?.contentType === 'blob'
+        ? blobContent
+        : hasEditor()
+          ? getEditorValue()
+          : contentRef.current;
     const savedPath = join(browsingDirectory, name ?? fileName);
     setSaving(true);
 
@@ -414,8 +419,8 @@ function FileEditorComponent() {
           setNameModalOpen(false);
         });
 
-        setSavedContent(currentContent);
-        const stillDirty = persistDraft(savedPath, contentRef.current);
+        if (typeof currentContent === 'string') setSavedContent(currentContent);
+        const stillDirty = draftPathRef.current ? persistDraft(savedPath, contentRef.current) : false;
         setDirty(stillDirty);
         addToast(t('pages.server.files.toast.fileSaved', {}), 'success');
 

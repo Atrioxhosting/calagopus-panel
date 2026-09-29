@@ -3,6 +3,7 @@ import { nullableString } from '@/lib/serialization/transformers.ts';
 
 export const serverSettingsReinstallSchema = z.object({
   truncateDirectory: z.boolean(),
+  startOnCompletion: z.boolean(),
 });
 
 export const serverSettingsAutokillSchema = z.object({

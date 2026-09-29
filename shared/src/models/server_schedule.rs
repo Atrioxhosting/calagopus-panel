@@ -157,11 +157,12 @@ impl ServerSchedule {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM server_schedules
-            WHERE server_schedules.server_uuid = $1 AND ($2 IS NULL OR server_schedules.name ILIKE '%' || $2 || '%')
+            WHERE server_schedules.server_uuid = $1 AND {search}
             ORDER BY server_schedules.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["server_schedules.name"], &["server_schedules.uuid"])
         )))
         .bind(server_uuid)
         .bind(search)

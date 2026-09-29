@@ -23,6 +23,7 @@ mod backup_configurations;
 mod database_agent_hosts;
 mod database_agent_templates;
 mod database_hosts;
+mod devices;
 mod egg_configurations;
 mod egg_repositories;
 mod extensions;
@@ -104,6 +105,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         )
         .nest("/oauth-providers", oauth_providers::router(state))
         .nest("/mounts", mounts::router(state))
+        .nest("/devices", devices::router(state))
         .nest("/users", users::router(state))
         .nest("/roles", roles::router(state))
         .nest("/extensions", extensions::router(state))

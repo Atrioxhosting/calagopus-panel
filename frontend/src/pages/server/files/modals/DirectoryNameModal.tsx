@@ -1,5 +1,4 @@
 import { ModalProps } from '@mantine/core';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { join } from 'pathe';
 import { useSearchParams } from 'react-router';
 import { z } from 'zod';
@@ -28,7 +27,7 @@ export default function DirectoryNameModal({ ...props }: ModalProps) {
     initialValues: {
       name: '',
     },
-    validate: zod4Resolver(serverFilesDirectoryCreateSchema),
+    schema: serverFilesDirectoryCreateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await createDirectory(server.uuid, browsingDirectory, values.name);

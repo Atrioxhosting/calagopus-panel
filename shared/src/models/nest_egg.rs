@@ -683,11 +683,12 @@ impl NestEgg {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM nest_eggs
-            WHERE nest_eggs.nest_uuid = $1 AND ($2 IS NULL OR nest_eggs.name ILIKE '%' || $2 || '%')
+            WHERE nest_eggs.nest_uuid = $1 AND {search}
             ORDER BY nest_eggs.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["nest_eggs.name"], &["nest_eggs.uuid"])
         )))
         .bind(nest_uuid)
         .bind(search)
@@ -728,13 +729,14 @@ impl NestEgg {
                 LEFT JOIN server_subusers ON server_subusers.server_uuid = servers.uuid AND server_subusers.user_uuid = $1
                 JOIN nests ON nests.uuid = nest_eggs.nest_uuid
                 WHERE (servers.owner_uuid = $1 OR server_subusers.user_uuid = $1 OR $2)
-                    AND ($3 IS NULL OR nest_eggs.name ILIKE '%' || $3 || '%')
+                    AND {search}
                 ORDER BY nest_eggs.uuid
             ) AS eggs
             ORDER BY eggs.created
             LIMIT $4 OFFSET $5
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(3, &["nest_eggs.name"], &["nest_eggs.uuid"])
         )))
         .bind(user.uuid)
         .bind(user.role.as_ref().map_or(user.admin, |r| r.admin_permissions.iter().any(|p| p == "servers.read")))
@@ -1454,6 +1456,17 @@ impl DuplicableModel for NestEgg {
             nest_egg.uuid,
             self.uuid,
         )
+        .execute(&mut **transaction)
+        .await?;
+
+        sqlx::query(
+            "INSERT INTO nest_egg_devices (egg_uuid, device_uuid)
+            SELECT $1, nest_egg_devices.device_uuid
+            FROM nest_egg_devices
+            WHERE nest_egg_devices.egg_uuid = $2",
+        )
+        .bind(nest_egg.uuid)
+        .bind(self.uuid)
         .execute(&mut **transaction)
         .await?;
 

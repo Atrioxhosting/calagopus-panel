@@ -111,11 +111,12 @@ impl UserSshKey {
             r#"
             SELECT {}, COUNT(*) OVER() AS total_count
             FROM user_ssh_keys
-            WHERE user_ssh_keys.user_uuid = $1 AND ($2 IS NULL OR user_ssh_keys.name ILIKE '%' || $2 || '%')
+            WHERE user_ssh_keys.user_uuid = $1 AND {search}
             ORDER BY user_ssh_keys.created
             LIMIT $3 OFFSET $4
             "#,
-            Self::columns_sql(None)
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["user_ssh_keys.name"], &["user_ssh_keys.uuid"])
         )))
         .bind(user_uuid)
         .bind(search)

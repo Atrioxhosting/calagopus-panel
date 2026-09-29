@@ -65,6 +65,7 @@ export default function AdminNodeBackups({ node }: { node: z.infer<typeof adminN
           t('common.table.columns.checksum', {}),
           t('common.table.columns.size', {}),
           t('common.table.columns.files', {}),
+          t('pages.server.backups.table.columns.retention', {}),
           t('common.table.columns.created', {}),
           '',
         ]}

@@ -102,6 +102,7 @@ mod post {
     pub async fn route(
         state: GetState,
         ip: shared::GetIp,
+        request_host: shared::GetRequestHost,
         headers: axum::http::HeaderMap,
         cookies: tower_cookies::Cookies,
         shared::Payload(data): shared::Payload<Payload>,
@@ -265,7 +266,7 @@ mod post {
         )
         .await?;
 
-        cookies.add(UserSession::get_cookie(&state, key).await?);
+        cookies.add(UserSession::get_cookie(&state, request_host.as_deref(), key).await?);
 
         if let Err(err) = UserActivity::create(
             &state,

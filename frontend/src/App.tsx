@@ -29,7 +29,8 @@ import '@gfazioli/mantine-audio/styles.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
+      refetchOnMount: 'always',
       retry: 1,
     },
   },

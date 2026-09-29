@@ -127,7 +127,9 @@ jobs:
           WINGS_RELEASE: nightly
           WINGS_BINARY_PATH: bins/wings-nightly-bin
           # riscv64gc musl is not crt-static by default
-          RUSTFLAGS: "-C target-feature=+crt-static"
+          # opt-level=z enables LLVM's MachineOutliner on aarch64/riscv64; its whole-module
+          # suffix tree under fat LTO + codegen-units=1 OOMs the 16GB runner.
+          RUSTFLAGS: "-C target-feature=+crt-static -C llvm-args=-enable-machine-outliner=never"
         run: |
           cross build --release --target ${{ matrix.target }} -p $BIN_NAME
           cross build --release --target ${{ matrix.target }} -p $AIO_BIN_NAME

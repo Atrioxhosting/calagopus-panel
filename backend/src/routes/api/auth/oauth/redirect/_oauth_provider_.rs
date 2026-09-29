@@ -18,6 +18,7 @@ mod get {
     pub async fn route(
         state: GetState,
         ip: shared::GetIp,
+        request_host: shared::GetRequestHost,
         cookies: Cookies,
         Path(oauth_provider): Path<uuid::Uuid>,
     ) -> ApiResponseResult {
@@ -48,16 +49,19 @@ mod get {
         }
 
         let settings = state.settings.get().await?;
+        let app_url = settings
+            .app
+            .url_for_host(request_host.as_deref())
+            .trim_end_matches('/');
 
         let client = BasicClient::new(ClientId::new(oauth_provider.client_id.to_string()))
             .set_auth_uri(AuthUrl::new(oauth_provider.auth_url.clone())?)
             .set_redirect_uri(RedirectUrl::new(format!(
-                "{}/api/auth/oauth/{}",
-                settings.app.url.trim_end_matches('/'),
+                "{app_url}/api/auth/oauth/{}",
                 oauth_provider.uuid
             ))?);
 
-        let secure = settings.app.url.starts_with("https://");
+        let secure = app_url.starts_with("https://");
         let provider_uuid = oauth_provider.uuid;
 
         drop(settings);

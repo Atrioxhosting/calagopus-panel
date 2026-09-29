@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import updateDatabaseInstance from '@/api/server/databases/instances/updateDatabaseInstance.ts';
@@ -37,7 +36,7 @@ export default function DatabaseInstanceEditModal({ instance, ...props }: Props)
       name: instance.name,
       locked: instance.isLocked,
     },
-    validate: zod4Resolver(serverDatabaseInstanceEditSchema),
+    schema: serverDatabaseInstanceEditSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await updateDatabaseInstance(server.uuid, instance.uuid, values);

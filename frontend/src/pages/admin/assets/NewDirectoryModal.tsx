@@ -1,5 +1,4 @@
 import { ModalProps } from '@mantine/core';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { join } from 'pathe';
 import { z } from 'zod';
 import Button from '@/elements/buttons/Button.tsx';
@@ -22,7 +21,7 @@ export default function NewDirectoryModal({ currentDirectory, onNavigate, ...pro
     z.infer<typeof assetDirectoryCreateSchema>
   >({
     initialValues: { name: '' },
-    validate: zod4Resolver(assetDirectoryCreateSchema),
+    schema: assetDirectoryCreateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       onNavigate(join(currentDirectory, values.name));

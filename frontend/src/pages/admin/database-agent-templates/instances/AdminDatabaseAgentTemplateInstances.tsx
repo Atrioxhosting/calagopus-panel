@@ -9,14 +9,14 @@ import ActionBar from '@/elements/ActionBar.tsx';
 import Button from '@/elements/buttons/Button.tsx';
 import { AdminCan } from '@/elements/Can.tsx';
 import AdminSubContentContainer from '@/elements/containers/AdminSubContentContainer.tsx';
-import Table from '@/elements/data-display/Table.tsx';
+import Table, { tableSelectionHeader } from '@/elements/data-display/Table.tsx';
 import SelectionArea from '@/elements/dnd/SelectionArea.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminDatabaseAgentTemplateSchema } from '@/lib/schemas/admin/databaseAgentTemplates.ts';
 import { databaseAgentTemplateInstanceTableColumns } from '@/lib/tableColumns.ts';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
-import { useObjectSetSelection } from '@/plugins/selection/useObjectSetSelection.ts';
+import { useTableSelection } from '@/plugins/selection/useTableSelection.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import DatabaseAgentTemplateInstanceRow from './DatabaseAgentTemplateInstanceRow.tsx';
@@ -47,7 +47,9 @@ export default function AdminDatabaseAgentTemplateInstances({
     fetcher: (page, search) => getDatabaseAgentTemplateInstances(databaseAgentTemplate.uuid, page, search),
   });
 
-  const { selected, add, remove, clear, selectionAreaProps } = useObjectSetSelection(instances?.data);
+  const { selected, add, remove, clear, selectAll, allSelected, selectionAreaProps } = useTableSelection({
+    items: instances?.data,
+  });
 
   const doApplyUpdates = async () => {
     const scope = pendingScope;
@@ -79,7 +81,14 @@ export default function AdminDatabaseAgentTemplateInstances({
       });
   };
 
-  const columns = ['', ...databaseAgentTemplateInstanceTableColumns()];
+  const columns = [
+    tableSelectionHeader({
+      checked: allSelected,
+      indeterminate: selected.size > 0 && !allSelected,
+      onChange: (checked) => (checked ? selectAll() : clear()),
+    }),
+    ...databaseAgentTemplateInstanceTableColumns(),
+  ];
 
   return (
     <AdminSubContentContainer
@@ -137,14 +146,7 @@ export default function AdminDatabaseAgentTemplateInstances({
       </ActionBar>
 
       <SelectionArea onSelectedStart={selectionAreaProps.onSelectedStart} onSelected={selectionAreaProps.onSelected}>
-        <Table
-          columns={columns}
-          loading={loading}
-          error={error}
-          pagination={instances}
-          onPageSelect={setPage}
-          allowSelect={false}
-        >
+        <Table columns={columns} loading={loading} error={error} pagination={instances} onPageSelect={setPage}>
           {instances?.data.map((databaseAgent) => (
             <SelectionArea.Selectable key={databaseAgent.uuid} item={databaseAgent}>
               {(innerRef: Ref<HTMLElement>) => (

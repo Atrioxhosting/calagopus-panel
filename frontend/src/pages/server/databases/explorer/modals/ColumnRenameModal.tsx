@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { useEffect } from 'react';
 import { z } from 'zod';
 import Button from '@/elements/buttons/Button.tsx';
@@ -37,7 +36,7 @@ export default function ColumnRenameModal({
 
   const { form, handleClose, handleSubmit, loading, isDirty } = useModalForm<z.infer<typeof values>>({
     initialValues: { name: column.name },
-    validate: zod4Resolver(values),
+    schema: values,
     onClose: props.onClose,
     onSubmit: async (data) => {
       await api.renameColumn({

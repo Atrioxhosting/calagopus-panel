@@ -8,7 +8,6 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ModalProps } from '@mantine/core';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { startTransition, useEffect, useState } from 'react';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
@@ -67,7 +66,7 @@ export default function FileSearchModal({ treeView = false, ...props }: ModalPro
       sizeFilter: null,
       contentFilter: null,
     },
-    validate: zod4Resolver(serverFilesSearchSchema),
+    schema: serverFilesSearchSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       const queryInclude = query ? [`**/*${query}*`] : [];

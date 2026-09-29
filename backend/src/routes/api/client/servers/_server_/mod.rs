@@ -22,6 +22,7 @@ mod announcements;
 mod backups;
 mod command;
 mod databases;
+mod devices;
 mod files;
 mod firewall;
 mod logs;
@@ -149,6 +150,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .nest("/tunnel", tunnel::router(state))
         .nest("/databases", databases::router(state))
         .nest("/mounts", mounts::router(state))
+        .nest("/devices", devices::router(state))
         .nest("/schedules", schedules::router(state))
         .route_layer(axum::middleware::from_fn_with_state(state.clone(), auth))
         .with_state(state.clone())

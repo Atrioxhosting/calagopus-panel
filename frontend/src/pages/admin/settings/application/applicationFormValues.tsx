@@ -12,6 +12,7 @@ export const applicationEmptyFormValues: ApplicationFormValues = {
   banner: null,
   bannerLight: null,
   url: '',
+  additionalUrls: [],
   language: 'en',
   twoFactorRequirement: 'none',
   emailTwoFactorEnabled: false,
@@ -21,6 +22,7 @@ export const applicationEmptyFormValues: ApplicationFormValues = {
   sessionDurationSeconds: 3600,
   telemetryEnabled: true,
   registrationEnabled: true,
+  passwordLoginEnabled: true,
 };
 
 export const applicationToFormValues = (app: ApplicationFormValues): Partial<ApplicationFormValues> => ({ ...app });
@@ -30,6 +32,7 @@ interface ApplicationFormFieldsOptions {
   assetUrls: string[];
   onTelemetryToggle: (checked: boolean) => void;
   onRegistrationToggle: (checked: boolean) => void;
+  onPasswordLoginToggle: (checked: boolean) => void;
 }
 
 export function useApplicationFormFields({
@@ -37,6 +40,7 @@ export function useApplicationFormFields({
   assetUrls,
   onTelemetryToggle,
   onRegistrationToggle,
+  onPasswordLoginToggle,
 }: ApplicationFormFieldsOptions): FieldDef<ApplicationFormValues>[] {
   const { t } = useTranslations();
 
@@ -81,6 +85,14 @@ export function useApplicationFormFields({
       advanced: true,
     },
     { type: 'text', name: 'url', label: t('common.form.url', {}), required: true },
+    {
+      type: 'tags',
+      name: 'additionalUrls',
+      label: t('pages.admin.settings.tabs.application.page.form.additionalUrls', {}),
+      description: t('pages.admin.settings.tabs.application.page.form.additionalUrlsDescription', {}),
+      placeholder: 'e.g. https://panel.example.org',
+      advanced: true,
+    },
     {
       type: 'text',
       name: 'sessionCookie',
@@ -154,6 +166,16 @@ export function useApplicationFormFields({
       props: {
         name: 'registrationEnabled',
         onChange: (e: React.ChangeEvent<HTMLInputElement>) => onRegistrationToggle(e.target.checked),
+      },
+    },
+    {
+      type: 'switch',
+      name: 'passwordLoginEnabled',
+      label: t('pages.admin.settings.tabs.application.page.form.passwordLoginEnabled', {}),
+      description: t('pages.admin.settings.tabs.application.page.form.passwordLoginEnabledDescription', {}),
+      props: {
+        name: 'passwordLoginEnabled',
+        onChange: (e: React.ChangeEvent<HTMLInputElement>) => onPasswordLoginToggle(e.target.checked),
       },
     },
   ];

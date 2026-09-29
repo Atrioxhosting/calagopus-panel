@@ -2,9 +2,8 @@ import { faBan } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { forwardRef, memo } from 'react';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import TableLink from '@/elements/data-display/TableLink.tsx';
-import Checkbox from '@/elements/input/Checkbox.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
 import RedactedText from '@/elements/typography/RedactedText.tsx';
@@ -15,7 +14,6 @@ import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
 interface ServerRowProps {
   server: AdminServer;
-  showSelection?: boolean;
   isSelected?: boolean;
   onSelectionChange?: (selected: boolean) => void;
   onClick?: (event: React.MouseEvent) => void;
@@ -43,7 +41,7 @@ function ServerStatus({ server, stats }: { server: AdminServer; stats: ReturnTyp
 
 const ServerRow = memo(
   forwardRef<HTMLTableRowElement, ServerRowProps>(function ServerRow(
-    { server, showSelection = false, isSelected = false, onSelectionChange, onClick },
+    { server, isSelected = false, onSelectionChange, onClick },
     ref,
   ) {
     const { t } = useTranslations();
@@ -51,18 +49,8 @@ const ServerRow = memo(
 
     return (
       <TableRow bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined} onClick={onClick} ref={ref}>
-        {showSelection && (
-          <TableData className='pl-4 relative cursor-pointer w-10 text-center'>
-            <Checkbox
-              id={server.uuid}
-              checked={isSelected}
-              onChange={(e) => {
-                onSelectionChange?.(e.target.checked);
-              }}
-              onClick={(e) => e.stopPropagation()}
-              classNames={{ input: 'cursor-pointer!' }}
-            />
-          </TableData>
+        {onSelectionChange !== undefined && (
+          <TableSelectionCell id={server.uuid} checked={isSelected} onChange={onSelectionChange} />
         )}
 
         <TableData>

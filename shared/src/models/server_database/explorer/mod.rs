@@ -433,6 +433,8 @@ pub struct SchemaColumn {
     pub auto_increment: bool,
     pub generated: bool,
     pub binary: bool,
+    pub enum_values: Option<Vec<CompactString>>,
+    pub set_values: Option<Vec<CompactString>>,
 }
 
 #[derive(ToSchema, Serialize, Clone)]
@@ -1458,6 +1460,8 @@ impl From<db_agent_api::SchemaColumn> for SchemaColumn {
             auto_increment: column.auto_increment,
             generated: column.generated,
             binary: column.binary,
+            enum_values: column.enum_values,
+            set_values: column.set_values,
         }
     }
 }

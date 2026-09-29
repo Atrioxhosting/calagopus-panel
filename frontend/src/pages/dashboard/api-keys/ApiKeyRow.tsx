@@ -1,6 +1,6 @@
 import { faBan, faCheck, faCopy, faPencil, faRefresh, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import deleteApiKey from '@/api/me/api-keys/deleteApiKey.ts';
@@ -8,7 +8,7 @@ import recreateApiKey from '@/api/me/api-keys/recreateApiKey.ts';
 import updateApiKey from '@/api/me/api-keys/updateApiKey.ts';
 import CopyOnClick from '@/elements/CopyOnClick.tsx';
 import Badge from '@/elements/data-display/Badge.tsx';
-import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
+import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
@@ -21,7 +21,16 @@ import ApiKeyTokenModal from '@/pages/dashboard/api-keys/modals/ApiKeyTokenModal
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
-export default function ApiKeyRow({ apiKey }: { apiKey: z.infer<typeof userApiKeySchema> }) {
+interface ApiKeyRowProps {
+  apiKey: z.infer<typeof userApiKeySchema>;
+  isSelected?: boolean;
+  onSelectionChange?: (selected: boolean) => void;
+}
+
+const ApiKeyRow = forwardRef<HTMLTableRowElement, ApiKeyRowProps>(function ApiKeyRow(
+  { apiKey, isSelected = false, onSelectionChange },
+  ref,
+) {
   const { t } = useTranslations();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
@@ -142,11 +151,17 @@ export default function ApiKeyRow({ apiKey }: { apiKey: z.infer<typeof userApiKe
       >
         {({ items, openMenu }) => (
           <TableRow
+            ref={ref}
+            bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
             onContextMenu={(e) => {
               e.preventDefault();
               openMenu(e.clientX, e.clientY);
             }}
           >
+            {onSelectionChange !== undefined && (
+              <TableSelectionCell id={apiKey.uuid} checked={isSelected} onChange={onSelectionChange} />
+            )}
+
             <TableData>{apiKey.name}</TableData>
 
             <TableData>
@@ -183,4 +198,6 @@ export default function ApiKeyRow({ apiKey }: { apiKey: z.infer<typeof userApiKe
       </ContextMenu>
     </>
   );
-}
+});
+
+export default ApiKeyRow;

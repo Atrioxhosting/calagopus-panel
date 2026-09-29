@@ -126,11 +126,33 @@ async fn ask_at(
     }
 }
 
-pub async fn write_extension(
+const STAGED_FILE_NAME: &str = "extension.c7s.zip";
+
+pub struct StagedExtension {
+    pub distr: ExtensionDistrFile,
+    tmp_dir: tempfile::TempDir,
+}
+
+impl StagedExtension {
+    pub async fn install(self) -> Result<ExtensionDistrFile, std::io::Error> {
+        tokio::fs::copy(
+            self.tmp_dir.path().join(STAGED_FILE_NAME),
+            Path::new(EXTENSION_DIR).join(format!(
+                "{}.c7s.zip",
+                self.distr.metadata_toml.get_package_identifier()
+            )),
+        )
+        .await?;
+
+        Ok(self.distr)
+    }
+}
+
+pub async fn stage_extension(
     data: &mut (dyn tokio::io::AsyncRead + Unpin + Send),
-) -> Result<ExtensionDistrFile, anyhow::Error> {
+) -> Result<StagedExtension, anyhow::Error> {
     let tmp_dir = tempfile::tempdir()?;
-    let tmp_path = tmp_dir.path().join("extension.c7s.zip");
+    let tmp_path = tmp_dir.path().join(STAGED_FILE_NAME);
 
     let mut tmp_file = tokio::fs::File::create_new(&tmp_path).await?;
     tokio::io::copy(data, &mut tmp_file).await?;
@@ -145,13 +167,25 @@ pub async fn write_extension(
         return Err(anyhow::anyhow!("invalid package identifier `{identifier}`"));
     }
 
-    tokio::fs::copy(
-        tmp_path,
-        Path::new(EXTENSION_DIR).join(format!("{}.c7s.zip", identifier)),
-    )
-    .await?;
+    Ok(StagedExtension { distr, tmp_dir })
+}
 
-    Ok(distr)
+pub async fn build_target_version() -> semver::Version {
+    match ask(&Request::GetStatus).await {
+        Ok(Response::Status(status)) => match status.panel_version.parse() {
+            Ok(version) => return version,
+            Err(err) => tracing::error!(
+                "the extension supervisor reported an unparsable panel version {:?}: {err}",
+                status.panel_version
+            ),
+        },
+        Ok(answer) => {
+            tracing::error!("the extension supervisor answered a status request with {answer:?}")
+        }
+        Err(err) => tracing::error!("the extension supervisor could not be reached: {err}"),
+    }
+
+    crate::extensions::distr::running_panel_version()
 }
 
 pub async fn remove_extension(package_name: &str) -> Result<(), std::io::Error> {

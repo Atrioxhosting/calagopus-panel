@@ -4,7 +4,9 @@ use clap::{Args, FromArgMatches};
 use colored::Colorize;
 use dialoguer::{Confirm, theme::ColorfulTheme};
 use serde::Deserialize;
-use shared::extensions::distr::{ExtensionDistrFile, SlimExtensionDistrFile};
+use shared::extensions::distr::{
+    ExtensionDistrFile, SlimExtensionDistrFile, running_panel_version,
+};
 use std::{collections::HashMap, io::IsTerminal, path::Path};
 use tokio::process::Command;
 
@@ -45,10 +47,11 @@ impl shared::extensions::commands::CliCommand<AddArgs> for AddCommand {
                 })
                 .await??;
 
-                if let Err(err) = extension_distr
-                    .metadata_toml
-                    .check_panel_version(args.skip_version_check)
-                {
+                if let Err(err) = extension_distr.metadata_toml.check_panel_version(
+                    (!args.skip_version_check)
+                        .then(running_panel_version)
+                        .as_ref(),
+                ) {
                     eprintln!(
                         "{} {} {}",
                         "extension".red(),

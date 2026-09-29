@@ -57,6 +57,7 @@ mod post {
     pub async fn route(
         state: GetState,
         ip: shared::GetIp,
+        request_host: shared::GetRequestHost,
         headers: axum::http::HeaderMap,
         cookies: Cookies,
         shared::Payload(data): shared::Payload<Payload>,
@@ -77,6 +78,16 @@ mod post {
                 ip.to_string(),
             )
             .await?;
+
+        if !state
+            .settings
+            .get_as(|s| s.app.password_login_enabled)
+            .await?
+        {
+            return ApiResponse::error("password login is disabled")
+                .with_status(StatusCode::BAD_REQUEST)
+                .ok();
+        }
 
         if let Err(error) = state.captcha.verify(ip, data.captcha).await {
             return ApiResponse::error(&error)
@@ -190,7 +201,7 @@ mod post {
             )
             .await?;
 
-            cookies.add(UserSession::get_cookie(&state, key).await?);
+            cookies.add(UserSession::get_cookie(&state, request_host.as_deref(), key).await?);
 
             if let Err(err) = UserActivity::create(
                 &state,

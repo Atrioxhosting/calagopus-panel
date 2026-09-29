@@ -43,6 +43,7 @@ mod put {
     ), request_body = inline(Payload))]
     pub async fn route(
         state: GetState,
+        request_host: shared::GetRequestHost,
         permissions: GetPermissionManager,
         mut user: GetUser,
         activity_logger: GetUserActivityLogger,
@@ -120,8 +121,14 @@ mod put {
                         }
                     };
 
-                    if let Err(err) =
-                        UserEmailVerification::send(&state, &user, &data.email, &token).await
+                    if let Err(err) = UserEmailVerification::send(
+                        &state,
+                        request_host.as_deref(),
+                        &user,
+                        &data.email,
+                        &token,
+                    )
+                    .await
                     {
                         tracing::error!(
                             user = %user.uuid,

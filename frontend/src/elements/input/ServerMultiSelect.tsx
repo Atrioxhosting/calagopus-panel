@@ -89,6 +89,7 @@ export default function ServerMultiSelect<T extends ServerSelectItem = z.infer<t
             .filter((s): s is T => !!s),
         )
       }
+      filter={({ options }) => options}
       searchable
       searchValue={servers.search}
       onSearchChange={servers.setSearch}

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { Props as ContainerProps } from '@/elements/containers/ServerContentContainer.tsx';
 import { serverDatabaseInstanceSchema } from '@/lib/schemas/server/databaseInstances.ts';
 import { serverDatabaseSchema } from '@/lib/schemas/server/databases.ts';
+import { ComponentListRegistry } from '../../../slices/componentList.ts';
 import { ContextMenuRegistry } from '../../../slices/contextMenu.ts';
 import { SubNavigationRegistry } from '../../../slices/subNavigation.ts';
 import { InstancesRegistry } from './instances.ts';
@@ -10,6 +11,7 @@ import { InstancesRegistry } from './instances.ts';
 export class DatabasesRegistry implements Registry {
   public mergeFrom(other: this): this {
     this.container.mergeFrom(other.container);
+    this.actionBar.mergeFrom(other.actionBar);
     this.subNavigation.mergeFrom(other.subNavigation);
     this.databaseContextMenu.mergeFrom(other.databaseContextMenu);
     this.databaseInstanceContextMenu.mergeFrom(other.databaseInstanceContextMenu);
@@ -19,6 +21,7 @@ export class DatabasesRegistry implements Registry {
   }
 
   public container: ContainerRegistry<ContainerProps> = new ContainerRegistry();
+  public actionBar: ComponentListRegistry = new ComponentListRegistry();
   public subNavigation: SubNavigationRegistry = new SubNavigationRegistry();
   public databaseContextMenu: ContextMenuRegistry<{ database: z.infer<typeof serverDatabaseSchema> }> =
     new ContextMenuRegistry();
@@ -29,6 +32,11 @@ export class DatabasesRegistry implements Registry {
 
   public enterContainer(callback: (registry: ContainerRegistry<ContainerProps>) => unknown): this {
     callback(this.container);
+    return this;
+  }
+
+  public enterActionBar(callback: (registry: ComponentListRegistry) => unknown): this {
+    callback(this.actionBar);
     return this;
   }
 

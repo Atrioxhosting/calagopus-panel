@@ -62,7 +62,14 @@ impl ApiResponse {
     }
 
     /// Create a new API response with content negotiation based on the `Accept` header.
+    #[inline]
     pub fn new_serialized(body: impl serde::Serialize) -> Self {
+        Self::new_serialized_with_capacity(body, 128)
+    }
+
+    /// The same as [`ApiResponse::new_serialized`], preallocating `capacity` bytes for the
+    /// serialized JSON body.
+    pub fn new_serialized_with_capacity(body: impl serde::Serialize, capacity: usize) -> Self {
         let accept_header = ACCEPT_HEADER.try_with(|h| h.clone()).ok().flatten();
 
         static AVAILABLE_SERIALIZERS: &[mime::Mime] = &[
@@ -111,10 +118,11 @@ impl ApiResponse {
                 )
             }
             _ => {
-                let bytes = serde_json::to_vec(&body).unwrap_or_else(|err| {
+                let mut bytes = Vec::with_capacity(capacity);
+                if let Err(err) = serde_json::to_writer(&mut bytes, &body) {
                     tracing::error!("failed to serialize response body to JSON: {:?}", err);
-                    b"{}".to_vec()
-                });
+                    bytes = b"{}".to_vec();
+                }
 
                 (
                     axum::http::HeaderValue::from_static("application/json"),
@@ -139,6 +147,12 @@ impl ApiResponse {
     #[inline]
     pub fn error(err: impl AsRef<str>) -> Self {
         Self::new_serialized(ApiError::new_value(&[err.as_ref()]))
+            .with_status(axum::http::StatusCode::BAD_REQUEST)
+    }
+
+    #[inline]
+    pub fn errors(errors: Vec<String>) -> Self {
+        Self::new_serialized(ApiError::new_strings_value(errors))
             .with_status(axum::http::StatusCode::BAD_REQUEST)
     }
 
@@ -197,8 +211,8 @@ where
     fn from(err: T) -> Self {
         let err: anyhow::Error = err.into();
 
-        if let Some((message, status)) = extract_readable_error(&err) {
-            return ApiResponse::error(message).with_status(status);
+        if let Some((errors, status)) = extract_readable_error(&err) {
+            return ApiResponse::errors(errors).with_status(status);
         }
 
         tracing::error!("a request error occurred: {:?}", err);
@@ -226,19 +240,19 @@ impl IntoResponse for ApiResponse {
     }
 }
 
-pub fn extract_readable_error(err: &anyhow::Error) -> Option<(String, axum::http::StatusCode)> {
+pub fn extract_readable_error(
+    err: &anyhow::Error,
+) -> Option<(Vec<String>, axum::http::StatusCode)> {
     if let Some(error) = err.downcast_ref::<DisplayError>() {
-        return Some((error.message.to_string(), error.status));
+        return Some((vec![error.message.to_string()], error.status));
     } else if let Some(DatabaseError::Validation(error)) = err.downcast_ref::<DatabaseError>() {
-        let error_messages = crate::utils::flatten_validation_errors(error);
-
         return Some((
-            ApiError::new_strings_value(error_messages).to_string(),
+            crate::utils::flatten_validation_errors(error),
             axum::http::StatusCode::BAD_REQUEST,
         ));
     } else if let Some(DatabaseError::InvalidRelation(error)) = err.downcast_ref::<DatabaseError>()
     {
-        return Some((error.to_string(), axum::http::StatusCode::BAD_REQUEST));
+        return Some((vec![error.to_string()], axum::http::StatusCode::BAD_REQUEST));
     } else if let Some(DatabaseError::Any(error)) = err.downcast_ref::<DatabaseError>() {
         return extract_readable_error(error);
     } else if let Some(error) = err.downcast_ref::<crate::cache::SharedComputeError>() {
@@ -246,6 +260,10 @@ pub fn extract_readable_error(err: &anyhow::Error) -> Option<(String, axum::http
     }
 
     None
+}
+
+pub fn extract_readable_message(err: &anyhow::Error) -> Option<(String, axum::http::StatusCode)> {
+    extract_readable_error(err).map(|(errors, status)| (errors.join(", "), status))
 }
 
 #[derive(Debug)]

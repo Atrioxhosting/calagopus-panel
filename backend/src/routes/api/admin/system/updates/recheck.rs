@@ -27,7 +27,7 @@ mod post {
         let update_information = match state.updates.trigger_recheck_and_wait().await {
             Ok(info) => info,
             Err(err) => {
-                let (err, status) = shared::response::extract_readable_error(&err)
+                let (err, status) = shared::response::extract_readable_message(&err)
                     .unwrap_or_else(|| (err.to_string(), StatusCode::EXPECTATION_FAILED));
 
                 return ApiResponse::error(format!("failed to check for updates: {}", err))

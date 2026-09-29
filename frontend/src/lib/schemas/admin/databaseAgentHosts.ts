@@ -15,8 +15,8 @@ export const adminDatabaseAgentHostSchema = z.looseObject({
   deploymentEnabled: z.boolean(),
   maintenanceEnabled: z.boolean(),
   url: z.url().min(3).max(255),
-  memory: z.number().min(1),
-  disk: z.number().min(1),
+  memory: z.number().min(0),
+  disk: z.number().min(0),
   types: z.object({
     postgres: adminDatabaseAgentHostTypeSettingsSchema,
     mariadb: adminDatabaseAgentHostTypeSettingsSchema,
@@ -26,18 +26,25 @@ export const adminDatabaseAgentHostSchema = z.looseObject({
   created: z.coerce.date(),
 });
 
+export const adminDatabaseAgentHostAllocatedCapacitySchema = z.object({
+  instances: z.number(),
+  cpu: z.number(),
+  memory: z.number(),
+  disk: z.number(),
+});
+
 export const adminDatabaseAgentHostCapacitySchema = z.object({
   limits: z.object({
     memory: z.number(),
     disk: z.number(),
   }),
-  allocated: z.object({
-    instances: z.number(),
-    cpu: z.number(),
-    memory: z.number(),
-    disk: z.number(),
-  }),
+  allocated: adminDatabaseAgentHostAllocatedCapacitySchema,
 });
+
+export const adminDatabaseAgentHostCapacitiesSchema = z.record(
+  z.string(),
+  adminDatabaseAgentHostAllocatedCapacitySchema,
+);
 
 export const adminDatabaseAgentHostCreateSchema = z.lazy(() =>
   adminDatabaseAgentHostSchema.omit({

@@ -106,11 +106,18 @@ mod get {
         }?;
 
         let storage_url_retriever = state.storage.retrieve_urls().await?;
+        let retention_statuses =
+            ServerBackup::retention_statuses(&state.database, &backups.data).await?;
 
         ApiResponse::new_serialized(Response {
             backups: backups
                 .try_async_map(|backup| {
-                    backup.into_admin_node_api_object(&state, &storage_url_retriever)
+                    let retention_status = retention_statuses.get(&backup.uuid).cloned();
+                    backup.into_admin_node_api_object(
+                        &state,
+                        &storage_url_retriever,
+                        retention_status,
+                    )
                 })
                 .await?,
             failed: ServerBackup::count_failed(&state.database, scope).await?,

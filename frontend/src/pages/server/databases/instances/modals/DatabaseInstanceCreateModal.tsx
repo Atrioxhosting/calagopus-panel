@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { z } from 'zod';
 import createDatabaseInstance from '@/api/server/databases/instances/createDatabaseInstance.ts';
 import getDatabaseInstanceTemplates from '@/api/server/databases/instances/getDatabaseInstanceTemplates.ts';
@@ -37,7 +36,7 @@ export default function DatabaseInstanceCreateModal(props: ModalProps) {
     z.infer<typeof serverDatabaseInstanceCreateSchema>
   >({
     initialValues: { name: '', templateUuid: '', image: '' },
-    validate: zod4Resolver(serverDatabaseInstanceCreateSchema),
+    schema: serverDatabaseInstanceCreateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {
       await createDatabaseInstance(server.uuid, values);

@@ -13,6 +13,7 @@ import {
   faFingerprint,
   faFolderOpen,
   faFolderTree,
+  faMicrochip,
   faPuzzlePiece,
   faScroll,
   faServer,
@@ -29,6 +30,7 @@ import AdminBackupConfigurations from '@/pages/admin/backup-configurations/Admin
 import AdminDatabaseAgentHosts from '@/pages/admin/database-agent-hosts/AdminDatabaseAgentHosts.tsx';
 import AdminDatabaseAgentTemplates from '@/pages/admin/database-agent-templates/AdminDatabaseAgentTemplates.tsx';
 import AdminDatabaseHosts from '@/pages/admin/database-hosts/AdminDatabaseHosts.tsx';
+import AdminDevices from '@/pages/admin/devices/AdminDevices.tsx';
 import AdminEggConfigurations from '@/pages/admin/egg-configurations/AdminEggConfigurations.tsx';
 import AdminEggRepositories from '@/pages/admin/egg-repositories/AdminEggRepositories.tsx';
 import AdminExtensions from '@/pages/admin/extensions/AdminExtensions.tsx';
@@ -146,6 +148,14 @@ const routes: AdminRouteDefinition[] = [
     path: '/mounts/*',
     element: AdminMounts,
     permission: ['mounts.*'],
+    category: 'storage',
+  },
+  {
+    name: () => getTranslations().t('pages.admin.devices.title', {}),
+    icon: faMicrochip,
+    path: '/devices/*',
+    element: AdminDevices,
+    permission: ['devices.*'],
     category: 'storage',
   },
   {
