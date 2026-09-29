@@ -201,6 +201,10 @@ mod patch {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("nodes.update")?;
 
+        let sync_bandwidth = data
+            .bandwidth_per_gib
+            .is_some_and(|value| value != node.bandwidth_per_gib);
+
         match node.update(&state, data).await {
             Ok(_) => {}
             Err(err) if err.is_unique_violation() => {
@@ -228,9 +232,46 @@ mod patch {
                     "sftp_port": node.sftp_port,
                     "memory": node.memory,
                     "disk": node.disk,
+                    "bandwidth_per_gib": node.bandwidth_per_gib,
                 }),
             )
             .await;
+
+        if sync_bandwidth {
+            let node_uuid = node.uuid;
+            tokio::spawn(async move {
+                let mut page = 1;
+                loop {
+                    let servers =
+                        match shared::models::server::Server::by_node_uuid_with_pagination(
+                            &state.database,
+                            node_uuid,
+                            page,
+                            100,
+                            None,
+                        )
+                        .await
+                        {
+                            Ok(servers) => servers,
+                            Err(err) => {
+                                tracing::error!(%node_uuid, ?err, "failed to list servers for bandwidth sync");
+                                break;
+                            }
+                        };
+                    let count = servers.data.len();
+                    for server in servers.data {
+                        let server_uuid = server.uuid;
+                        if let Err(err) = server.sync(&state.database).await {
+                            tracing::error!(%node_uuid, %server_uuid, ?err, "failed bandwidth configuration sync");
+                        }
+                    }
+                    if count < 100 {
+                        break;
+                    }
+                    page += 1;
+                }
+            });
+        }
 
         ApiResponse::new_serialized(Response {}).ok()
     }

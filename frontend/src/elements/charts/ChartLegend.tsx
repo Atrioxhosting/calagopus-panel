@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { makeComponentHookable } from 'shared';
 import { ChartLegendProps, StreamChartSeries } from '@/lib/chart.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -19,45 +20,53 @@ function SeriesKey({ entry }: { entry: StreamChartSeries }) {
   );
 }
 
-function ChartLegend({ series, onToggle, onHighlight }: ChartLegendProps) {
+function ChartLegend({
+  series,
+  onToggle,
+  onHighlight,
+  separator,
+  showValues = true,
+}: ChartLegendProps & { separator?: ReactNode; showValues?: boolean }) {
   const { t } = useTranslations();
 
   return (
     <>
-      {series.map((entry) =>
-        onToggle ? (
-          <button
-            key={entry.key}
-            type='button'
-            aria-pressed={!entry.hidden}
-            aria-label={t(entry.hidden ? 'elements.chartLegend.show' : 'elements.chartLegend.hide', {
-              series: entry.label,
-            })}
-            onClick={() => onToggle(entry.key)}
-            onMouseEnter={() => onHighlight?.(entry.key)}
-            onMouseLeave={() => onHighlight?.(null)}
-            onFocus={() => onHighlight?.(entry.key)}
-            onBlur={() => onHighlight?.(null)}
-            className={`flex cursor-pointer items-center gap-1.5 rounded-sm text-xs whitespace-nowrap transition-opacity hover:opacity-80 ${entry.hidden ? 'opacity-50' : ''}`}
-          >
-            <SeriesKey entry={entry} />
-            <span className={entry.hidden ? 'line-through' : undefined}>{entry.label}</span>
-            {entry.formatted !== null && (
-              <span className={`tabular-nums text-(--mantine-color-dimmed) ${entry.hidden ? 'line-through' : ''}`}>
-                {entry.formatted}
-              </span>
-            )}
-          </button>
-        ) : (
-          <span key={entry.key} className='flex items-center gap-1.5 text-xs whitespace-nowrap'>
-            <SeriesKey entry={entry} />
-            {entry.label}
-            {entry.formatted !== null && (
-              <span className='tabular-nums text-(--mantine-color-dimmed)'>{entry.formatted}</span>
-            )}
-          </span>
-        ),
-      )}
+      {series.map((entry, index) => (
+        <span key={entry.key} className='inline-flex items-center gap-1.5'>
+          {index > 0 && separator}
+          {onToggle ? (
+            <button
+              type='button'
+              aria-pressed={!entry.hidden}
+              aria-label={t(entry.hidden ? 'elements.chartLegend.show' : 'elements.chartLegend.hide', {
+                series: entry.label,
+              })}
+              onClick={() => onToggle(entry.key)}
+              onMouseEnter={() => onHighlight?.(entry.key)}
+              onMouseLeave={() => onHighlight?.(null)}
+              onFocus={() => onHighlight?.(entry.key)}
+              onBlur={() => onHighlight?.(null)}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-sm text-xs whitespace-nowrap transition-opacity hover:opacity-80 ${entry.hidden ? 'opacity-50' : ''}`}
+            >
+              <SeriesKey entry={entry} />
+              <span className={entry.hidden ? 'line-through' : undefined}>{entry.label}</span>
+              {showValues && entry.formatted !== null && (
+                <span className={`tabular-nums text-(--mantine-color-dimmed) ${entry.hidden ? 'line-through' : ''}`}>
+                  {entry.formatted}
+                </span>
+              )}
+            </button>
+          ) : (
+            <span className='flex items-center gap-1.5 text-xs whitespace-nowrap'>
+              <SeriesKey entry={entry} />
+              {entry.label}
+              {showValues && entry.formatted !== null && (
+                <span className='tabular-nums text-(--mantine-color-dimmed)'>{entry.formatted}</span>
+              )}
+            </span>
+          )}
+        </span>
+      ))}
     </>
   );
 }

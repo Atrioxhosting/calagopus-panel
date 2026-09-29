@@ -9,7 +9,7 @@ mod get {
         ApiError, GetState,
         models::{
             server::{GetServer, GetServerActivityLogger},
-            server_backup::ServerBackupKind,
+            server_backup::{BackupDisk, ServerBackupKind},
             user::{GetPermissionManager, GetUser},
         },
         response::{ApiResponse, ApiResponseResult},
@@ -79,6 +79,33 @@ mod get {
         }
 
         let node = server.node.fetch_cached(&state.database).await?;
+
+        if backup.disk != BackupDisk::S3 {
+            let bandwidth = node
+                .api_client(&state.database)
+                .await?
+                .get_server_bandwidth(server.uuid)
+                .await?;
+            let blocked = bandwidth.get("fenced").and_then(serde_json::Value::as_bool)
+                == Some(true)
+                || matches!(
+                    bandwidth.get("state").and_then(serde_json::Value::as_str),
+                    Some(
+                        "quota_exceeded"
+                            | "stopping"
+                            | "stopped_quota"
+                            | "stop_failed"
+                            | "enforcement_unknown"
+                    )
+                );
+            if blocked {
+                return ApiResponse::error(
+                    "Bandwidth quota reached; backups cannot be downloaded until the traffic quota resets.",
+                )
+                .with_status(StatusCode::FORBIDDEN)
+                .ok();
+            }
+        }
 
         let url = backup
             .download_url(&state, &user, &node, params.archive_format)

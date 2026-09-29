@@ -150,23 +150,80 @@ mod post {
         let on_mesh =
             shared::tunnel::bump_epoch_if_server_on_mesh(&mut transaction, server.uuid).await?;
 
-        transaction.commit().await?;
+        // Keep the old owner fenced until the database points at the new owner.
+        // The transfer lock on the destination permits the import while normal
+        // service starts remain disabled.
+        let source_client = server
+            .node
+            .fetch_cached(&state.database)
+            .await?
+            .api_client(&state.database)
+            .await?;
+        let destination_client = destination_node
+            .fetch_cached(&state.database)
+            .await?
+            .api_client(&state.database)
+            .await?;
+        let current = source_client.get_server_bandwidth(server.uuid).await?;
+        let generation = current
+            .get("generation")
+            .and_then(serde_json::Value::as_u64)
+            .ok_or_else(|| anyhow::anyhow!("source Wings omitted bandwidth generation"))?;
+        let ledger = source_client
+            .post_server_bandwidth_handoff(server.uuid, generation)
+            .await?;
+        if let Err(error) = destination_client
+            .post_server_bandwidth_accept(server.uuid, generation, &ledger)
+            .await
+        {
+            // A timeout may mean the import actually completed. Fence it before
+            // allowing the old owner to write again.
+            if let Err(abort_error) = destination_client
+                .post_server_bandwidth_abort_import(server.uuid, generation + 1)
+                .await
+            {
+                tracing::error!(server = %server.uuid, error = ?abort_error, "destination bandwidth import outcome is unknown; source remains fenced");
+                return Err(anyhow::anyhow!("bandwidth handoff failed and destination fencing could not be confirmed: {error:?}").into());
+            }
+            source_client
+                .post_server_bandwidth_unfreeze(server.uuid, generation)
+                .await?;
+            return Err(
+                anyhow::anyhow!("destination rejected bandwidth handoff: {error:?}").into(),
+            );
+        }
+        if let Err(error) = transaction.commit().await {
+            if let Err(abort_error) = destination_client
+                .post_server_bandwidth_abort_import(server.uuid, generation + 1)
+                .await
+            {
+                tracing::error!(server = %server.uuid, error = ?abort_error, "database commit failed; destination fencing could not be confirmed");
+                return Err(anyhow::anyhow!(
+                    "database commit failed and destination fencing could not be confirmed: {error}"
+                )
+                .into());
+            }
+            source_client
+                .post_server_bandwidth_unfreeze(server.uuid, generation)
+                .await?;
+            return Err(error.into());
+        }
 
         Server::invalidate_cached(&state.database, server.uuid).await;
+
+        // The destination's provisional transfer configuration still carries
+        // the source node's multiplier. Recompute its quota from the committed
+        // destination node before the transfer lock is released.
+        let transferred = Server::by_uuid(&state.database, server.uuid).await?;
+        if let Err(err) = transferred.sync(&state.database).await {
+            tracing::error!(server = %server.uuid, error = ?err, "failed to sync destination quota after bandwidth handoff");
+        }
 
         if on_mesh {
             shared::tunnel::poke_nodes(&state.database).await;
         }
 
-        if let Err(err) = server
-            .node
-            .fetch_cached(&state.database)
-            .await?
-            .api_client(&state.database)
-            .await?
-            .delete_servers_server(server.uuid)
-            .await
-        {
+        if let Err(err) = source_client.delete_servers_server(server.uuid).await {
             tracing::error!("failed to delete server on source node: {:?}", err);
         }
 

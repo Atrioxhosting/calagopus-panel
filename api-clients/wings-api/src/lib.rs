@@ -317,6 +317,20 @@ nestify::nest! {
         #[schema(inline)]
         pub disk_bytes: u64,
         #[schema(inline)]
+        pub bandwidth: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct ResourceUsageBandwidth {
+            pub used_bytes: u64,
+            pub quota_bytes: Option<u64>,
+            pub rx_bytes: u64,
+            pub tx_bytes: u64,
+            pub period_start: i64,
+            pub period_end: i64,
+            pub bandwidth_per_gib: i64,
+            pub state: compact_str::CompactString,
+            pub resume_after_quota: bool,
+            pub generation: u64,
+            pub last_checkpoint: i64,
+        },
+        #[schema(inline)]
         pub state: ServerState,
         #[schema(inline)]
         pub network: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct ResourceUsageNetwork {
@@ -449,6 +463,16 @@ nestify::nest! {
 
         #[schema(inline)]
         pub suspended: bool,
+        #[serde(default)]
+        pub bandwidth_per_gib: i64,
+        #[serde(default)]
+        pub created: Option<chrono::DateTime<chrono::Utc>>,
+        #[serde(default)]
+        pub billing_period: Option<#[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct ServerConfigurationBillingPeriod {
+            pub id: compact_str::CompactString,
+            pub start: chrono::DateTime<chrono::Utc>,
+            pub end: chrono::DateTime<chrono::Utc>,
+        }>,
         #[schema(inline)]
         pub invocation: compact_str::CompactString,
         #[schema(inline)]

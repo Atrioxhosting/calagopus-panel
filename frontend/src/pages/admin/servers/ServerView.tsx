@@ -1,5 +1,6 @@
 import {
   faArchive,
+  faChartLine,
   faCodeCommit,
   faCog,
   faDatabase,
@@ -17,6 +18,7 @@ import SubNavigation from '@/elements/navigation/SubNavigation.tsx';
 import ResourceView from '@/elements/ResourceView.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import AdminServerActions from '@/pages/admin/servers/AdminServerActions.tsx';
+import AdminServerBandwidth from '@/pages/admin/servers/AdminServerBandwidth.tsx';
 import AdminServerAllocations from '@/pages/admin/servers/allocations/AdminServerAllocations.tsx';
 import AdminServerBackups from '@/pages/admin/servers/backups/AdminServerBackups.tsx';
 import AdminServerDatabases from '@/pages/admin/servers/databases/AdminServerDatabases.tsx';
@@ -61,6 +63,13 @@ export default function ServerView() {
                 icon: faCog,
                 path: `/settings`,
                 element: <ServerUpdate contextServer={server} />,
+              },
+              {
+                name: 'Bandwidth',
+                icon: faChartLine,
+                path: '/bandwidth',
+                element: <AdminServerBandwidth server={server} />,
+                permission: 'servers.read',
               },
               {
                 name: t('pages.admin.servers.tabs.allocations.title', {}),

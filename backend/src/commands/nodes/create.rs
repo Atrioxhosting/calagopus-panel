@@ -310,6 +310,7 @@ impl shared::extensions::commands::CliCommand<CreateArgs> for CreateCommand {
                     sftp_port,
                     memory,
                     disk,
+                    bandwidth_per_gib: 0,
                 };
                 let node = shared::models::node::Node::create(&state, options).await?;
 

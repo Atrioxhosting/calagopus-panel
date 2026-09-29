@@ -1,9 +1,11 @@
-import { Ref, useEffect, useState } from 'react';
+import { Ref, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import getNodeServers from '@/api/admin/nodes/servers/getNodeServers.ts';
+import correctNodeBandwidth from '@/api/admin/nodes/servers/correctNodeBandwidth.ts';
 import sendNodeServersPowerAction from '@/api/admin/nodes/servers/sendNodeServersPowerAction.ts';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import Button from '@/elements/buttons/Button.tsx';
+import NumberInput from '@/elements/input/NumberInput.tsx';
 import { AdminCan } from '@/elements/Can.tsx';
 import AdminSubContentContainer from '@/elements/containers/AdminSubContentContainer.tsx';
 import Table from '@/elements/data-display/Table.tsx';
@@ -42,7 +44,10 @@ export default function AdminNodeServers({ node }: { node: AdminNode }) {
   const [sKeyPressed, setSKeyPressed] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState<PowerAction | null>(null);
   const [allActionLoading, setAllActionLoading] = useState<PowerAction | null>(null);
-  const [openModal, setOpenModal] = useState<'transfer' | null>(null);
+  const [openModal, setOpenModal] = useState<'transfer' | 'bandwidth' | null>(null);
+  const [bandwidthDelta, setBandwidthDelta] = useState<number | string>(0);
+  const [bandwidthWorking, setBandwidthWorking] = useState(false);
+  const pendingBandwidthCorrection = useRef<{ delta: number; id: string } | null>(null);
   const [confirmPowerAction, setConfirmPowerAction] = useState<{ action: PowerAction; scope: 'bulk' | 'all' } | null>(
     null,
   );
@@ -139,6 +144,28 @@ export default function AdminNodeServers({ node }: { node: AdminNode }) {
 
   const confirmCount = confirmPowerAction?.scope === 'all' ? (nodeServers?.total ?? 0) : selectedServers.size;
 
+  const applyBulkBandwidthCorrection = async () => {
+    if (typeof bandwidthDelta !== 'number' || !Number.isSafeInteger(bandwidthDelta) || bandwidthDelta === 0) return;
+    setBandwidthWorking(true);
+    try {
+      if (!pendingBandwidthCorrection.current || pendingBandwidthCorrection.current.delta !== bandwidthDelta) {
+        pendingBandwidthCorrection.current = { delta: bandwidthDelta, id: crypto.randomUUID() };
+      }
+      const results = await correctNodeBandwidth(node.uuid, pendingBandwidthCorrection.current.id, bandwidthDelta);
+      const failed = results.filter((result) => !result.applied);
+      addToast(`${results.length - failed.length} bandwidth corrections applied, ${failed.length} failed`, failed.length ? 'warning' : 'success');
+      if (failed.length === 0) {
+        pendingBandwidthCorrection.current = null;
+        setOpenModal(null);
+        setBandwidthDelta(0);
+      }
+    } catch (err) {
+      addToast(httpErrorToHuman(err), 'error');
+    } finally {
+      setBandwidthWorking(false);
+    }
+  };
+
   const onConfirmPowerAction = () => {
     if (!confirmPowerAction) {
       return;
@@ -188,6 +215,16 @@ export default function AdminNodeServers({ node }: { node: AdminNode }) {
           : null}
       </ConfirmationModal>
 
+      <ConfirmationModal
+        opened={openModal === 'bandwidth'}
+        onClose={() => setOpenModal(null)}
+        title='Correct bandwidth usage for every service on this node'
+        confirm='Apply correction'
+        onConfirmed={() => void applyBulkBandwidthCorrection()}
+      >
+        <NumberInput label='Signed bytes per service' value={bandwidthDelta} onChange={setBandwidthDelta} allowDecimal={false} disabled={bandwidthWorking} />
+      </ConfirmationModal>
+
       <AdminSubContentContainer
         title={t('pages.admin.nodes.tabs.servers.page.title', {})}
         titleOrder={2}
@@ -197,6 +234,11 @@ export default function AdminNodeServers({ node }: { node: AdminNode }) {
         registryProps={{ node }}
         contentRight={
           <Group gap='sm'>
+            <AdminCan action='servers.update'>
+              <Button color='gray' onClick={() => setOpenModal('bandwidth')} disabled={!nodeServers?.total || bandwidthWorking}>
+                Correct bandwidth ({nodeServers?.total ?? 0})
+              </Button>
+            </AdminCan>
             <ServerPowerButtons
               count={nodeServers?.total ?? 0}
               loading={allActionLoading}

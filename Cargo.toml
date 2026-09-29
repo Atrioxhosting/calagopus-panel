@@ -60,7 +60,7 @@ quick-xml = { version = "0.42.0", features = ["serialize"] }
 reqwest = { version = "0.13.0", features = ["json", "form", "query", "stream"] }
 chrono = { version = "0.4.40", features = ["serde"] }
 chrono-tz = { version = "0.10.4", features = ["serde"] }
-uuid = { version = "1.17.0", features = ["v4", "serde"] }
+uuid = { version = "1.17.0", features = ["v4", "v5", "serde"] }
 indexmap = { version = "2.7.1", features = ["serde"] }
 regex = "1.11.1"
 serde_regex = "1.1.0"

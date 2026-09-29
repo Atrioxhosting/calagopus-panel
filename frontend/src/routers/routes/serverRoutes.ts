@@ -26,6 +26,8 @@ import ServerFiles from '@/pages/server/files/ServerFiles.tsx';
 import ServerMounts from '@/pages/server/mounts/ServerMounts.tsx';
 import ServerFirewall from '@/pages/server/network/firewall/ServerFirewall.tsx';
 import ServerNetwork from '@/pages/server/network/ServerNetwork.tsx';
+import ServerNetworkRedirect from '@/pages/server/network/ServerNetworkRedirect.tsx';
+import ServerTraffic from '@/pages/server/network/ServerTraffic.tsx';
 import ServerTunnel from '@/pages/server/network/tunnel/ServerTunnel.tsx';
 import ScheduleView from '@/pages/server/schedules/ScheduleView.tsx';
 import ServerSchedules from '@/pages/server/schedules/ServerSchedules.tsx';
@@ -147,8 +149,20 @@ const routes: ServerRouteDefinition[] = [
     name: () => getTranslations().t('pages.server.network.title', {}),
     icon: faNetworkWired,
     path: '/network',
+    element: ServerNetworkRedirect,
+    permission: null,
+  },
+  {
+    name: undefined,
+    path: '/network/traffic',
+    element: ServerTraffic,
+    permission: null,
+  },
+  {
+    name: undefined,
+    path: '/network/allocations',
     element: ServerNetwork,
-    permission: ['allocations.read', 'firewall.read', 'connections.read'],
+    permission: 'allocations.read',
   },
   {
     name: undefined,

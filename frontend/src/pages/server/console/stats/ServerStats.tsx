@@ -7,6 +7,8 @@ import StreamChart from '@/elements/charts/StreamChart.tsx';
 import ExtensionSlot from '@/elements/ExtensionSlot.tsx';
 import { formatBytes, formatBytesRate, formatPercent, useStreamChart } from '@/lib/chart.ts';
 import { mbToBytes } from '@/lib/format/size.ts';
+import { trafficBytesToString } from '@/lib/format/size.ts';
+import { formatTrafficPercent } from '@/lib/format/traffic.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
 
@@ -86,7 +88,23 @@ export default function ServerStats() {
       <ChartBlock
         icon={<FontAwesomeIcon icon={faCloudDownload} />}
         title={t('common.stat.network', {})}
-        legend={<ChartLegend {...network.legend} />}
+        titleSuffix={
+          <span className='ml-1 inline-flex items-center gap-1 text-xs'>
+            (<ChartLegend {...network.legend} separator='/' showValues={false} />)
+          </span>
+        }
+        value={
+          stats?.bandwidth && (
+            <>
+              {trafficBytesToString(stats.bandwidth.usedBytes)} /{' '}
+              {stats.bandwidth.quotaBytes === null ? 'Unlimited' : trafficBytesToString(stats.bandwidth.quotaBytes)}
+              {stats.bandwidth.quotaBytes !== null &&
+                stats.bandwidth.quotaBytes > 0 &&
+                ` (${formatTrafficPercent(stats.bandwidth.usedBytes, stats.bandwidth.quotaBytes)})`}
+            </>
+          )
+        }
+        valueBelowTitle
         overlayIcon={overlayIcon}
         overlayLabel={overlayLabel}
       >

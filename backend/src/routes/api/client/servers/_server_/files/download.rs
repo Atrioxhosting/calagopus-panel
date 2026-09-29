@@ -36,6 +36,20 @@ mod get {
         url: String,
     }
 
+    fn bandwidth_blocks_download(bandwidth: &serde_json::Value) -> bool {
+        bandwidth.get("fenced").and_then(serde_json::Value::as_bool) == Some(true)
+            || matches!(
+                bandwidth.get("state").and_then(serde_json::Value::as_str),
+                Some(
+                    "quota_exceeded"
+                        | "stopping"
+                        | "stopped_quota"
+                        | "stop_failed"
+                        | "enforcement_unknown"
+                )
+            )
+    }
+
     #[utoipa::path(get, path = "/", responses(
         (status = OK, body = inline(Response)),
         (status = UNAUTHORIZED, body = ApiError),
@@ -85,6 +99,18 @@ mod get {
         }
 
         let node = server.node.fetch_cached(&state.database).await?;
+        let bandwidth = node
+            .api_client(&state.database)
+            .await?
+            .get_server_bandwidth(server.uuid)
+            .await?;
+        if bandwidth_blocks_download(&bandwidth) {
+            return ApiResponse::error(
+                "Bandwidth quota reached; files cannot be downloaded until the traffic quota resets.",
+            )
+            .with_status(StatusCode::FORBIDDEN)
+            .ok();
+        }
 
         let url = if params.files.len() == 1 {
             #[derive(Serialize)]
@@ -195,6 +221,38 @@ mod get {
             url: url.to_string(),
         })
         .ok()
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::bandwidth_blocks_download;
+
+        #[test]
+        fn bandwidth_download_block_matches_wings_states() {
+            for state in [
+                "quota_exceeded",
+                "stopping",
+                "stopped_quota",
+                "stop_failed",
+                "enforcement_unknown",
+            ] {
+                assert!(bandwidth_blocks_download(
+                    &serde_json::json!({"state": state})
+                ));
+            }
+            assert!(bandwidth_blocks_download(&serde_json::json!({
+                "state": "active",
+                "fenced": true
+            })));
+            assert!(!bandwidth_blocks_download(&serde_json::json!({
+                "state": "active",
+                "fenced": false
+            })));
+            assert!(!bandwidth_blocks_download(&serde_json::json!({
+                "state": "restore_pending",
+                "fenced": false
+            })));
+        }
     }
 }
 

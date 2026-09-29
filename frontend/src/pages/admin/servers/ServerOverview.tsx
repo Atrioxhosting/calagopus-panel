@@ -22,12 +22,35 @@ import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { serverStatusInfo } from '@/lib/domain/server.ts';
-import { bytesToString, mbToBytes } from '@/lib/format/size.ts';
+import { bytesToString, mbToBytes, trafficBytesToString } from '@/lib/format/size.ts';
 import { formatDateTime } from '@/lib/format/time.ts';
 import { AdminServer } from '@/lib/schemas/admin/servers.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
 type Server = AdminServer;
+
+function createdBillingPeriod(created: Date): string {
+  const anchorDay = created.getUTCDate();
+  const boundary = (year: number, month: number) => {
+    const day = Math.min(anchorDay, new Date(Date.UTC(year, month + 1, 0)).getUTCDate());
+    return new Date(
+      Date.UTC(year, month, day, created.getUTCHours(), created.getUTCMinutes(), created.getUTCSeconds()),
+    );
+  };
+  const now = new Date();
+  let year = now.getUTCFullYear();
+  let month = now.getUTCMonth();
+  if (boundary(year, month) > now) {
+    month--;
+    if (month < 0) {
+      month = 11;
+      year--;
+    }
+  }
+  const start = boundary(year, month);
+  const end = month === 11 ? boundary(year + 1, 0) : boundary(year, month + 1);
+  return `${start.toLocaleString(undefined, { timeZone: 'UTC' })} UTC – ${end.toLocaleString(undefined, { timeZone: 'UTC' })} UTC`;
+}
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -122,6 +145,10 @@ export default function ServerOverview({ server }: { server: Server }) {
     : t('pages.admin.servers.tabs.overview.page.label.none', {});
 
   const unlimitedLabel = t('pages.admin.servers.tabs.overview.page.label.unlimited', {});
+  const networkQuota =
+    server.limits.memory === 0 || server.node.bandwidthPerGib === 0
+      ? null
+      : Math.floor((server.limits.memory * server.node.bandwidthPerGib * 1_000_000_000) / 1024);
 
   return (
     <AdminSubContentContainer title={t('pages.admin.servers.tabs.overview.page.title', {})} titleOrder={2}>
@@ -277,6 +304,13 @@ export default function ServerOverview({ server }: { server: Server }) {
               <InfoRow label={t('pages.admin.servers.tabs.overview.page.label.createdAt', {})}>
                 <Text size='sm'>{formatDateTime(server.created)}</Text>
               </InfoRow>
+              <InfoRow label='Billing Period'>
+                <Text size='sm'>
+                  {server.billingPeriod
+                    ? `${server.billingPeriod.start.toUTCString()} – ${server.billingPeriod.end.toUTCString()}`
+                    : createdBillingPeriod(server.created)}
+                </Text>
+              </InfoRow>
             </Stack>
           </div>
           <ExtensionSlot
@@ -293,7 +327,7 @@ export default function ServerOverview({ server }: { server: Server }) {
           title={t('pages.admin.servers.tabs.overview.page.card.resourceLimits', {})}
           icon={<FontAwesomeIcon icon={faMicrochip} />}
         >
-          <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3'>
+          <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3'>
             <StatBox
               label={t('common.stat.cpu', {})}
               icon={<FontAwesomeIcon icon={faMicrochip} />}
@@ -316,6 +350,19 @@ export default function ServerOverview({ server }: { server: Server }) {
               label={t('pages.admin.servers.tabs.overview.page.label.disk', {})}
               icon={<FontAwesomeIcon icon={faHardDrive} />}
               value={<LimitBytesValue value={server.limits.disk} unlimitedLabel={unlimitedLabel} />}
+            />
+            <StatBox
+              label='Network'
+              icon={<FontAwesomeIcon icon={faNetworkWired} />}
+              value={
+                networkQuota === null ? (
+                  <Badge color='gray' variant='light'>
+                    {unlimitedLabel}
+                  </Badge>
+                ) : (
+                  trafficBytesToString(networkQuota)
+                )
+              }
             />
             <StatBox
               label={t('pages.admin.servers.tabs.overview.page.label.swap', {})}

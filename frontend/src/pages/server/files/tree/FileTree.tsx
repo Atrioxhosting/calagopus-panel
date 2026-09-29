@@ -8,6 +8,7 @@ import loadDirectory from '@/api/server/files/loadDirectory.ts';
 import searchFiles from '@/api/server/files/searchFiles.ts';
 import Card from '@/elements/data-display/Card.tsx';
 import ContextMenu from '@/elements/overlays/ContextMenu.tsx';
+import { bandwidthUploadError, isBandwidthBlocked } from '@/lib/files/bandwidthUpload.ts';
 import { useDraggedFileMove } from '@/pages/server/files/hooks/useDraggedFileMove.ts';
 import { getFilesFromDataTransfer } from '@/pages/server/files/hooks/useFileDragAndDrop.ts';
 import FileMassContextMenu from '@/pages/server/files/list/FileMassContextMenu.tsx';
@@ -61,6 +62,7 @@ function FileTree({
   const { addToast } = useToast();
   const [, setSearchParams] = useSearchParams();
   const server = useServerStore((state) => state.server);
+  const bandwidthBlocked = useServerStore((state) => isBandwidthBlocked(state.stats?.bandwidth.state));
   const canCreateFiles = useServerCan('files.create');
   const canUpdateFiles = useServerCan('files.update');
   const store = useFileManagerApi();
@@ -911,6 +913,10 @@ function FileTree({
   );
 
   const uploadDroppedFiles = async (dataTransfer: DataTransfer, target: string) => {
+    if (bandwidthBlocked) {
+      addToast(bandwidthUploadError, 'error');
+      return;
+    }
     try {
       const files = await getFilesFromDataTransfer(dataTransfer);
       if (files.length === 0) return;

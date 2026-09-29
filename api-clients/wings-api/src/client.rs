@@ -169,6 +169,98 @@ pub struct WingsClient {
 }
 
 impl WingsClient {
+    pub async fn get_server_bandwidth(
+        &self,
+        server: uuid::Uuid,
+    ) -> Result<serde_json::Value, ApiHttpError> {
+        request_impl(
+            self,
+            Method::GET,
+            format!("/api/servers/{server}/bandwidth"),
+            None::<&()>,
+            None,
+        )
+        .await
+    }
+
+    pub async fn post_server_bandwidth_correction(
+        &self,
+        server: uuid::Uuid,
+        data: &serde_json::Value,
+    ) -> Result<serde_json::Value, ApiHttpError> {
+        request_impl(
+            self,
+            Method::POST,
+            format!("/api/servers/{server}/bandwidth/correction"),
+            Some(data),
+            None,
+        )
+        .await
+    }
+
+    pub async fn post_server_bandwidth_handoff(
+        &self,
+        server: uuid::Uuid,
+        expected_generation: u64,
+    ) -> Result<serde_json::Value, ApiHttpError> {
+        request_impl(
+            self,
+            Method::POST,
+            format!("/api/servers/{server}/bandwidth/handoff"),
+            Some(&serde_json::json!({"expected_generation": expected_generation})),
+            None,
+        )
+        .await
+    }
+
+    pub async fn post_server_bandwidth_accept(
+        &self,
+        server: uuid::Uuid,
+        expected_generation: u64,
+        ledger: &serde_json::Value,
+    ) -> Result<serde_json::Value, ApiHttpError> {
+        request_impl(
+            self,
+            Method::POST,
+            format!("/api/servers/{server}/bandwidth/accept"),
+            Some(
+                &serde_json::json!({"expected_generation": expected_generation, "ledger": ledger}),
+            ),
+            None,
+        )
+        .await
+    }
+
+    pub async fn post_server_bandwidth_unfreeze(
+        &self,
+        server: uuid::Uuid,
+        expected_generation: u64,
+    ) -> Result<serde_json::Value, ApiHttpError> {
+        request_impl(
+            self,
+            Method::POST,
+            format!("/api/servers/{server}/bandwidth/unfreeze"),
+            Some(&serde_json::json!({"expected_generation": expected_generation})),
+            None,
+        )
+        .await
+    }
+
+    pub async fn post_server_bandwidth_abort_import(
+        &self,
+        server: uuid::Uuid,
+        generation: u64,
+    ) -> Result<serde_json::Value, ApiHttpError> {
+        request_impl(
+            self,
+            Method::POST,
+            format!("/api/servers/{server}/bandwidth/abort-import"),
+            Some(&serde_json::json!({"generation": generation})),
+            None,
+        )
+        .await
+    }
+
     #[inline]
     pub fn new(base_url: String, token: String) -> Self {
         Self {

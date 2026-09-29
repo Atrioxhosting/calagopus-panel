@@ -189,6 +189,9 @@ pub struct Server {
     subuser_ignored_files_overrides: Option<Box<ignore::overrides::Override>>,
 
     pub created: chrono::NaiveDateTime,
+    pub billing_period_id: Option<compact_str::CompactString>,
+    pub billing_period_start: Option<chrono::NaiveDateTime>,
+    pub billing_period_end: Option<chrono::NaiveDateTime>,
 
     extension_data: super::ModelExtensionData,
 }
@@ -317,6 +320,18 @@ impl BaseModel for Server {
                 "servers.created",
                 compact_str::format_compact!("{prefix}created"),
             ),
+            (
+                "servers.billing_period_id",
+                compact_str::format_compact!("{prefix}billing_period_id"),
+            ),
+            (
+                "servers.billing_period_start",
+                compact_str::format_compact!("{prefix}billing_period_start"),
+            ),
+            (
+                "servers.billing_period_end",
+                compact_str::format_compact!("{prefix}billing_period_end"),
+            ),
         ]);
 
         columns.extend(super::server_allocation::ServerAllocation::base_columns(
@@ -416,6 +431,12 @@ impl BaseModel for Server {
                 .ok(),
             subuser_ignored_files_overrides: None,
             created: row.try_get(compact_str::format_compact!("{prefix}created").as_str())?,
+            billing_period_id: row
+                .try_get(compact_str::format_compact!("{prefix}billing_period_id").as_str())?,
+            billing_period_start: row
+                .try_get(compact_str::format_compact!("{prefix}billing_period_start").as_str())?,
+            billing_period_end: row
+                .try_get(compact_str::format_compact!("{prefix}billing_period_end").as_str())?,
             extension_data: Self::map_extensions(prefix, row)?,
         })
     }
@@ -1942,6 +1963,8 @@ impl Server {
             schedule_steps.insert(schedules[i].uuid, steps);
         }
 
+        let node = self.node.fetch_cached(database).await?;
+
         Ok(RemoteApiServer {
             settings: wings_api::ServerConfiguration {
                 uuid: self.uuid,
@@ -1951,6 +1974,20 @@ impl Server {
                     description: self.description.unwrap_or_default(),
                 },
                 suspended: self.suspended,
+                bandwidth_per_gib: node.bandwidth_per_gib,
+                created: Some(self.created.and_utc()),
+                billing_period: self
+                    .billing_period_id
+                    .as_ref()
+                    .zip(self.billing_period_start)
+                    .zip(self.billing_period_end)
+                    .map(
+                        |((id, start), end)| wings_api::ServerConfigurationBillingPeriod {
+                            id: id.clone(),
+                            start: start.and_utc(),
+                            end: end.and_utc(),
+                        },
+                    ),
                 invocation: self.startup,
                 entrypoint: None,
                 skip_egg_scripts: false,
@@ -2164,6 +2201,18 @@ impl super::IntoAdminApiObject for Server {
                 hugepages_passthrough_enabled: self.hugepages_passthrough_enabled,
                 kvm_passthrough_enabled: self.kvm_passthrough_enabled,
                 created: self.created.and_utc(),
+                billing_period: self
+                    .billing_period_id
+                    .as_ref()
+                    .zip(self.billing_period_start)
+                    .zip(self.billing_period_end)
+                    .map(
+                        |((id, start), end)| wings_api::ServerConfigurationBillingPeriod {
+                            id: id.clone(),
+                            start: start.and_utc(),
+                            end: end.and_utc(),
+                        }
+                    ),
             },
             api_object,
             state
@@ -2255,6 +2304,18 @@ impl super::IntoApiObject for Server {
                 auto_start_behavior: self.auto_start_behavior,
                 timezone: self.timezone,
                 created: self.created.and_utc(),
+                billing_period: self
+                    .billing_period_id
+                    .as_ref()
+                    .zip(self.billing_period_start)
+                    .zip(self.billing_period_end)
+                    .map(
+                        |((id, start), end)| wings_api::ServerConfigurationBillingPeriod {
+                            id: id.clone(),
+                            start: start.and_utc(),
+                            end: end.and_utc(),
+                        }
+                    ),
             },
             api_object,
             state
@@ -3097,6 +3158,7 @@ pub struct AdminApiServer {
     pub kvm_passthrough_enabled: bool,
 
     pub created: chrono::DateTime<chrono::Utc>,
+    pub billing_period: Option<wings_api::ServerConfigurationBillingPeriod>,
 }
 
 #[schema_extension_derive::extendible]
@@ -3145,6 +3207,7 @@ pub struct ApiServer {
     pub timezone: Option<compact_str::CompactString>,
 
     pub created: chrono::DateTime<chrono::Utc>,
+    pub billing_period: Option<wings_api::ServerConfigurationBillingPeriod>,
 }
 
 #[cfg(test)]

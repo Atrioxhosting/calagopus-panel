@@ -29,6 +29,7 @@ export const nodeEmptyFormValues: NodeFormValues = {
   sftpPort: 2022,
   memory: 8192,
   disk: 10240,
+  bandwidthPerGib: 0,
 };
 
 export const nodeToFormValues = (node: z.infer<typeof adminNodeSchema>): Partial<NodeFormValues> => ({
@@ -44,6 +45,7 @@ export const nodeToFormValues = (node: z.infer<typeof adminNodeSchema>): Partial
   sftpPort: node.sftpPort,
   memory: node.memory,
   disk: node.disk,
+  bandwidthPerGib: node.bandwidthPerGib,
 });
 
 interface NodeFormFieldsOptions {
@@ -188,6 +190,15 @@ export function useNodeFormFields({
         clearable: true,
         loading: backupConfigurations.loading,
       },
+    },
+    { type: 'divider', name: 'networkDivider', label: 'Network' },
+    {
+      type: 'number',
+      name: 'bandwidthPerGib',
+      label: 'Bandwidth per GiB',
+      required: true,
+      description: 'Decimal GB of traffic per GiB of allocated RAM. 0 = Unlimited.',
+      props: { min: 0 },
     },
     {
       type: 'divider',

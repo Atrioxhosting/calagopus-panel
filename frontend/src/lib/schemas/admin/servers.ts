@@ -59,6 +59,7 @@ export const adminServerSchema = z.looseObject({
   hugepagesPassthroughEnabled: z.boolean(),
   kvmPassthroughEnabled: z.boolean(),
   created: z.coerce.date(),
+  billingPeriod: z.object({ id: z.string(), start: z.coerce.date(), end: z.coerce.date() }).nullable(),
 });
 
 const adminServerBaseOmit = adminServerSchema.omit({
@@ -76,6 +77,7 @@ const adminServerBaseOmit = adminServerSchema.omit({
   autoKill: true,
   autoStartBehavior: true,
   created: true,
+  billingPeriod: true,
 });
 
 export const adminServerCreateSchema = z.lazy(() =>

@@ -6,7 +6,9 @@ import ScrollingText from '@/elements/ScrollingText.tsx';
 function ChartBlock({
   icon,
   title,
+  titleSuffix,
   value,
+  valueBelowTitle = false,
   legend,
   overlayIcon,
   overlayLabel,
@@ -15,7 +17,9 @@ function ChartBlock({
 }: {
   icon: ReactNode;
   title: string;
+  titleSuffix?: ReactNode;
   value?: ReactNode;
+  valueBelowTitle?: boolean;
   legend?: ReactNode;
   overlayIcon?: ReactNode;
   overlayLabel?: string;
@@ -25,10 +29,13 @@ function ChartBlock({
   return (
     <Card p={0} className={`relative flex min-w-0 flex-col ${className ?? ''}`}>
       <div className='@container border-b border-(--mantine-color-default-border) px-4 py-3'>
-        <div className='flex flex-col items-start gap-1 @lg:flex-row @lg:items-center @lg:justify-between @lg:gap-2'>
+        <div
+          className={`flex flex-col items-start gap-1 ${valueBelowTitle ? '' : '@lg:flex-row @lg:items-center @lg:justify-between @lg:gap-2'}`}
+        >
           <h3 className='flex min-w-0 max-w-full items-center transition-colors duration-100'>
             <span className='mr-2 shrink-0'>{icon}</span>
             <ScrollingText>{title}</ScrollingText>
+            {titleSuffix}
           </h3>
           {!overlayLabel && value !== undefined && value !== null && (
             <span className='shrink-0 text-sm tabular-nums'>{value}</span>

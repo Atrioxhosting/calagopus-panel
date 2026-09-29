@@ -684,6 +684,7 @@ export const nodesTable = pgTable(
     sftp_port: integer().notNull(),
     memory: bigint({ mode: 'number' }).notNull(),
     disk: bigint({ mode: 'number' }).notNull(),
+    bandwidth_per_gib: bigint({ mode: 'number' }).default(0).notNull(),
     token_id: char({ length: 16 }).notNull(),
     token: bytea().notNull(),
     created: timestamp().defaultNow().notNull(),
@@ -1046,6 +1047,9 @@ export const serversTable = pgTable(
     database_limit: integer().default(0).notNull(),
     backup_limit: integer().default(0).notNull(),
     schedule_limit: integer().default(0).notNull(),
+    billing_period_id: varchar({ length: 255 }),
+    billing_period_start: timestamp(),
+    billing_period_end: timestamp(),
     created: timestamp().defaultNow().notNull(),
   },
   (cols) => [

@@ -71,6 +71,7 @@ export const serverSchema = z.looseObject({
   autoStartBehavior: z.lazy(() => serverAutostartBehavior),
   timezone: z.string().nullable(),
   created: z.coerce.date(),
+  billingPeriod: z.object({ id: z.string(), start: z.coerce.date(), end: z.coerce.date() }).nullable(),
 });
 
 export const serverImagePullProgressSchema = z.object({
@@ -89,6 +90,19 @@ export const serverResourceUsageSchema = z.object({
   memoryBytes: z.number(),
   memoryLimitBytes: z.number(),
   diskBytes: z.number(),
+  bandwidth: z.object({
+    usedBytes: z.number(),
+    quotaBytes: z.number().nullable(),
+    rxBytes: z.number(),
+    txBytes: z.number(),
+    periodStart: z.number(),
+    periodEnd: z.number(),
+    bandwidthPerGib: z.number(),
+    state: z.string(),
+    resumeAfterQuota: z.boolean(),
+    generation: z.number(),
+    lastCheckpoint: z.number(),
+  }),
   state: z.lazy(() => serverPowerState),
   network: z.object({
     rxBytes: z.number(),

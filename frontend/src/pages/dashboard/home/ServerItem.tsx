@@ -4,6 +4,7 @@ import {
   faCheckCircle,
   faCircleXmark,
   faEllipsisVertical,
+  faGaugeHigh,
   faHardDrive,
   faInfoCircle,
   faMemory,
@@ -31,7 +32,7 @@ import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import ScrollingText from '@/elements/ScrollingText.tsx';
 import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { formatAllocation, serverStatusInfo, statusToColor } from '@/lib/domain/server.ts';
-import { bytesToString, mbToBytes } from '@/lib/format/size.ts';
+import { bytesToString, mbToBytes, trafficBytesToString } from '@/lib/format/size.ts';
 import { serverPowerAction, serverSchema } from '@/lib/schemas/server/server.ts';
 import { useBulkPowerActions } from '@/plugins/server/useBulkPowerActions.ts';
 import { useServerListShowOthers } from '@/plugins/server/useServerListShowOthers.ts';
@@ -386,6 +387,25 @@ export default function ServerItem({
                           <div>
                             <span className='mr-1'>{bytesToString(stats.diskBytes)}</span>
                             <span className='inline-block text-xs text-(--mantine-color-dimmed)'>/ {diskLimit}</span>
+                          </div>
+                        </div>
+
+                        <Divider mx='sm' orientation='vertical' className='hidden sm:block' />
+                        <Divider my='xs' className='sm:hidden' />
+
+                        <div
+                          className='flex gap-2 text-sm justify-start sm:justify-center items-center'
+                          title='Bandwidth'
+                        >
+                          <FontAwesomeIcon icon={faGaugeHigh} className='size-5 flex-none' />
+                          <div>
+                            <span className='mr-1'>{trafficBytesToString(stats.bandwidth.usedBytes)}</span>
+                            <span className='inline-block text-xs text-(--mantine-color-dimmed)'>
+                              /{' '}
+                              {stats.bandwidth.quotaBytes === null
+                                ? t('common.unlimited', {})
+                                : trafficBytesToString(stats.bandwidth.quotaBytes)}
+                            </span>
                           </div>
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 use super::State;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
+mod bandwidth_correction;
 mod power;
 mod resources;
 mod transfer;
@@ -86,6 +87,7 @@ mod get {
 
 pub fn router(state: &State) -> OpenApiRouter<State> {
     OpenApiRouter::new()
+        .nest("/bandwidth-correction", bandwidth_correction::router(state))
         .nest("/power", power::router(state))
         .nest("/transfer", transfer::router(state))
         .nest("/resources", resources::router(state))

@@ -32,6 +32,7 @@ export const adminNodeSchema = z.looseObject({
   sftpPort: z.number().min(0).max(65535),
   memory: z.number().min(0),
   disk: z.number().min(0),
+  bandwidthPerGib: z.number().int().min(0),
   created: z.coerce.date(),
 });
 

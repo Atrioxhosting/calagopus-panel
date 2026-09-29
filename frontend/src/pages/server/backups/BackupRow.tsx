@@ -81,7 +81,13 @@ export default function BackupRow({
         window.location.href = url;
       })
       .catch((msg) => {
-        addToast(httpErrorToHuman(msg), 'error');
+        const message = httpErrorToHuman(msg);
+        addToast(
+          message === 'bandwidth quota reached'
+            ? 'Bandwidth quota reached; backups cannot be downloaded until the traffic quota resets.'
+            : message,
+          'error',
+        );
       });
   };
 

@@ -116,6 +116,7 @@ async fn handle_aio_wings(
                     sftp_port: 2022,
                     memory: round_to_closest_gib(system.total_memory()) as i64 / 1024 / 1024,
                     disk: round_to_closest_gib(disk.total_space()) as i64 / 1024 / 1024,
+                    bandwidth_per_gib: 0,
                 },
             )
             .await?;

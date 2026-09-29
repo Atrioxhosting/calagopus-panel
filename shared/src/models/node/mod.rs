@@ -81,6 +81,7 @@ pub struct Node {
 
     pub memory: i64,
     pub disk: i64,
+    pub bandwidth_per_gib: i64,
 
     pub token_id: compact_str::CompactString,
     pub token: EncryptedString,
@@ -146,6 +147,10 @@ impl BaseModel for Node {
             ),
             ("nodes.disk", compact_str::format_compact!("{prefix}disk")),
             (
+                "nodes.bandwidth_per_gib",
+                compact_str::format_compact!("{prefix}bandwidth_per_gib"),
+            ),
+            (
                 "nodes.token_id",
                 compact_str::format_compact!("{prefix}token_id"),
             ),
@@ -194,6 +199,8 @@ impl BaseModel for Node {
             sftp_port: row.try_get(compact_str::format_compact!("{prefix}sftp_port").as_str())?,
             memory: row.try_get(compact_str::format_compact!("{prefix}memory").as_str())?,
             disk: row.try_get(compact_str::format_compact!("{prefix}disk").as_str())?,
+            bandwidth_per_gib: row
+                .try_get(compact_str::format_compact!("{prefix}bandwidth_per_gib").as_str())?,
             token_id: row.try_get(compact_str::format_compact!("{prefix}token_id").as_str())?,
             token: row.try_get(compact_str::format_compact!("{prefix}token").as_str())?,
             created: row.try_get(compact_str::format_compact!("{prefix}created").as_str())?,
@@ -919,6 +926,7 @@ impl IntoAdminApiObject for Node {
                 sftp_port: self.sftp_port,
                 memory: self.memory,
                 disk: self.disk,
+                bandwidth_per_gib: self.bandwidth_per_gib,
                 created: self.created.and_utc(),
             },
             api_object,
@@ -1008,6 +1016,9 @@ pub struct CreateNodeOptions {
     #[garde(range(min = 0))]
     #[schema(minimum = 0)]
     pub disk: i64,
+    #[garde(range(min = 0))]
+    #[schema(minimum = 0)]
+    pub bandwidth_per_gib: i64,
 }
 
 #[async_trait::async_trait]
@@ -1062,6 +1073,7 @@ impl CreatableModel for Node {
             .set("sftp_port", options.sftp_port as i32)
             .set("memory", options.memory)
             .set("disk", options.disk)
+            .set("bandwidth_per_gib", options.bandwidth_per_gib)
             .set("token_id", token_id.clone())
             .set(
                 "token",
@@ -1136,6 +1148,9 @@ pub struct UpdateNodeOptions {
     #[garde(range(min = 0))]
     #[schema(minimum = 0)]
     pub disk: Option<i64>,
+    #[garde(range(min = 0))]
+    #[schema(minimum = 0)]
+    pub bandwidth_per_gib: Option<i64>,
 }
 
 #[async_trait::async_trait]
@@ -1220,6 +1235,7 @@ impl UpdatableModel for Node {
             .set("sftp_port", options.sftp_port.as_ref().map(|p| *p as i32))
             .set("memory", options.memory.as_ref())
             .set("disk", options.disk.as_ref())
+            .set("bandwidth_per_gib", options.bandwidth_per_gib.as_ref())
             .where_eq("uuid", self.uuid);
 
         query_builder.execute(&mut **transaction).await?;
@@ -1261,6 +1277,9 @@ impl UpdatableModel for Node {
         }
         if let Some(disk) = options.disk {
             self.disk = disk;
+        }
+        if let Some(bandwidth_per_gib) = options.bandwidth_per_gib {
+            self.bandwidth_per_gib = bandwidth_per_gib;
         }
 
         self.run_after_update_handlers(state, transaction).await?;
@@ -1360,6 +1379,7 @@ impl DuplicableModel for Node {
             .set("sftp_port", self.sftp_port)
             .set("memory", self.memory)
             .set("disk", self.disk)
+            .set("bandwidth_per_gib", self.bandwidth_per_gib)
             .set("token_id", token_id)
             .set(
                 "token",
@@ -1439,6 +1459,7 @@ pub struct AdminApiNode {
 
     pub memory: i64,
     pub disk: i64,
+    pub bandwidth_per_gib: i64,
 
     pub created: chrono::DateTime<chrono::Utc>,
 }

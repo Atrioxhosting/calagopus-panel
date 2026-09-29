@@ -57,6 +57,13 @@ export function bytesToString(bytes: number, decimals = 2, shortBytes = false): 
     : `${value} ${mapUnitToLocale(unit)}`;
 }
 
+export function trafficBytesToString(bytes: number): string {
+  if (bytes < 1000) return `${bytes} B`;
+  const units = ['KB', 'MB', 'GB', 'TB', 'PB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1000)) - 1, units.length - 1);
+  return `${(bytes / 1000 ** (index + 1)).toFixed(2)} ${units[index]}`;
+}
+
 /**
  * Formats "processed / total" progress. When the total is unknown (0), only the
  * processed amount is shown.

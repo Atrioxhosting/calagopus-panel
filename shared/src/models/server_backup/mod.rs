@@ -1308,6 +1308,7 @@ impl ServerBackup {
             base: BasePayload,
 
             backup_uuid: uuid::Uuid,
+            server_uuid: Option<uuid::Uuid>,
             unique_id: uuid::Uuid,
             database: bool,
         }
@@ -1327,6 +1328,7 @@ impl ServerBackup {
                     jwt_id: user.uuid.to_compact_string(),
                 },
                 backup_uuid: self.uuid,
+                server_uuid: self.server.as_ref().map(|server| server.uuid),
                 unique_id: uuid::Uuid::new_v4(),
                 database: self.kind == ServerBackupKind::DatabaseInstance,
             },

@@ -102,6 +102,7 @@ export default function OobeNode({ onNext, onBack, canGoBack, skipFrom, data }: 
           sftpPort: form.values.sftpPort,
           memory: form.values.memory,
           disk: form.values.disk,
+          bandwidthPerGib: existingNode.bandwidthPerGib,
           locationUuid: existingNode.location.uuid,
           backupConfigurationUuid: existingNode.backupConfiguration?.uuid ?? null,
         });
@@ -127,6 +128,7 @@ export default function OobeNode({ onNext, onBack, canGoBack, skipFrom, data }: 
           sftpPort: form.values.sftpPort,
           memory: form.values.memory,
           disk: form.values.disk,
+          bandwidthPerGib: 0,
           locationUuid: locationUuid!,
           backupConfigurationUuid: null,
         });

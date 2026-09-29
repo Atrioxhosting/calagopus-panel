@@ -1,4 +1,4 @@
-import { faNetworkWired, faShareNodes, faShieldHalved } from '@fortawesome/free-solid-svg-icons';
+import { faChartLine, faNetworkWired, faShareNodes, faShieldHalved } from '@fortawesome/free-solid-svg-icons';
 import SubNavigation from '@/elements/navigation/SubNavigation.tsx';
 import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -20,9 +20,14 @@ export default function NetworkSubNavigation() {
       hideWhenSingle
       items={[
         {
+          name: 'Traffic',
+          icon: faChartLine,
+          link: `/server/${server.uuidShort}/network/traffic`,
+        },
+        {
           name: t('pages.server.network.allocations.title', {}),
           icon: faNetworkWired,
-          link: `/server/${server.uuidShort}/network`,
+          link: `/server/${server.uuidShort}/network/allocations`,
           hidden: !canReadAllocations,
         },
         {

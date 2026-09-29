@@ -14,6 +14,8 @@ use utoipa_axum::{router::OpenApiRouter, routes};
 
 mod allocations;
 mod backups;
+mod bandwidth;
+mod billing_period;
 mod clear_state;
 mod databases;
 mod logs;
@@ -281,6 +283,8 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .routes(routes!(delete::route))
         .routes(routes!(patch::route))
         .nest("/variables", variables::router(state))
+        .nest("/bandwidth", bandwidth::router(state))
+        .nest("/billing-period", billing_period::router(state))
         .nest("/mounts", mounts::router(state))
         .nest("/transfer", transfer::router(state))
         .nest("/allocations", allocations::router(state))
