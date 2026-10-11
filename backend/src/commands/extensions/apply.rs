@@ -10,6 +10,9 @@ use std::{
 };
 use tokio::process::Command;
 
+const BYTES_PER_BUILD_JOB: u64 = 2 * 1024 * 1024 * 1024;
+const CGROUP_ROOT: &str = "/sys/fs/cgroup";
+
 #[derive(ValueEnum, Clone, Copy)]
 pub enum ApplyProfile {
     Dev,
@@ -63,6 +66,12 @@ pub struct ApplyArgs {
         default_value = "panel-rs"
     )]
     bin: String,
+    #[arg(
+        short = 'j',
+        long = "jobs",
+        help = "the number of parallel cargo jobs, defaults to a value derived from available memory and cpus"
+    )]
+    jobs: Option<usize>,
 }
 
 pub struct ApplyCommand;
@@ -212,6 +221,7 @@ impl shared::extensions::commands::CliCommand<ApplyArgs> for ApplyCommand {
                 println!("installing dependencies...");
                 let status = Command::new(&pnpm_bin)
                     .arg("install")
+                    .arg("--prefer-offline")
                     .current_dir("frontend")
                     .status()
                     .await?;
@@ -264,14 +274,40 @@ impl shared::extensions::commands::CliCommand<ApplyArgs> for ApplyCommand {
                 println!("┗━━━━━━━━━━━━━━━━━━┛");
 
                 println!("building backend...");
-                let status = Command::new(&cargo_bin)
-                    .arg("build")
-                    .arg("--profile")
-                    .arg(args.profile.to_rust_profile())
-                    .arg("-p")
-                    .arg(&args.bin)
-                    .status()
-                    .await?;
+                let mut jobs = args
+                    .jobs
+                    .or_else(|| std::env::var("CARGO_BUILD_JOBS").ok()?.parse().ok())
+                    .unwrap_or_else(default_build_jobs);
+                let status = loop {
+                    println!("using {} parallel jobs", jobs.to_string().bright_black());
+
+                    let oom_kills_before = cgroup_oom_kills().await;
+                    let status = Command::new(&cargo_bin)
+                        .arg("build")
+                        .arg("--profile")
+                        .arg(args.profile.to_rust_profile())
+                        .arg("-p")
+                        .arg(&args.bin)
+                        .arg("--jobs")
+                        .arg(jobs.to_string())
+                        .status()
+                        .await?;
+                    if status.success() || jobs == 1 {
+                        break status;
+                    }
+
+                    if cgroup_oom_kills().await > oom_kills_before {
+                        eprintln!(
+                            "{} {}",
+                            "cargo build was killed for running out of memory,".yellow(),
+                            "retrying with a single job".yellow()
+                        );
+                        jobs = 1;
+                        continue;
+                    }
+
+                    break status;
+                };
                 if !status.success() {
                     eprintln!(
                         "{} {}",
@@ -335,6 +371,86 @@ impl shared::extensions::commands::CliCommand<ApplyArgs> for ApplyCommand {
             })
         })
     }
+}
+
+fn default_build_jobs() -> usize {
+    let cpus = std::thread::available_parallelism().map_or(1, |cpus| cpus.get());
+
+    let Some(memory) = available_memory() else {
+        return cpus;
+    };
+
+    ((memory / BYTES_PER_BUILD_JOB) as usize).clamp(1, cpus)
+}
+
+fn available_memory() -> Option<u64> {
+    let meminfo = std::fs::read_to_string("/proc/meminfo").ok()?;
+    let mem_available = meminfo
+        .lines()
+        .find_map(|line| line.strip_prefix("MemAvailable:"))
+        .and_then(|value| {
+            value
+                .trim()
+                .trim_end_matches("kB")
+                .trim()
+                .parse::<u64>()
+                .ok()
+        })
+        .map(|kib| kib * 1024);
+
+    let read_u64 =
+        |path: &Path| -> Option<u64> { std::fs::read_to_string(path).ok()?.trim().parse().ok() };
+    // a limit can sit on any ancestor (e.g. a systemd slice), so the tightest level wins
+    let cgroup_available = own_cgroup_dir()
+        .ancestors()
+        .take_while(|dir| dir.starts_with(CGROUP_ROOT))
+        .filter_map(|dir| {
+            let limit = read_u64(&dir.join("memory.max"))?;
+            let current = read_u64(&dir.join("memory.current"))?;
+            let reclaimable = std::fs::read_to_string(dir.join("memory.stat"))
+                .ok()?
+                .lines()
+                .find_map(|line| line.strip_prefix("inactive_file "))
+                .and_then(|value| value.trim().parse::<u64>().ok())
+                .unwrap_or(0);
+
+            Some(limit.saturating_sub(current.saturating_sub(reclaimable)))
+        })
+        .min();
+
+    match (mem_available, cgroup_available) {
+        (Some(mem_available), Some(cgroup_available)) => Some(mem_available.min(cgroup_available)),
+        (mem_available, cgroup_available) => mem_available.or(cgroup_available),
+    }
+}
+
+/// The cgroup v2 directory of this process, which cargo and rustc inherit. Its `memory.events`
+/// counts oom kills of its members regardless of which ancestor's limit triggered them.
+fn own_cgroup_dir() -> PathBuf {
+    std::fs::read_to_string("/proc/self/cgroup")
+        .ok()
+        .and_then(|cgroups| {
+            cgroups
+                .lines()
+                .find_map(|line| line.strip_prefix("0::"))
+                .filter(|path| !path.split('/').any(|component| component == ".."))
+                .map(|path| Path::new(CGROUP_ROOT).join(path.trim_start_matches('/')))
+        })
+        .filter(|dir| dir.is_dir())
+        .unwrap_or_else(|| PathBuf::from(CGROUP_ROOT))
+}
+
+async fn cgroup_oom_kills() -> u64 {
+    tokio::fs::read_to_string(own_cgroup_dir().join("memory.events"))
+        .await
+        .ok()
+        .and_then(|events| {
+            events
+                .lines()
+                .find_map(|line| line.strip_prefix("oom_kill "))
+                .and_then(|value| value.trim().parse().ok())
+        })
+        .unwrap_or(0)
 }
 
 pub async fn which(bin: &'static str) -> Result<PathBuf, anyhow::Error> {

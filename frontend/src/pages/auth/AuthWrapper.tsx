@@ -1,11 +1,15 @@
+import { faGlobe } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ReactNode, useMemo, useRef } from 'react';
 import { ContainerRegistry, makeComponentHookable } from 'shared';
 import AppIcon from '@/elements/AppIcon.tsx';
 import Copyright from '@/elements/Copyright.tsx';
 import ContentContainer from '@/elements/containers/ContentContainer.tsx';
 import ExtensionSlot from '@/elements/ExtensionSlot.tsx';
+import Select from '@/elements/input/Select.tsx';
 import { useContainerAutoHeight } from '@/plugins/viewport/useContainerAutoHeight.ts';
 import { useCurrentWindow } from '@/providers/CurrentWindowProvider.tsx';
+import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useGlobalStore } from '@/stores/global.ts';
 
 export interface Props {
@@ -29,7 +33,9 @@ function AuthWrapper(props: Props) {
 
   const { title, registry, children } = modifiedProps;
 
+  const { t, language, setLanguage } = useTranslations();
   const settings = useGlobalStore((state) => state.settings);
+  const languages = useGlobalStore((state) => state.languages);
   const authRegistry = window.extensionContext.extensionRegistry.pages.auth;
   const containerRef = useRef<HTMLDivElement>(null);
   const { getParent } = useCurrentWindow();
@@ -67,6 +73,21 @@ function AuthWrapper(props: Props) {
             name='appended-content'
             props={modifiedProps}
           />
+
+          {settings.user.allowChangingLanguage && languages.length > 1 && (
+            <Select
+              className='mt-4'
+              size='xs'
+              aria-label={t('common.form.language', {})}
+              leftSection={<FontAwesomeIcon icon={faGlobe} size='sm' />}
+              data={languages.map((language) => ({
+                label: new Intl.DisplayNames([language], { type: 'language' }).of(language) ?? language,
+                value: language,
+              }))}
+              value={language}
+              onChange={(value) => value && setLanguage(value)}
+            />
+          )}
 
           <Copyright className='mt-4 text-sm' />
 

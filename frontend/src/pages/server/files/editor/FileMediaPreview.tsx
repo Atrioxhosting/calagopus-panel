@@ -7,6 +7,8 @@ import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useFileManagerStore } from '@/stores/fileManager.ts';
 
+import '@gfazioli/mantine-audio/styles.css';
+
 interface FileImagePreviewProps {
   src: string;
   name: string;

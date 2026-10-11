@@ -200,6 +200,14 @@ impl BaseModel for ServerDatabaseInstance {
             extension_data: Self::map_extensions(prefix, row)?,
         })
     }
+
+    fn cache_invalidation_keys(&self) -> Vec<compact_str::CompactString> {
+        vec![compact_str::format_compact!(
+            "{}::{}",
+            Self::NAME,
+            self.uuid
+        )]
+    }
 }
 
 impl ServerDatabaseInstance {
@@ -1141,6 +1149,8 @@ impl DeletableModel for ServerDatabaseInstance {
         self.delete_with_transaction(state, options, &mut transaction)
             .await?;
         transaction.commit().await?;
+
+        super::invalidate_cache_keys(&state.database, &self.cache_invalidation_keys()).await;
 
         Ok(())
     }

@@ -160,6 +160,7 @@ export const usersTable = pgTable(
     suspended: boolean().default(false).notNull(),
     totp_enabled: boolean().default(false).notNull(),
     totp_last_used: timestamp(),
+    totp_last_step: bigint({ mode: 'number' }),
     totp_secret: bytea(),
     email_two_factor_enabled: boolean().default(false).notNull(),
     email_verified: boolean().default(false).notNull(),
@@ -461,6 +462,7 @@ export const oauthProvidersTable = pgTable(
     auth_url: varchar({ length: 255 }).notNull(),
     token_url: varchar({ length: 255 }).notNull(),
     info_url: varchar({ length: 255 }).notNull(),
+    info_urls: json().default({}).notNull(),
     scopes: varchar({ length: 64 }).array().notNull(),
     identifier_path: varchar({ length: 255 }).notNull(),
     email_path: varchar({ length: 255 }),
@@ -831,16 +833,14 @@ export const eggConfigurationsTable = pgTable(
     name: varchar({ length: 255 * UTF8_MAX_SCALAR_SIZE }).notNull(),
     description: text(),
     order_: smallint().default(0).notNull(),
-    eggs: uuid().array().default([]).notNull(),
+    matcher: jsonb().notNull(),
     config_allocations: jsonb(),
     config_startup: jsonb(),
     config_routes: jsonb(),
+    config_features: jsonb(),
     created: timestamp().defaultNow().notNull(),
   },
-  (cols) => [
-    uniqueIndex('egg_configurations_name_idx').on(cols.name),
-    index('egg_configurations_eggs_idx').using('gin', cols.eggs),
-  ],
+  (cols) => [uniqueIndex('egg_configurations_name_idx').on(cols.name)],
 );
 
 export const nestsTable = pgTable(

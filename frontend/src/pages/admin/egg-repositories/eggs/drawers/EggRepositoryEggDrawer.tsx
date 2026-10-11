@@ -2,6 +2,10 @@ import { faDownload } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { DrawerProps } from '@mantine/core';
 import { useEffect, useState } from 'react';
+import Markdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
+import remarkGfm from 'remark-gfm';
 import { z } from 'zod';
 import Button from '@/elements/buttons/Button.tsx';
 import { AdminCan } from '@/elements/Can.tsx';
@@ -9,7 +13,7 @@ import ScrollArea from '@/elements/layout/ScrollArea.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import Drawer from '@/elements/overlays/Drawer.tsx';
 import { adminEggRepositoryEggSchema, adminEggRepositorySchema } from '@/lib/schemas/admin/eggRepositories.ts';
-import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import { markdownComponents, useTranslations } from '@/providers/TranslationProvider.tsx';
 import EggRepositoryEggInstallModal from '../modals/EggRepositoryEggInstallModal.tsx';
 
 export default function EggRepositoryEggDrawer({
@@ -64,7 +68,15 @@ export default function EggRepositoryEggDrawer({
 
             <ScrollArea className='flex-1' offsetScrollbars>
               {displayEgg.readme ? (
-                <div className='text-sm wrap-break-word'>{displayEgg.readme.md({ html: true })}</div>
+                <div className='text-sm wrap-break-word'>
+                  <Markdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw, rehypeSanitize]}
+                    components={markdownComponents}
+                  >
+                    {displayEgg.readme}
+                  </Markdown>
+                </div>
               ) : (
                 <div className='flex items-center justify-center py-12 text-(--mantine-color-dimmed)'>
                   {t('pages.admin.eggRepositories.tabs.eggs.page.drawer.noReadme', {})}

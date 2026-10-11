@@ -99,7 +99,7 @@ impl ServerAllocation {
         state: &crate::State,
         server: &super::server::Server,
     ) -> Result<uuid::Uuid, crate::database::DatabaseError> {
-        let egg_configuration = server.egg.configuration(&state.database).await?;
+        let egg_configuration = server.egg_configuration(&state.database).await?;
 
         let Some(config_allocations) = egg_configuration.config_allocations else {
             return Err(anyhow::Error::new(

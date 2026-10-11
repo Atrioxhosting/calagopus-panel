@@ -10,9 +10,9 @@ import VariableContainer from '@/elements/VariableContainer.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { AdminServer } from '@/lib/schemas/admin/servers.ts';
 import { serverVariableSchema } from '@/lib/schemas/server/startup.ts';
+import { useUnsavedChanges } from '@/plugins/form/useFormDraft.ts';
 import { useKeyboardShortcut } from '@/plugins/quick-actions/useKeyboardShortcuts.ts';
 import { useResource } from '@/plugins/resource/useResource.ts';
-import { useBlocker } from '@/plugins/useBlocker.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -21,7 +21,7 @@ export default function AdminServerVariables({ server }: { server: AdminServer }
   const { addToast } = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const blocker = useBlocker(Object.keys(values).length > 0);
+  const blocker = useUnsavedChanges('variables', Object.keys(values).length > 0);
 
   const { data: serverVariables = [], invalidate } = useResource<z.infer<typeof serverVariableSchema>[]>({
     queryKey: queryKeys.admin.servers.variables(server.uuid),

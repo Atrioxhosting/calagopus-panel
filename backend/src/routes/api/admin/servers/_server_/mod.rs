@@ -233,6 +233,9 @@ mod patch {
 
         let limits = data.limits;
         let feature_limits = data.feature_limits.clone();
+        let egg_changed = data
+            .egg_uuid
+            .is_some_and(|egg_uuid| egg_uuid != server.egg.uuid);
         match server.update(&state, data).await {
             Ok(_) => {}
             Err(err) if err.is_unique_violation() => {
@@ -268,6 +271,10 @@ mod patch {
                 }),
             )
             .await;
+
+        if egg_changed {
+            shared::tunnel::poke_nodes(&state.database).await;
+        }
 
         tokio::spawn(async move {
             if let Err(err) = server.0.sync(&state.database).await {

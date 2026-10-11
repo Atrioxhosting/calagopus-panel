@@ -336,7 +336,8 @@
           "matches": "{count} Treffer",
           "noMatches": "Keine Treffer",
           "exception": "Ausnahme",
-          "tooManyPatterns": "Bei mehr als {max} Mustern werden Treffer nicht automatisch gezählt."
+          "tooManyPatterns": "Bei mehr als {max} Mustern werden Treffer nicht automatisch gezählt.",
+          "unanchoredException": "`{pattern}` trifft in jeder Tiefe zu, verwende `{anchored}`, um nur im Hauptverzeichnis zu treffen."
         },
         "cronInput": {
           "segments": {
@@ -675,7 +676,8 @@
           "restoringBackup": "Backup wird wiederhergestellt",
           "installing": "Wird installiert",
           "installFailed": "Installation fehlgeschlagen",
-          "backupRestoreFailed": "Backup-Wiederherstellung fehlgeschlagen"
+          "backupRestoreFailed": "Backup-Wiederherstellung fehlgeschlagen",
+          "resourcesUnavailable": "Ressourcennutzung nicht verfügbar"
         }
       },
       "enum": {
@@ -4149,7 +4151,8 @@
           "resourceName": "Egg-Konfiguration",
           "table": {
             "columns": {
-              "order": "Reihenfolge"
+              "order": "Reihenfolge",
+              "appliesTo": "Gilt für"
             }
           },
           "tabs": {
@@ -4160,9 +4163,39 @@
                 "form": {
                   "order": "Reihenfolge",
                   "eggsPlaceholder": "Eggs auswählen",
-                  "eggsEmpty": "Es sind keine Eggs konfiguriert. Erstelle ein Nest und ein Egg, bevor du eine Egg-Konfiguration erstellst."
+                  "eggsEmpty": "Es sind keine Eggs konfiguriert. Beim Abgleich nach Egg oder Nest gibt es nichts auszuwählen, bis ein Nest und ein Egg existieren.",
+                  "nestsPlaceholder": "Nests auswählen",
+                  "nodesPlaceholder": "Nodes auswählen",
+                  "locationsPlaceholder": "Standorte auswählen",
+                  "matcher": "Gilt für",
+                  "matcherDescription": "Legt fest, für welche Server diese Konfiguration gilt, anhand von Egg, Nest, Node oder Standort. Gelten mehrere Konfigurationen für einen Server, überschreiben die mit höherer Reihenfolge die mit niedrigerer.",
+                  "matcherType": "Matcher-Typ"
+                },
+                "matcher": {
+                  "allMustMatch": "Alle Matcher müssen zutreffen:",
+                  "anyMustMatch": "Mindestens ein Matcher muss zutreffen:",
+                  "mustNotMatch": "Matcher darf nicht zutreffen:"
+                },
+                "button": {
+                  "addMatcher": "Matcher hinzufügen"
                 },
                 "enum": {
+                  "matcherType": {
+                    "never": "Nie (Gilt für nichts)",
+                    "all": "Alle (Gilt immer)",
+                    "and": "UND (Alle müssen zutreffen)",
+                    "or": "ODER (Mindestens einer muss zutreffen)",
+                    "not": "NICHT (Darf nicht zutreffen)",
+                    "eggs": "Eggs",
+                    "nests": "Nests",
+                    "nodes": "Nodes",
+                    "locations": "Standorte"
+                  },
+                  "featureState": {
+                    "inherit": "Erben",
+                    "enabled": "Aktiviert",
+                    "disabled": "Deaktiviert"
+                  },
                   "deploymentType": {
                     "random": "Zufällig",
                     "range": "Port-Bereich",
@@ -4208,6 +4241,16 @@
                       "assignToVariablePlaceholder": "z. B. SERVER_PORT"
                     },
                     "removeRule": "Deployment-Regel entfernen"
+                  }
+                },
+                "features": {
+                  "title": "Funktionskonfiguration",
+                  "description": "Anders als bei den anderen Abschnitten behält jede auf Erben gestellte Funktion den Wert aus Konfigurationen mit niedrigerer Reihenfolge. Funktionen, die nirgends festgelegt sind, bleiben aktiviert.",
+                  "form": {
+                    "firewall": "Firewall",
+                    "firewallDescription": "Erlaubt Benutzern, Firewall-Regeln für ihre Server zu verwalten. Beim Deaktivieren bleiben bestehende Regeln erhalten, werden aber nicht mehr durchgesetzt.",
+                    "privateNetwork": "Privates Netzwerk",
+                    "privateNetworkDescription": "Erlaubt Servern, dem privaten Netzwerk beizutreten und sich mit anderen Servern zu verbinden. Beim Deaktivieren werden sie aus dem Netzwerk entfernt, bis es wieder aktiviert wird."
                   }
                 },
                 "startup": {
@@ -4657,6 +4700,8 @@
                   "authUrl": "Auth-URL",
                   "tokenUrl": "Token-URL",
                   "infoUrl": "Info-URL",
+                  "infoUrls": "Zusätzliche Info-URLs",
+                  "infoUrlsDescription": "Weitere Endpunkte, die bei jeder Anmeldung mit dem Access Token abgerufen werden und in Mapping-Matchern als Quelle dienen. Eine 404-Antwort gilt als nicht vorhanden, jeder andere Fehler lässt die Anmeldung fehlschlagen.",
                   "basicAuth": "Basic Auth",
                   "basicAuthDescription": "Verwendet HTTP Basic Authentication, um Client-ID und Secret zu übertragen, heute nicht mehr verbreitet.",
                   "pkce": "PKCE",
@@ -4721,6 +4766,7 @@
                   },
                   "matcherType": {
                     "none": "Keiner (Gilt immer)",
+                    "never": "Nie (Gilt für nichts)",
                     "and": "UND (Alle müssen zutreffen)",
                     "or": "ODER (Mindestens einer muss zutreffen)",
                     "not": "NICHT (Darf nicht zutreffen)",
@@ -4751,8 +4797,11 @@
                   "matcherType": "Matcher-Typ",
                   "scopes": "Scopes",
                   "scopesDescription": "OAuth-Scopes, die alle gewährt worden sein müssen, damit dieser Matcher zutrifft.",
+                  "source": "Quelle",
+                  "sourceDescription": "Die Antwort, auf die der Pfad angewendet wird. Eine Quelle, die mit 404 geantwortet hat, trifft nie zu.",
+                  "sourceInfoUrl": "Info-URL",
                   "path": "Feldpfad",
-                  "pathDescription": "Der Pfad, um das verglichene Feld aus der Info-URL-Antwort zu extrahieren (https://serdejsonpath.live).",
+                  "pathDescription": "Der Pfad, um das verglichene Feld aus der Antwort der Quelle zu extrahieren (https://serdejsonpath.live).",
                   "equals": "Ist gleich",
                   "contains": "Enthält",
                   "startsWith": "Beginnt mit",

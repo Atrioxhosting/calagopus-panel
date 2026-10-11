@@ -81,7 +81,7 @@ mod put {
                 .ok();
         }
 
-        let peers = ServerTunnelConnection::peers(&state.database, server.uuid, true).await?;
+        let peers = ServerTunnelConnection::peers(&state.database, server.uuid, true, &[]).await?;
         let mut peer_ports = Server::allocation_ports_by_uuids(
             &state.database,
             &peers

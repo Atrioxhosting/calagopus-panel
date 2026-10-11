@@ -1,6 +1,6 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { CronExpressionParser } from 'cron-parser';
-import cronstrue from 'cronstrue/i18n';
+import cronstrue from 'cronstrue';
 import { z } from 'zod';
 import getSchedule from '@/api/server/schedules/getSchedule.ts';
 import Card from '@/elements/data-display/Card.tsx';

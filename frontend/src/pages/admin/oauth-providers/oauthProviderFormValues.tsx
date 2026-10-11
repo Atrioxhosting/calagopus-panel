@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { type FieldDef } from '@/elements/form-engine/index.ts';
+import MultiKeyValueInput from '@/elements/input/MultiKeyValueInput.tsx';
 import { ignorePasswordManagerProps } from '@/lib/passwordManager.ts';
 import { adminOAuthProviderSchema, adminOAuthProviderUpdateSchema } from '@/lib/schemas/admin/oauthProviders.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -14,6 +15,7 @@ export const oauthProviderEmptyFormValues: OAuthFormValues = {
   authUrl: '',
   tokenUrl: '',
   infoUrl: '',
+  infoUrls: {},
   scopes: [],
   identifierPath: '',
   emailPath: null,
@@ -41,6 +43,7 @@ export const oauthProviderToFormValues = (
   authUrl: provider.authUrl,
   tokenUrl: provider.tokenUrl,
   infoUrl: provider.infoUrl,
+  infoUrls: provider.infoUrls,
   scopes: provider.scopes,
   identifierPath: provider.identifierPath,
   emailPath: provider.emailPath,
@@ -100,6 +103,21 @@ export function useOAuthProviderFormFields(): {
       name: 'infoUrl',
       label: t('pages.admin.oAuthProviders.tabs.general.page.form.infoUrl', {}),
       required: true,
+    },
+    {
+      type: 'custom',
+      name: 'infoUrls',
+      colSpan: 'full',
+      render: (f) => (
+        <MultiKeyValueInput
+          label={t('pages.admin.oAuthProviders.tabs.general.page.form.infoUrls', {})}
+          description={t('pages.admin.oAuthProviders.tabs.general.page.form.infoUrlsDescription', {})}
+          options={f.getValues().infoUrls ?? {}}
+          onChange={(infoUrls) => f.setFieldValue('infoUrls', infoUrls)}
+          placeholderKey='member'
+          placeholderValue='https://discord.com/api/users/@me/guilds/123456789012345678/member'
+        />
+      ),
     },
     {
       type: 'switch',

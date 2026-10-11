@@ -29,6 +29,7 @@ import { adminEggSchema } from '@/lib/schemas/admin/eggs.ts';
 import { adminNestSchema } from '@/lib/schemas/admin/nests.ts';
 import { AdminServer, adminServerUpdateSchema } from '@/lib/schemas/admin/servers.ts';
 import { fullUserSchema } from '@/lib/schemas/user.ts';
+import { useFormDraft } from '@/plugins/form/useFormDraft.ts';
 import { useHydrateForm } from '@/plugins/form/useHydrateForm.ts';
 import { useResourceForm } from '@/plugins/resource/useResourceForm.ts';
 import { useSearchableResource } from '@/plugins/resource/useSearchableResource.ts';
@@ -57,7 +58,10 @@ export default function ServerUpdate({ contextServer }: { contextServer: AdminSe
     schema: adminServerUpdateSchema.unwrap(),
     mode: 'uncontrolled',
     initialValues: serverUpdateEmptyFormValues,
-    onValuesChange: () => setIsValid(form.isValid()),
+    onValuesChange: () => {
+      setIsValid(form.isValid());
+      syncDraft();
+    },
   });
 
   const [selectedEggUuid, setSelectedEggUuid] = useState(contextServer?.egg.uuid ?? '');
@@ -72,6 +76,7 @@ export default function ServerUpdate({ contextServer }: { contextServer: AdminSe
   });
 
   useHydrateForm(form, contextServer, serverToFormValues);
+  const syncDraft = useFormDraft(form, 'general');
 
   const users = useSearchableResource<z.infer<typeof fullUserSchema>>({
     queryKey: queryKeys.admin.users.all(),

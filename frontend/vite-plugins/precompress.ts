@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import zlib from 'node:zlib';
 import type { Plugin, ResolvedConfig } from 'vite';
 
-const COMPRESSIBLE_EXTENSIONS = new Set(['.css', '.html', '.ico', '.js', '.json', '.svg', '.webmanifest', '.woff']);
+const COMPRESSIBLE_EXTENSIONS = new Set(['.css', '.html', '.ico', '.js', '.json', '.svg', '.webmanifest']);
 
 const MIN_SIZE_BYTES = 1024;
 const CONCURRENCY = Math.max(1, Math.min(os.cpus().length || 4, 16));

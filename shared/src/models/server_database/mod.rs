@@ -116,6 +116,14 @@ impl BaseModel for ServerDatabase {
             extension_data: Self::map_extensions(prefix, row)?,
         })
     }
+
+    fn cache_invalidation_keys(&self) -> Vec<compact_str::CompactString> {
+        vec![compact_str::format_compact!(
+            "{}::{}",
+            Self::NAME,
+            self.uuid
+        )]
+    }
 }
 
 impl ServerDatabase {
@@ -463,7 +471,7 @@ impl ServerDatabase {
                 }
                 crate::models::database_host::DatabasePool::Postgres(pool) => {
                     sqlx::query(sqlx::AssertSqlSafe(format!(
-                        "DROP DATABASE IF EXISTS \"{}\"",
+                        "DROP DATABASE IF EXISTS \"{}\" WITH (FORCE)",
                         self.name
                     )))
                     .execute(&pool)
@@ -471,6 +479,12 @@ impl ServerDatabase {
                     sqlx::query(sqlx::AssertSqlSafe(format!(
                         "CREATE DATABASE \"{}\" WITH OWNER \"{}\" ENCODING 'UTF8'",
                         self.name, self.username
+                    )))
+                    .execute(&pool)
+                    .await?;
+                    sqlx::query(sqlx::AssertSqlSafe(format!(
+                        "REVOKE ALL ON DATABASE \"{}\" FROM PUBLIC",
+                        self.name
                     )))
                     .execute(&pool)
                     .await?;
@@ -768,6 +782,11 @@ impl CreatableModel for ServerDatabase {
                 )))
                 .execute(&pool)
                 .await?;
+                sqlx::query(sqlx::AssertSqlSafe(format!(
+                    "REVOKE ALL ON DATABASE \"{name}\" FROM PUBLIC"
+                )))
+                .execute(&pool)
+                .await?;
 
                 DatabaseTransaction::Postgres(transaction, pool)
             }
@@ -999,7 +1018,7 @@ impl DeletableModel for ServerDatabase {
                     }
                     crate::models::database_host::DatabasePool::Postgres(pool) => {
                         let database = sqlx::query(sqlx::AssertSqlSafe(format!(
-                            "DROP DATABASE IF EXISTS \"{}\"",
+                            "DROP DATABASE IF EXISTS \"{}\" WITH (FORCE)",
                             database_name
                         )))
                         .execute(&pool)
@@ -1054,6 +1073,12 @@ impl DeletableModel for ServerDatabase {
                 .delete_with_transaction(&state_clone, options, &mut transaction)
                 .await?;
             transaction.commit().await?;
+
+            super::invalidate_cache_keys(
+                &state_clone.database,
+                &self_clone.cache_invalidation_keys(),
+            )
+            .await;
 
             Ok(())
         })

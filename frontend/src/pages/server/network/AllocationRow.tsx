@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import debounce from 'debounce';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import deleteAllocation from '@/api/server/allocations/deleteAllocation.ts';
 import updateAllocation from '@/api/server/allocations/updateAllocation.ts';
@@ -35,7 +36,12 @@ const AllocationRow = forwardRef<HTMLTableRowElement, AllocationRowProps>(functi
 ) {
   const { t } = useTranslations();
   const { addToast } = useToast();
-  const { server, updateServer } = useServerStore();
+  const { server, updateServer } = useServerStore(
+    useShallow((state) => ({
+      server: state.server,
+      updateServer: state.updateServer,
+    })),
+  );
   const queryClient = useQueryClient();
 
   const [openModal, setOpenModal] = useState<'remove' | null>(null);

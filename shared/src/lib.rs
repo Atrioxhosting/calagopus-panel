@@ -7,11 +7,11 @@
 
 use anyhow::Context;
 use colored::Colorize;
-use include_dir::{Dir, include_dir};
+use include_dir::Dir;
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
-    sync::{Arc, LazyLock},
+    sync::{Arc, LazyLock, OnceLock},
     time::Instant,
 };
 use tokio::sync::RwLock;
@@ -334,7 +334,28 @@ pub fn unlikely(b: bool) -> bool {
     }
 }
 
-pub const FRONTEND_ASSETS: Dir<'_> = include_dir!("$OUT_DIR/frontend-dist");
+pub struct EmbeddedFrontend {
+    pub assets: &'static Dir<'static>,
+    pub index_html: &'static str,
+}
+
+static EMBEDDED_FRONTEND: OnceLock<EmbeddedFrontend> = OnceLock::new();
+
+pub fn register_frontend(frontend: EmbeddedFrontend) {
+    EMBEDDED_FRONTEND.set(frontend).ok();
+}
+
+fn frontend_assets() -> &'static Dir<'static> {
+    static EMPTY: Dir<'static> = Dir::new("", &[]);
+
+    EMBEDDED_FRONTEND
+        .get()
+        .map_or(&EMPTY, |frontend| frontend.assets)
+}
+
+pub fn frontend_index_html() -> Option<&'static str> {
+    EMBEDDED_FRONTEND.get().map(|frontend| frontend.index_html)
+}
 
 pub struct FrontendAsset {
     pub path: &'static str,
@@ -359,7 +380,7 @@ impl FrontendAsset {
 }
 
 pub fn frontend_asset(path: &str) -> Option<FrontendAsset> {
-    if let Some(file) = FRONTEND_ASSETS.get_file(path) {
+    if let Some(file) = frontend_assets().get_file(path) {
         return Some(FrontendAsset {
             path: file.path().to_str()?,
             contents: file.contents(),
@@ -367,7 +388,7 @@ pub fn frontend_asset(path: &str) -> Option<FrontendAsset> {
         });
     }
 
-    let file = FRONTEND_ASSETS.get_file(format!("{path}.gz"))?;
+    let file = frontend_assets().get_file(format!("{path}.gz"))?;
 
     Some(FrontendAsset {
         path: file.path().to_str()?.strip_suffix(".gz")?,
@@ -379,7 +400,7 @@ pub fn frontend_asset(path: &str) -> Option<FrontendAsset> {
 pub static FRONTEND_LANGUAGES: LazyLock<Vec<compact_str::CompactString>> = LazyLock::new(|| {
     let mut languages = Vec::new();
 
-    let Some(translations) = FRONTEND_ASSETS.get_dir("translations") else {
+    let Some(translations) = frontend_assets().get_dir("translations") else {
         return languages;
     };
 

@@ -8,6 +8,7 @@ mod get {
         ApiError, GetState,
         models::{
             IntoApiObject, Pagination, PaginationParamsWithSearch,
+            egg_configuration::DisabledFeatures,
             server::{GetServer, Server},
             user::{GetPermissionManager, GetUser},
         },
@@ -31,6 +32,7 @@ mod get {
         (status = OK, body = inline(Response)),
         (status = BAD_REQUEST, body = ApiError),
         (status = UNAUTHORIZED, body = ApiError),
+        (status = EXPECTATION_FAILED, body = ApiError),
     ), params(
         (
             "server" = uuid::Uuid,
@@ -73,6 +75,10 @@ mod get {
 
         permissions.has_server_permission("connections.read")?;
 
+        let private_network_disabled = DisabledFeatures::resolve(&state.database)
+            .await?
+            .private_network;
+
         let servers = if params.other && permissions.has_admin_permission("servers.read").is_ok() {
             Server::tunnel_available_by_not_user_uuid_with_pagination(
                 &state.database,
@@ -81,6 +87,7 @@ mod get {
                 pagination.page,
                 pagination.per_page,
                 pagination.search.as_deref(),
+                &private_network_disabled,
             )
             .await
         } else {
@@ -91,6 +98,7 @@ mod get {
                 pagination.page,
                 pagination.per_page,
                 pagination.search.as_deref(),
+                &private_network_disabled,
             )
             .await
         }?;

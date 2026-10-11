@@ -372,7 +372,7 @@ mod post {
             uuid: backup.uuid,
             extension: database_instance
                 .as_ref()
-                .map(|database_instance| database_instance.r#type.dump_extension().into()),
+                .map(|database_instance| database_instance.r#type.export_extension().into()),
         })
         .ok()
     }

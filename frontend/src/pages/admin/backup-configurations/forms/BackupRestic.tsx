@@ -1,7 +1,7 @@
 import { faBroom, faPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { UseFormReturnType } from '@mantine/form';
-import cronstrue from 'cronstrue/i18n';
+import cronstrue from 'cronstrue';
 import { z } from 'zod';
 import getNodes from '@/api/admin/nodes/getNodes.ts';
 import ActionIcon from '@/elements/buttons/ActionIcon.tsx';

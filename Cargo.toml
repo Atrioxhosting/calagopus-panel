@@ -3,6 +3,7 @@ resolver = "3"
 members = [
 	"backend",
 	"database-migrator",
+	"embedded-assets",
 	"rule-validator",
 	"shared",
 	"bins/*",
@@ -14,7 +15,7 @@ exclude = ["backend-extensions/node_modules"]
 default-members = ["bins/base", "bins/all-in-one", "bins/heavy-supervisor"]
 package.rust-version = "1.99.0"
 package.license = "MIT"
-package.version = "1.2.4+atriox.1"
+package.version = "1.2.5+atriox.1"
 package.edition = "2024"
 
 [workspace.dependencies]
@@ -26,6 +27,7 @@ rule-validator = { path = "rule-validator" }
 shared = { path = "shared" }
 backend = { path = "backend" }
 database-migrator = { path = "database-migrator" }
+embedded-assets = { path = "embedded-assets" }
 schema-extension-core = { path = "schema-extension/core" }
 schema-extension-derive = { path = "schema-extension/derive" }
 tracing = { version = "0.1.41", features = ["max_level_debug"] }
@@ -37,7 +39,7 @@ sentry-anyhow = "0.49.0"
 sentry-tracing = "0.49.0"
 tower = "0.5.2"
 tower-cookies = "0.11.0"
-tower-http = { version = "0.6.0", features = ["normalize-path", "catch-panic"] }
+tower-http = { version = "0.6.0", features = ["normalize-path", "catch-panic", "compression-gzip"] }
 axum = { version = "0.8.1", features = ["multipart", "ws"] }
 axum-extra = { version = "0.12.1", features = ["query"] }
 include_dir = "0.7.4"

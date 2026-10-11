@@ -3017,6 +3017,22 @@ mod tests {
     }
 
     fn options() -> Options {
+        use include_dir::{Dir, DirEntry, File};
+
+        // the garde backstop validates languages against shared::FRONTEND_LANGUAGES
+        static TRANSLATIONS: [DirEntry<'static>; 2] = [
+            DirEntry::File(File::new("translations/en.json", b"{}")),
+            DirEntry::File(File::new("translations/de.json", b"{}")),
+        ];
+        static ROOT: [DirEntry<'static>; 1] =
+            [DirEntry::Dir(Dir::new("translations", &TRANSLATIONS))];
+        static FRONTEND: Dir<'static> = Dir::new("", &ROOT);
+
+        shared::register_frontend(shared::EmbeddedFrontend {
+            assets: &FRONTEND,
+            index_html: "",
+        });
+
         Options {
             unlimited_as: 0,
             default_language: "en".into(),

@@ -52,9 +52,9 @@ mod get {
 
         sqlx::query!(
             "UPDATE users
-            SET totp_secret = $1
+            SET totp_secret = $1, totp_last_step = NULL
             WHERE users.uuid = $2",
-            encrypted_secret as _,
+            encrypted_secret.as_ref(),
             user.uuid
         )
         .execute(state.database.write())
@@ -156,21 +156,22 @@ mod post {
                 .ok();
         }
 
-        if totp.check_current(&data.code).is_none() {
+        let Some(matched_step) = totp.check_current(&data.code) else {
             return ApiResponse::error("invalid confirmation code")
                 .with_status(StatusCode::BAD_REQUEST)
                 .ok();
-        }
+        };
 
         let recovery_codes =
             UserRecoveryCode::create_all_if_absent(&state.database, user.uuid).await?;
 
-        sqlx::query!(
+        sqlx::query(
             "UPDATE users
-            SET totp_enabled = true, totp_last_used = NULL
+            SET totp_enabled = true, totp_last_used = NULL, totp_last_step = $2
             WHERE users.uuid = $1",
-            user.uuid
         )
+        .bind(user.uuid)
+        .bind(matched_step as i64)
         .execute(state.database.write())
         .await?;
 
@@ -257,8 +258,17 @@ mod delete {
                         .ok();
                 };
 
-                if totp.check_current(&data.code).is_none() {
+                let Some(matched_step) = totp.check_current(&data.code) else {
                     return ApiResponse::error("invalid confirmation code")
+                        .with_status(StatusCode::BAD_REQUEST)
+                        .ok();
+                };
+
+                if !user
+                    .consume_totp_step(&state.database, matched_step)
+                    .await?
+                {
+                    return ApiResponse::error("this code has already been used")
                         .with_status(StatusCode::BAD_REQUEST)
                         .ok();
                 }
@@ -288,12 +298,12 @@ mod delete {
             UserRecoveryCode::delete_by_user_uuid(&state.database, user.uuid).await?;
         }
 
-        sqlx::query!(
+        sqlx::query(
             "UPDATE users
-            SET totp_enabled = false, totp_last_used = NULL, totp_secret = NULL
+            SET totp_enabled = false, totp_last_used = NULL, totp_last_step = NULL, totp_secret = NULL
             WHERE users.uuid = $1",
-            user.uuid
         )
+        .bind(user.uuid)
         .execute(state.database.write())
         .await?;
 

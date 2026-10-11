@@ -56,7 +56,7 @@ mod delete {
                 }
             };
 
-        let egg_configuration = server.egg.configuration(&state.database).await?;
+        let egg_configuration = server.egg_configuration(&state.database).await?;
 
         if egg_configuration
             .config_allocations
@@ -179,7 +179,7 @@ mod patch {
                 .is_some_and(|a| a.uuid == allocation.uuid)
             {
                 if !primary {
-                    let egg_configuration = server.egg.configuration(&state.database).await?;
+                    let egg_configuration = server.egg_configuration(&state.database).await?;
 
                     if egg_configuration
                         .config_allocations

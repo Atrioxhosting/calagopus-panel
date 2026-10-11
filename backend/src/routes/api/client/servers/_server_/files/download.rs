@@ -132,26 +132,28 @@ mod get {
                 unique_id: uuid::Uuid,
             }
 
-            let token = node.create_jwt(
-                &state.database,
-                &state.jwt,
-                &FileDownloadJwt {
-                    base: BasePayload {
-                        scope: "file-download".into(),
-                        issuer: "panel".into(),
-                        subject: None,
-                        audience: Vec::new(),
-                        expiration_time: Some(chrono::Utc::now().timestamp() + 900),
-                        not_before: None,
-                        issued_at: Some(chrono::Utc::now().timestamp()),
-                        jwt_id: user.uuid.to_compact_string(),
+            let token = node
+                .create_jwt(
+                    &state.database,
+                    &state.jwt,
+                    &FileDownloadJwt {
+                        base: BasePayload {
+                            scope: "file-download".into(),
+                            issuer: "panel".into(),
+                            subject: None,
+                            audience: Vec::new(),
+                            expiration_time: Some(chrono::Utc::now().timestamp() + 900),
+                            not_before: None,
+                            issued_at: Some(chrono::Utc::now().timestamp()),
+                            jwt_id: user.uuid.to_compact_string(),
+                        },
+                        file_path: Path::new(&params.root).join(&params.files[0]),
+                        ignored_files: server.subuser_ignored_files.as_deref().unwrap_or(&[]),
+                        server_uuid: server.uuid,
+                        unique_id: uuid::Uuid::new_v4(),
                     },
-                    file_path: Path::new(&params.root).join(&params.files[0]),
-                    ignored_files: server.subuser_ignored_files.as_deref().unwrap_or(&[]),
-                    server_uuid: server.uuid,
-                    unique_id: uuid::Uuid::new_v4(),
-                },
-            )?;
+                )
+                .await?;
 
             let mut url = node
                 .public_url(
@@ -184,27 +186,29 @@ mod get {
                 unique_id: uuid::Uuid,
             }
 
-            let token = node.create_jwt(
-                &state.database,
-                &state.jwt,
-                &FilesDownloadJwt {
-                    base: BasePayload {
-                        scope: "file-download".into(),
-                        issuer: "panel".into(),
-                        subject: None,
-                        audience: Vec::new(),
-                        expiration_time: Some(chrono::Utc::now().timestamp() + 900),
-                        not_before: None,
-                        issued_at: Some(chrono::Utc::now().timestamp()),
-                        jwt_id: user.uuid.to_compact_string(),
+            let token = node
+                .create_jwt(
+                    &state.database,
+                    &state.jwt,
+                    &FilesDownloadJwt {
+                        base: BasePayload {
+                            scope: "file-download".into(),
+                            issuer: "panel".into(),
+                            subject: None,
+                            audience: Vec::new(),
+                            expiration_time: Some(chrono::Utc::now().timestamp() + 900),
+                            not_before: None,
+                            issued_at: Some(chrono::Utc::now().timestamp()),
+                            jwt_id: user.uuid.to_compact_string(),
+                        },
+                        file_path: &params.root,
+                        file_paths: &params.files,
+                        ignored_files: server.subuser_ignored_files.as_deref().unwrap_or(&[]),
+                        server_uuid: server.uuid,
+                        unique_id: uuid::Uuid::new_v4(),
                     },
-                    file_path: &params.root,
-                    file_paths: &params.files,
-                    ignored_files: server.subuser_ignored_files.as_deref().unwrap_or(&[]),
-                    server_uuid: server.uuid,
-                    unique_id: uuid::Uuid::new_v4(),
-                },
-            )?;
+                )
+                .await?;
 
             let mut url = node
                 .public_url(&state, request_host.as_deref(), "/download/files")

@@ -1,6 +1,6 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
-import { AnimatePresence, motion } from 'motion/react';
+import { AnimatePresence, LazyMotion, m } from 'motion/react';
 import { FC, MouseEvent as ReactMouseEvent, ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import ActionIcon from '@/elements/buttons/ActionIcon.tsx';
@@ -18,6 +18,8 @@ import {
   ToastUpdate,
   toastTimeout,
 } from '@/providers/contexts/toastContext.ts';
+
+const loadMotionFeatures = () => import('@/lib/motionFeatures.ts').then((module) => module.default);
 
 const ToastActionButton: FC<{ action: ToastAction }> = ({ action }) => {
   const [loading, setLoading] = useState(false);
@@ -190,61 +192,63 @@ const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
     <ToastContext.Provider value={contextValue}>
       {children}
       <div className={classNames('fixed z-999 space-y-2', getToastPositionClasses(toastPosition))}>
-        <AnimatePresence>
-          {toasts.map((toast) => {
-            const hasProgress = toast.progress !== undefined;
+        <LazyMotion features={loadMotionFeatures}>
+          <AnimatePresence>
+            {toasts.map((toast) => {
+              const hasProgress = toast.progress !== undefined;
 
-            return (
-              <motion.div
-                key={`toast_${toast.id}`}
-                initial={getToastPositionInitial(toastPosition)}
-                animate={{ opacity: 1, x: 0, y: 0 }}
-                exit={getToastPositionInitial(toastPosition)}
-                transition={{ duration: 0.3 }}
-                className='w-72'
-              >
-                <div className='relative mt-2'>
-                  <Notification
-                    color={getToastColor(toast.type)}
-                    withCloseButton={toast.withCloseButton}
-                    onClose={() => (toast.onClose ? toast.onClose() : dismissToast(toast.id))}
-                    styles={
-                      !hasProgress && toast.actions?.length
-                        ? { description: { paddingInlineEnd: toast.actions.length * 30 } }
-                        : undefined
-                    }
-                  >
-                    {hasProgress ? (
-                      <div className='flex flex-col gap-2'>
-                        <div className='flex flex-row items-center gap-1'>
-                          <div className='min-w-0 grow'>{toast.message}</div>
-                          {toast.actions?.map((action, i) => (
-                            <ToastActionButton key={i} action={action} />
-                          ))}
+              return (
+                <m.div
+                  key={`toast_${toast.id}`}
+                  initial={getToastPositionInitial(toastPosition)}
+                  animate={{ opacity: 1, x: 0, y: 0 }}
+                  exit={getToastPositionInitial(toastPosition)}
+                  transition={{ duration: 0.3 }}
+                  className='w-72'
+                >
+                  <div className='relative mt-2'>
+                    <Notification
+                      color={getToastColor(toast.type)}
+                      withCloseButton={toast.withCloseButton}
+                      onClose={() => (toast.onClose ? toast.onClose() : dismissToast(toast.id))}
+                      styles={
+                        !hasProgress && toast.actions?.length
+                          ? { description: { paddingInlineEnd: toast.actions.length * 30 } }
+                          : undefined
+                      }
+                    >
+                      {hasProgress ? (
+                        <div className='flex flex-col gap-2'>
+                          <div className='flex flex-row items-center gap-1'>
+                            <div className='min-w-0 grow'>{toast.message}</div>
+                            {toast.actions?.map((action, i) => (
+                              <ToastActionButton key={i} action={action} />
+                            ))}
+                          </div>
+                          <Progress
+                            value={toast.progress ?? 0}
+                            indeterminate={toast.progress === null}
+                            color={getToastColor(toast.type)}
+                            hourglass={false}
+                          />
                         </div>
-                        <Progress
-                          value={toast.progress ?? 0}
-                          indeterminate={toast.progress === null}
-                          color={getToastColor(toast.type)}
-                          hourglass={false}
-                        />
+                      ) : (
+                        toast.message
+                      )}
+                    </Notification>
+                    {!hasProgress && toast.actions?.length ? (
+                      <div className='absolute top-1/2 right-9 flex -translate-y-1/2 items-center gap-1'>
+                        {toast.actions.map((action, i) => (
+                          <ToastActionButton key={i} action={action} />
+                        ))}
                       </div>
-                    ) : (
-                      toast.message
-                    )}
-                  </Notification>
-                  {!hasProgress && toast.actions?.length ? (
-                    <div className='absolute top-1/2 right-9 flex -translate-y-1/2 items-center gap-1'>
-                      {toast.actions.map((action, i) => (
-                        <ToastActionButton key={i} action={action} />
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+                    ) : null}
+                  </div>
+                </m.div>
+              );
+            })}
+          </AnimatePresence>
+        </LazyMotion>
       </div>
     </ToastContext.Provider>
   );

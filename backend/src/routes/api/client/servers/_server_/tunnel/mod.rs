@@ -1,8 +1,38 @@
 use super::State;
+use axum::{
+    extract::Request,
+    http::StatusCode,
+    middleware::Next,
+    response::{IntoResponse, Response},
+};
+use shared::{GetState, models::server::GetServer, response::ApiResponse};
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 mod connections;
 mod ports;
+
+async fn enabled(
+    state: GetState,
+    server: GetServer,
+    mut req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let configuration = server.egg_configuration(&state.database).await;
+
+    match configuration {
+        Ok(configuration) if configuration.private_network_enabled() => {
+            req.extensions_mut().insert(server.0);
+
+            Ok(next.run(req).await)
+        }
+        Ok(_) => Ok(
+            ApiResponse::error("the private network is not enabled for this server")
+                .with_status(StatusCode::EXPECTATION_FAILED)
+                .into_response(),
+        ),
+        Err(err) => Ok(ApiResponse::from(err).into_response()),
+    }
+}
 
 mod get {
     use serde::Serialize;
@@ -10,6 +40,7 @@ mod get {
         ApiError, GetState,
         models::{
             IntoApiObject,
+            egg_configuration::EggConfiguration,
             server::GetServer,
             server_tunnel::{
                 ServerTunnel, ServerTunnelConnection, ServerTunnelPeer, ServerTunnelPort,
@@ -35,6 +66,7 @@ mod get {
     #[utoipa::path(get, path = "/", responses(
         (status = OK, body = inline(Response)),
         (status = UNAUTHORIZED, body = ApiError),
+        (status = EXPECTATION_FAILED, body = ApiError),
     ), params(
         (
             "server" = uuid::Uuid,
@@ -58,11 +90,25 @@ mod get {
 
         let tunnel = ServerTunnel::by_server_uuid(&state.database, server.uuid).await?;
         let (ports, outgoing, incoming) = match &tunnel {
-            Some(_) => tokio::try_join!(
-                ServerTunnelPort::by_server_uuid(&state.database, server.uuid),
-                ServerTunnelConnection::peers(&state.database, server.uuid, false),
-                ServerTunnelConnection::peers(&state.database, server.uuid, true),
-            )?,
+            Some(_) => {
+                let configurations = EggConfiguration::all_cached(&state.database).await?;
+
+                tokio::try_join!(
+                    ServerTunnelPort::by_server_uuid(&state.database, server.uuid),
+                    ServerTunnelConnection::peers(
+                        &state.database,
+                        server.uuid,
+                        false,
+                        &configurations
+                    ),
+                    ServerTunnelConnection::peers(
+                        &state.database,
+                        server.uuid,
+                        true,
+                        &configurations
+                    ),
+                )?
+            }
             None => (Vec::new(), Vec::new(), Vec::new()),
         };
 
@@ -227,6 +273,7 @@ mod patch {
         (status = UNAUTHORIZED, body = ApiError),
         (status = NOT_FOUND, body = ApiError),
         (status = CONFLICT, body = ApiError),
+        (status = EXPECTATION_FAILED, body = ApiError),
     ), params(
         (
             "server" = uuid::Uuid,
@@ -315,6 +362,7 @@ mod delete {
         (status = OK, body = inline(Response)),
         (status = UNAUTHORIZED, body = ApiError),
         (status = NOT_FOUND, body = ApiError),
+        (status = EXPECTATION_FAILED, body = ApiError),
     ), params(
         (
             "server" = uuid::Uuid,
@@ -362,5 +410,6 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .routes(routes!(delete::route))
         .nest("/ports", ports::router(state))
         .nest("/connections", connections::router(state))
+        .route_layer(axum::middleware::from_fn_with_state(state.clone(), enabled))
         .with_state(state.clone())
 }

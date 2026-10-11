@@ -11,6 +11,7 @@ export const adminOAuthProviderSchema = z.looseObject({
   authUrl: z.string().min(3).max(255),
   tokenUrl: z.string().min(3).max(255),
   infoUrl: z.string().min(3).max(255),
+  infoUrls: z.record(z.string(), z.string()).default({}),
   scopes: z.array(z.string()),
   identifierPath: z.string().min(3).max(255),
   emailPath: z.preprocess(nullableString, z.string().min(3).max(255).nullable()),
@@ -70,6 +71,10 @@ export const adminOAuthProviderMappingMatcherNoneSchema = z.object({
   type: z.literal('none'),
 });
 
+export const adminOAuthProviderMappingMatcherNeverSchema = z.object({
+  type: z.literal('never'),
+});
+
 export const adminOAuthProviderMappingMatcherScopesSchema = z.object({
   type: z.literal('scopes'),
   scopes: z.array(z.string()),
@@ -77,35 +82,41 @@ export const adminOAuthProviderMappingMatcherScopesSchema = z.object({
 
 export const adminOAuthProviderMappingMatcherFieldExistsSchema = z.object({
   type: z.literal('field_exists'),
+  source: z.string().nullable().default(null),
   path: z.string(),
 });
 
 export const adminOAuthProviderMappingMatcherFieldEqualsSchema = z.object({
   type: z.literal('field_equals'),
+  source: z.string().nullable().default(null),
   path: z.string(),
   equals: z.string(),
 });
 
 export const adminOAuthProviderMappingMatcherFieldContainsSchema = z.object({
   type: z.literal('field_contains'),
+  source: z.string().nullable().default(null),
   path: z.string(),
   contains: z.string(),
 });
 
 export const adminOAuthProviderMappingMatcherFieldStartsWithSchema = z.object({
   type: z.literal('field_starts_with'),
+  source: z.string().nullable().default(null),
   path: z.string(),
   startsWith: z.string(),
 });
 
 export const adminOAuthProviderMappingMatcherFieldEndsWithSchema = z.object({
   type: z.literal('field_ends_with'),
+  source: z.string().nullable().default(null),
   path: z.string(),
   endsWith: z.string(),
 });
 
 export type AdminOAuthProviderMappingMatcher =
   | z.infer<typeof adminOAuthProviderMappingMatcherNoneSchema>
+  | z.infer<typeof adminOAuthProviderMappingMatcherNeverSchema>
   | {
       type: 'and' | 'or';
       matchers: AdminOAuthProviderMappingMatcher[];
@@ -124,6 +135,7 @@ export type AdminOAuthProviderMappingMatcher =
 export const adminOAuthProviderMappingMatcherSchema: ZodType<AdminOAuthProviderMappingMatcher> = z.lazy(() =>
   z.discriminatedUnion('type', [
     adminOAuthProviderMappingMatcherNoneSchema,
+    adminOAuthProviderMappingMatcherNeverSchema,
 
     z.object({
       type: z.literal('and'),

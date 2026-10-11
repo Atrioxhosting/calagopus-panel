@@ -67,6 +67,11 @@ impl shared::extensions::commands::CliCommand<DiagnosticsArgs> for DiagnosticsCo
                 write_line(&mut output, "redis mode", &env.redis_mode.to_string());
                 write_line(
                     &mut output,
+                    "redis key prefix",
+                    env.redis_key_prefix.as_deref().unwrap_or("not set"),
+                );
+                write_line(
+                    &mut output,
                     "sentry url set",
                     &env.sentry_url.is_some().to_string(),
                 );

@@ -219,13 +219,14 @@ impl User {
         name_first: Option<&str>,
         name_last: Option<&str>,
         password: &str,
+        language: &str,
     ) -> Result<uuid::Uuid, crate::database::DatabaseError> {
         let password = BcryptString::hash(password).await?;
 
         let row = sqlx::query(
             r#"
-            INSERT INTO users (username, email, name_first, name_last, password, admin)
-            VALUES ($1, $2, $3, $4, $5, (SELECT COUNT(*) = 0 FROM users))
+            INSERT INTO users (username, email, name_first, name_last, password, language, admin)
+            VALUES ($1, $2, $3, $4, $5, $6, (SELECT COUNT(*) = 0 FROM users))
             RETURNING users.uuid
             "#,
         )
@@ -234,6 +235,7 @@ impl User {
         .bind(name_first)
         .bind(name_last)
         .bind(password)
+        .bind(language)
         .fetch_one(database.write())
         .await?;
 
@@ -476,6 +478,30 @@ impl User {
                 .with_secret(totp_rs::Secret::try_from_base32(base32)?)
                 .build()?,
         ))
+    }
+
+    /// Atomically records `step` as the last accepted TOTP step. Returns `false` when a code from
+    /// this step or a later one was already accepted, so the caller must reject it as a replay.
+    pub async fn consume_totp_step(
+        &self,
+        database: &crate::database::Database,
+        step: u64,
+    ) -> Result<bool, anyhow::Error> {
+        let result = sqlx::query(
+            r#"
+            UPDATE users
+            SET totp_last_used = NOW(), totp_last_step = $2
+            WHERE users.uuid = $1 AND (users.totp_last_step IS NULL OR users.totp_last_step < $2)
+            "#,
+        )
+        .bind(self.uuid)
+        .bind(step as i64)
+        .execute(database.write())
+        .await?;
+
+        Self::invalidate_cached(database, self.uuid).await;
+
+        Ok(result.rows_affected() == 1)
     }
 
     /// Rewrites a legacy plaintext seed encrypted once a code has verified against it, so every

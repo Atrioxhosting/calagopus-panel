@@ -19,7 +19,7 @@ import QuickActionsTrigger from '@/elements/quickActions/QuickActionsTrigger.tsx
 import ServerQuickActions from '@/elements/quickActions/ServerQuickActions.tsx';
 import ServerStatusIndicator from '@/elements/ServerStatusIndicator.tsx';
 import { isAdmin } from '@/lib/auth/permissions.ts';
-import { isConflictingState } from '@/lib/domain/server.ts';
+import { getDisabledServerRoutePaths, isConflictingState } from '@/lib/domain/server.ts';
 import { resolveString } from '@/lib/lazy.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { getAccessibleRoutePaths, to } from '@/lib/routes.ts';
@@ -43,7 +43,7 @@ export default function ServerRouter({ isNormal }: { isNormal: boolean }) {
   const { user } = useAuth();
   const { addToast } = useToast();
 
-  const params = useParams<'id'>();
+  const params = useParams<'id' | '*'>();
   const [loading, setLoading] = useState(true);
 
   const { server, setSocketInstance, resetState, setServer, setCommandSnippets, setServerAnnouncements } =
@@ -67,6 +67,16 @@ export default function ServerRouter({ isNormal }: { isNormal: boolean }) {
   useEffect(() => {
     if (announcements) setServerAnnouncements(announcements);
   }, [announcements]);
+
+  const { data: commandSnippets } = useResource({
+    queryKey: queryKeys.user.commandSnippets.egg(server.egg?.uuid ?? ''),
+    queryFn: () => getEggCommandSnippets(server.egg.uuid),
+    enabled: !!server.egg?.uuid,
+  });
+
+  useEffect(() => {
+    if (commandSnippets) setCommandSnippets(commandSnippets);
+  }, [commandSnippets]);
 
   const allServerRoutes = useMemo(() => {
     const routes = [...serverRoutes, ...window.extensionContext.extensionRegistry.routes.serverRoutes];
@@ -121,6 +131,10 @@ export default function ServerRouter({ isNormal }: { isNormal: boolean }) {
     () => getAccessibleRoutePaths(allServerRoutes, server.eggConfiguration?.routeOrder),
     [allServerRoutes, server.eggConfiguration?.routeOrder],
   );
+  const disabledRoutePaths = useMemo(
+    () => getDisabledServerRoutePaths(server.eggConfiguration),
+    [server.eggConfiguration],
+  );
 
   useEffect(() => {
     return () => {
@@ -131,18 +145,15 @@ export default function ServerRouter({ isNormal }: { isNormal: boolean }) {
   useEffect(() => {
     if (params.id && params.id !== ':id') {
       setLoading(true);
+
+      if (!params['*']) {
+        import('@/pages/server/console/ServerConsole.tsx').catch(() => undefined);
+      }
+
       getServer(params.id)
         .then((data) => {
           setSocketInstance(null);
           setServer(data);
-
-          getEggCommandSnippets(data.egg.uuid)
-            .then((snippets) => {
-              setCommandSnippets(snippets);
-            })
-            .catch((error) => {
-              addToast(httpErrorToHuman(error), 'error');
-            });
         })
         .catch((error) => {
           addToast(httpErrorToHuman(error), 'error');
@@ -289,6 +300,7 @@ export default function ServerRouter({ isNormal }: { isNormal: boolean }) {
                     {allServerRoutes
                       .filter((route) => !route.filter || route.filter())
                       .filter((route) => !accessibleRoutePaths || accessibleRoutePaths.has(route.path))
+                      .filter((route) => !disabledRoutePaths.has(route.path))
                       .map(({ path, element: Element, permission }) => (
                         <Route
                           key={path}

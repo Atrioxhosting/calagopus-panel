@@ -24,8 +24,8 @@ import { useServerStore } from '@/stores/server.ts';
 export default function SubuserCreateModal({ ...props }: ModalProps) {
   const { t } = useTranslations();
   const { addToast } = useToast();
-  const { server } = useServerStore();
-  const { availablePermissions } = useGlobalStore();
+  const server = useServerStore((state) => state.server);
+  const availablePermissions = useGlobalStore((state) => state.availablePermissions);
   const queryClient = useQueryClient();
 
   const grantablePermissions = server.permissions.includes('*') ? undefined : server.permissions;

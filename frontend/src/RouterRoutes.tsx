@@ -1,13 +1,7 @@
-import { Suspense, useEffect, useMemo } from 'react';
+import { lazy, Suspense, useEffect, useMemo } from 'react';
 import { Route, Routes } from 'react-router';
-import Spinner from '@/elements/feedback/Spinner.tsx';
-import { AuthProvider } from './providers/AuthProvider.tsx';
-import AdminGuard from './routers/guards/AdminGuard.tsx';
-import AuthenticatedGuard from './routers/guards/AuthenticatedGuard.tsx';
-import UnauthenticatedGuard from './routers/guards/UnauthenticatedGuard.tsx';
-import '@mantine/core/styles.css';
-import { lazy } from 'react';
 import ScreenBlock from '@/elements/feedback/ScreenBlock.tsx';
+import Spinner from '@/elements/feedback/Spinner.tsx';
 import { ContextMenuProvider } from '@/elements/overlays/ContextMenu.tsx';
 import OobeGuard from '@/routers/guards/OobeGuard.tsx';
 import ContentContainer from './elements/containers/ContentContainer.tsx';
@@ -15,9 +9,14 @@ import ExtensionSlot from './elements/ExtensionSlot.tsx';
 import UploadConflictHost from './elements/files/UploadConflictHost.tsx';
 import UploadsCard from './elements/files/UploadsCard.tsx';
 import QuickActionsPalette from './elements/quickActions/QuickActionsPalette.tsx';
+import { AuthProvider } from './providers/AuthProvider.tsx';
 import { useCurrentWindow } from './providers/CurrentWindowProvider.tsx';
 import { useTranslations } from './providers/TranslationProvider.tsx';
 import { useWindows } from './providers/WindowProvider.tsx';
+import AdminGuard from './routers/guards/AdminGuard.tsx';
+import AuthenticatedGuard from './routers/guards/AuthenticatedGuard.tsx';
+import UnauthenticatedGuard from './routers/guards/UnauthenticatedGuard.tsx';
+import { routerImports } from './routers/routerImports.ts';
 import globalRoutes from './routers/routes/globalRoutes.ts';
 import { AdminStoreContextProvider, createAdminStore } from './stores/admin.tsx';
 import {
@@ -27,11 +26,11 @@ import {
 } from './stores/relativePage.ts';
 import { createServerStore, ServerStoreContextProvider } from './stores/server.ts';
 
-const OobeRouter = lazy(() => import('./routers/OobeRouter.tsx'));
-const AuthenticationRouter = lazy(() => import('./routers/AuthenticationRouter.tsx'));
-const DashboardRouter = lazy(() => import('./routers/DashboardRouter.tsx'));
-const AdminRouter = lazy(() => import('./routers/AdminRouter.tsx'));
-const ServerRouter = lazy(() => import('./routers/ServerRouter.tsx'));
+const OobeRouter = lazy(routerImports.oobe);
+const AuthenticationRouter = lazy(routerImports.authentication);
+const DashboardRouter = lazy(routerImports.dashboard);
+const AdminRouter = lazy(routerImports.admin);
+const ServerRouter = lazy(routerImports.server);
 
 function RelativePageListener() {
   const { updateWindow } = useWindows();

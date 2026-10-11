@@ -110,6 +110,26 @@ impl DatabaseAgentType {
     }
 
     #[inline]
+    pub const fn export_extension(self) -> &'static str {
+        match self {
+            DatabaseAgentType::Postgres => "sql.gz",
+            DatabaseAgentType::Mariadb => "sql.gz",
+            DatabaseAgentType::Mongodb => "archive",
+            DatabaseAgentType::Redis => "rdb",
+        }
+    }
+
+    #[inline]
+    pub const fn export_content_type(self) -> &'static str {
+        match self {
+            DatabaseAgentType::Postgres => "application/gzip",
+            DatabaseAgentType::Mariadb => "application/gzip",
+            DatabaseAgentType::Mongodb => "application/octet-stream",
+            DatabaseAgentType::Redis => "application/octet-stream",
+        }
+    }
+
+    #[inline]
     pub const fn default_port(self) -> u16 {
         match self {
             DatabaseAgentType::Postgres => 5432,

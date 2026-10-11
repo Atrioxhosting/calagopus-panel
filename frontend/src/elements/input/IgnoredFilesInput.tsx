@@ -28,6 +28,14 @@ function parsePatterns(text: string): string[] {
     .filter(Boolean);
 }
 
+function unanchoredExceptions(patterns: string[]): string[] {
+  return [
+    ...new Set(
+      patterns.filter((pattern) => pattern.startsWith('!') && !pattern.slice(1).replace(/\/+$/, '').includes('/')),
+    ),
+  ];
+}
+
 function includeGlobs(pattern: string): string[] {
   const base = pattern.replace(/\/+$/, '') || pattern;
   return [pattern, `${base}/**`];
@@ -254,6 +262,15 @@ export default function IgnoredFilesInput({ serverUuid, label, description, valu
           </Input.Description>
           {serverUuid && needsManualCount && <CountMatchesButton onClick={() => setCountingRequested(true)} />}
         </Group>
+
+        {unanchoredExceptions(value).map((pattern) => (
+          <Text key={pattern} size='xs' c='yellow'>
+            {t('common.elements.ignoredFilesInput.unanchoredException', {
+              pattern,
+              anchored: `!/${pattern.slice(1)}`,
+            }).md()}
+          </Text>
+        ))}
       </Stack>
 
       {serverUuid && <PreviewSection serverUuid={serverUuid} patterns={value} />}

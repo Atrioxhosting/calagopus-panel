@@ -242,6 +242,7 @@ mod patch {
                     "auth_url": oauth_provider.auth_url,
                     "token_url": oauth_provider.token_url,
                     "info_url": oauth_provider.info_url,
+                    "info_urls": oauth_provider.info_urls,
                     "scopes": oauth_provider.scopes,
 
                     "identifier_path": oauth_provider.identifier_path,

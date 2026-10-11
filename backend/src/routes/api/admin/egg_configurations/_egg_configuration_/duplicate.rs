@@ -9,8 +9,10 @@ mod post {
     use shared::{
         ApiError, GetState,
         models::{
-            DuplicableModel, IntoAdminApiObject, admin_activity::GetAdminActivityLogger,
-            egg_configuration::DuplicateEggConfigurationOptions, user::GetPermissionManager,
+            DuplicableModel, IntoAdminApiObject,
+            admin_activity::GetAdminActivityLogger,
+            egg_configuration::{DisabledFeatures, DuplicateEggConfigurationOptions},
+            user::GetPermissionManager,
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -49,6 +51,7 @@ mod post {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("egg-configurations.create")?;
 
+        let disabled_features = DisabledFeatures::resolve(&state.database).await?;
         let options = DuplicateEggConfigurationOptions { name: data.name };
         let duplicated =
             match DuplicableModel::duplicate(&egg_configuration.0, &state, options).await {
@@ -72,6 +75,8 @@ mod post {
                 }),
             )
             .await;
+
+        disabled_features.propagate(&state).await;
 
         ApiResponse::new_serialized(Response {
             egg_configuration: duplicated.into_admin_api_object(&state, ()).await?,

@@ -21,7 +21,8 @@ const INTERNAL_LIST: &str = "internal-list";
 const CARGO_MANIFEST: &str = "Cargo.toml";
 const CARGO_TEMPLATE: &str = "Cargo.template.toml";
 
-const NODE_HEAP_MB: u32 = 2048;
+// the frontend build's v8 heap stays under ~300 MB; its peak is rolldown's native memory
+const NODE_HEAP_MB: u32 = 1024;
 
 const LIST_TIMEOUT: Duration = Duration::from_secs(60);
 const FRONTEND_KEEP: [&str; 2] = ["shared", "tsconfig.json"];
@@ -218,6 +219,12 @@ fn build_env(config: &Config) -> Vec<(String, String)> {
         (
             "PANEL_EXTRA_TRANSLATIONS_DIR".to_string(),
             config.staged_translations_dir.display().to_string(),
+        ),
+        // return freed pages immediately, cuts peak rss of rolldown (mimalloc) and rustc (jemalloc)
+        ("MIMALLOC_PURGE_DELAY".to_string(), "0".to_string()),
+        (
+            "_RJEM_MALLOC_CONF".to_string(),
+            "dirty_decay_ms:0,muzzy_decay_ms:0,narenas:1".to_string(),
         ),
     ]
 }

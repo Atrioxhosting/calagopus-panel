@@ -34,13 +34,13 @@ export default function NetworkSubNavigation() {
           name: t('pages.server.firewall.title', {}),
           icon: faShieldHalved,
           link: `/server/${server.uuidShort}/network/firewall`,
-          hidden: !canReadFirewall,
+          hidden: !canReadFirewall || server.eggConfiguration?.firewallEnabled === false,
         },
         {
           name: t('pages.server.tunnel.title', {}),
           icon: faShareNodes,
           link: `/server/${server.uuidShort}/network/connections`,
-          hidden: !canReadTunnel,
+          hidden: !canReadTunnel || server.eggConfiguration?.privateNetworkEnabled === false,
         },
       ]}
     />

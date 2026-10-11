@@ -32,7 +32,7 @@ type Props = ModalProps & {
 export default function BackupExportModal({ backup, ...props }: Props) {
   const { t } = useTranslations();
   const { addToast } = useToast();
-  const { server } = useServerStore();
+  const server = useServerStore((state) => state.server);
   const navigate = useNavigate();
   const canCreate = useServerCan('files.create');
 

@@ -182,6 +182,59 @@ fn frontend_asset_content_type(asset: &shared::FrontendAsset) -> &'static str {
     }
 }
 
+#[derive(Clone, Copy)]
+struct CompressionPredicate;
+
+impl CompressionPredicate {
+    const MIN_SIZE: u64 = 1024;
+    const CONTENT_TYPES: &[&str] = &[
+        "application/json",
+        "application/javascript",
+        "application/manifest+json",
+        "application/xml",
+        "application/yaml",
+        "image/svg+xml",
+        "text/",
+    ];
+}
+
+impl tower_http::compression::Predicate for CompressionPredicate {
+    fn should_compress<B: hyper::body::Body>(&self, response: &Response<B>) -> bool {
+        response
+            .body()
+            .size_hint()
+            .exact()
+            .is_some_and(|size| size >= Self::MIN_SIZE)
+            && response
+                .headers()
+                .get(axum::http::header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|content_type| {
+                    content_type != "text/event-stream"
+                        && Self::CONTENT_TYPES
+                            .iter()
+                            .any(|prefix| content_type.starts_with(prefix))
+                })
+    }
+}
+
+async fn weaken_encoded_etag(mut response: Response) -> Response {
+    if response
+        .headers()
+        .contains_key(axum::http::header::CONTENT_ENCODING)
+        && let Some(etag) = response.headers().get(axum::http::header::ETAG)
+        && let Ok(etag) = etag.to_str()
+        && !etag.starts_with("W/")
+        && let Ok(weak) = format!("W/{etag}").parse()
+    {
+        response
+            .headers_mut()
+            .insert(axum::http::header::ETAG, weak);
+    }
+
+    response
+}
+
 fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> Response<Body> {
     let details = if let Some(s) = err.downcast_ref::<String>() {
         s.as_str()
@@ -975,6 +1028,43 @@ pub async fn handle_startup() -> Result<
                             }
                         };
 
+                        let modified = metadata.modified().ok().and_then(|modified| {
+                            chrono::DateTime::from_timestamp(
+                                modified
+                                    .into_std()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .ok()?
+                                    .as_secs() as i64,
+                                0,
+                            )
+                        });
+                        let last_modified = modified.map(|modified| {
+                            modified
+                                .format("%a, %d %b %Y %H:%M:%S GMT")
+                                .to_compact_string()
+                        });
+
+                        let cache_control = if base_dir == "avatars" {
+                            "public, max-age=31536000, immutable"
+                        } else {
+                            "no-cache"
+                        };
+
+                        if let Some(modified) = modified
+                            && parts
+                                .headers
+                                .get(axum::http::header::IF_MODIFIED_SINCE)
+                                .and_then(|value| value.to_str().ok())
+                                .and_then(|value| chrono::DateTime::parse_from_rfc2822(value).ok())
+                                .is_some_and(|since| modified.timestamp() <= since.timestamp())
+                        {
+                            return ApiResponse::new(Body::empty())
+                                .with_status(StatusCode::NOT_MODIFIED)
+                                .with_header("Cache-Control", cache_control)
+                                .with_optional_header("Last-Modified", last_modified.as_deref())
+                                .ok();
+                        }
+
                         let tokio_file = match base_filesystem.async_open(path).await {
                             Ok(file) => file,
                             Err(_) => {
@@ -984,29 +1074,14 @@ pub async fn handle_startup() -> Result<
                             }
                         };
 
-                        let modified = if let Ok(modified) = metadata.modified() {
-                            let modified = chrono::DateTime::from_timestamp(
-                                modified
-                                    .into_std()
-                                    .duration_since(std::time::UNIX_EPOCH)
-                                    .unwrap_or_default()
-                                    .as_secs() as i64,
-                                0,
-                            )
-                            .unwrap_or_default();
-
-                            Some(modified.to_rfc2822())
-                        } else {
-                            None
-                        };
-
                         let content_type = shared::storage::content_type(path);
 
                         return ApiResponse::new(Body::from_stream(
                             tokio_util::io::ReaderStream::new(tokio_file),
                         ))
                         .with_header("Content-Length", metadata.len().to_compact_string())
-                        .with_optional_header("Last-Modified", modified.as_deref())
+                        .with_optional_header("Last-Modified", last_modified.as_deref())
+                        .with_header("Cache-Control", cache_control)
                         .with_header("Content-Type", content_type)
                         .with_optional_header(
                             "Content-Disposition",
@@ -1138,6 +1213,14 @@ pub async fn handle_startup() -> Result<
             state.clone(),
             handle_postprocessing,
         ))
+        .layer(
+            tower_http::compression::CompressionLayer::new()
+                .no_br()
+                .no_deflate()
+                .no_zstd()
+                .compress_when(CompressionPredicate),
+        )
+        .layer(axum::middleware::map_response(weaken_encoded_etag))
         .layer(tower_http::catch_panic::CatchPanicLayer::custom(
             handle_panic,
         ))

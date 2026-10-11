@@ -1,5 +1,6 @@
 import { UseFormReturnType } from '@mantine/form';
 import { useEffect, useRef } from 'react';
+import { isFormDirty } from '@/plugins/form/useFormDraft.ts';
 
 const NOT_HYDRATED = Symbol('not-hydrated');
 
@@ -17,6 +18,9 @@ interface UseHydrateFormOptions<C> {
  * UseHydrateFormOptions.key}) changes. Replaces the
  * `useEffect(() => { if (context) form.setValues(toFormValues(context)); }, [context])` block that
  * every admin create/update page was repeating by hand.
+ *
+ * While the form has unsaved edits, hydration is deferred until the next context change after it is
+ * clean again, so a background refetch (e.g. on window focus) can't overwrite them.
  */
 export function useHydrateForm<T extends Record<string, unknown>, C>(
   form: UseFormReturnType<T>,
@@ -33,7 +37,7 @@ export function useHydrateForm<T extends Record<string, unknown>, C>(
     }
 
     const key = options?.key ? options.key(context) : context;
-    if (Object.is(key, hydratedKeyRef.current)) {
+    if (Object.is(key, hydratedKeyRef.current) || isFormDirty(form)) {
       return;
     }
 

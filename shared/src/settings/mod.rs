@@ -976,8 +976,6 @@ impl Deref for SettingsReadGuard<'_> {
     }
 }
 
-const INDEX_HTML: &str = include_str!("../../../frontend/dist/index.html");
-
 fn render_index_html(settings: &AppSettings) -> Result<String, anyhow::Error> {
     let mut environment = minijinja::Environment::new();
     environment.set_auto_escape_callback(|_| minijinja::AutoEscape::Html);
@@ -987,7 +985,11 @@ fn render_index_html(settings: &AppSettings) -> Result<String, anyhow::Error> {
         minijinja::Value::from_serialize(settings.metadata.resolve(&settings.app)),
     );
 
-    Ok(environment.render_str(INDEX_HTML, minijinja::context! {})?)
+    let index_html = crate::frontend_index_html().ok_or_else(|| {
+        anyhow::anyhow!("no frontend registered, call shared::register_frontend first")
+    })?;
+
+    Ok(environment.render_str(index_html, minijinja::context! {})?)
 }
 
 #[derive(Clone)]

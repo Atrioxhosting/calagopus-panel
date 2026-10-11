@@ -1,3 +1,4 @@
+import { lazy, Suspense, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import ArchiveCreateModal from '@/pages/server/files/modals/ArchiveCreateModal.tsx';
 import DirectoryNameModal from '@/pages/server/files/modals/DirectoryNameModal.tsx';
@@ -10,12 +11,13 @@ import FilePermissionsModal from '@/pages/server/files/modals/FilePermissionsMod
 import FileRenameModal from '@/pages/server/files/modals/FileRenameModal.tsx';
 import FileSearchModal from '@/pages/server/files/modals/FileSearchModal.tsx';
 import IncompleteUploadsModal from '@/pages/server/files/modals/IncompleteUploadsModal.tsx';
-import LargestDirectoriesModal from '@/pages/server/files/modals/LargestDirectoriesModal.tsx';
 import MassRenameModal from '@/pages/server/files/modals/MassRenameModal.tsx';
 import PullFileModal from '@/pages/server/files/modals/PullFileModal.tsx';
 import SymlinkNameModal from '@/pages/server/files/modals/SymlinkNameModal.tsx';
 import { useFileManager } from '@/providers/contexts/fileManagerContext.ts';
 import FileDetailsModal from '../modals/FileDetailsModal.tsx';
+
+const LargestDirectoriesModal = lazy(() => import('@/pages/server/files/modals/LargestDirectoriesModal.tsx'));
 
 export default function FileModals({ treeView = false }: { treeView?: boolean }) {
   const { openModal, modalDirectoryEntries, doCloseModal } = useFileManager(
@@ -25,6 +27,8 @@ export default function FileModals({ treeView = false }: { treeView?: boolean })
       doCloseModal: state.doCloseModal,
     })),
   );
+  const [largestDirectoriesMounted, setLargestDirectoriesMounted] = useState(false);
+  if (openModal === 'largestDirectories' && !largestDirectoriesMounted) setLargestDirectoriesMounted(true);
 
   return (
     <>
@@ -57,7 +61,11 @@ export default function FileModals({ treeView = false }: { treeView?: boolean })
 
       <FileSearchModal treeView={treeView} opened={openModal === 'search'} onClose={doCloseModal} />
 
-      <LargestDirectoriesModal opened={openModal === 'largestDirectories'} onClose={doCloseModal} />
+      {largestDirectoriesMounted && (
+        <Suspense fallback={null}>
+          <LargestDirectoriesModal opened={openModal === 'largestDirectories'} onClose={doCloseModal} />
+        </Suspense>
+      )}
 
       <IncompleteUploadsModal opened={openModal === 'incompleteUploads'} onClose={doCloseModal} />
     </>

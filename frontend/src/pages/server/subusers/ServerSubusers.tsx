@@ -1,6 +1,7 @@
 import { faPlus, faUsers } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Ref, useEffect, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import getPermissions from '@/api/getPermissions.ts';
 import getSubusers from '@/api/server/subusers/getSubusers.ts';
 import Button from '@/elements/buttons/Button.tsx';
@@ -23,8 +24,13 @@ import SubuserRow from './SubuserRow.tsx';
 
 export default function ServerSubusers() {
   const { t } = useTranslations();
-  const { server } = useServerStore();
-  const { settings, setAvailablePermissions } = useGlobalStore();
+  const server = useServerStore((state) => state.server);
+  const { settings, setAvailablePermissions } = useGlobalStore(
+    useShallow((state) => ({
+      settings: state.settings,
+      setAvailablePermissions: state.setAvailablePermissions,
+    })),
+  );
 
   const canCreate = useServerCan('subusers.create');
   const canDelete = useServerCan('subusers.delete');

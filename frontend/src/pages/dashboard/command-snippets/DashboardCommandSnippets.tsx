@@ -18,7 +18,7 @@ import CommandSnippetCreateModal from './modals/CommandSnippetCreateModal.tsx';
 
 export default function DashboardCommandSnippets() {
   const { t } = useTranslations();
-  const { settings } = useGlobalStore();
+  const settings = useGlobalStore((state) => state.settings);
 
   const [openModal, setOpenModal] = useState<'create' | null>(null);
 

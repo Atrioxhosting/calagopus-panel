@@ -14,6 +14,17 @@ export function isConflictingState(
   return (server.isSuspended && !isAdmin(user)) || server.status !== null || server.isTransferring;
 }
 
+export function getDisabledServerRoutePaths(
+  eggConfiguration: z.infer<typeof serverSchema>['eggConfiguration'],
+): Set<string> {
+  const paths = new Set<string>();
+
+  if (eggConfiguration?.firewallEnabled === false) paths.add('/network/firewall');
+  if (eggConfiguration?.privateNetworkEnabled === false) paths.add('/network/connections');
+
+  return paths;
+}
+
 export const serverStatusInfo: Record<
   z.infer<typeof serverStatus>,
   { failed: boolean; badgeColor: string; label: () => string; blockContent: () => string }

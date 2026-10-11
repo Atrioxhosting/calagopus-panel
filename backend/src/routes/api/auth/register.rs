@@ -34,6 +34,12 @@ mod post {
         #[garde(length(chars, min = 8, max = 512))]
         #[schema(min_length = 8, max_length = 512)]
         password: String,
+        #[garde(
+            length(chars, min = 2, max = 15),
+            inner(custom(shared::utils::validate_language))
+        )]
+        #[schema(min_length = 2, max_length = 15)]
+        language: Option<compact_str::CompactString>,
 
         #[garde(skip)]
         captcha: Option<String>,
@@ -74,6 +80,10 @@ mod post {
                 .ok();
         }
         let ratelimit = settings.ratelimits.auth_register;
+        let language = match data.language {
+            Some(language) if settings.user.allow_changing_language => language,
+            _ => settings.app.language.clone(),
+        };
         drop(settings);
 
         state
@@ -99,6 +109,7 @@ mod post {
             data.name_first.as_deref(),
             data.name_last.as_deref(),
             &data.password,
+            &language,
         )
         .await
         {

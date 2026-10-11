@@ -1,10 +1,9 @@
 use serde::Serialize;
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=../database/migrations");
-    println!("cargo:rerun-if-changed=../database/extension-migrations");
 
     let migrations_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap())
         .join("..")
@@ -13,26 +12,26 @@ fn main() {
 
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("migrations");
     if out_dir.exists() {
-        fs::remove_dir_all(&out_dir).expect("Failed to clear migrations");
+        std::fs::remove_dir_all(&out_dir).expect("Failed to clear migrations");
     }
-    fs::create_dir_all(&out_dir).expect("Failed to create migrations");
+    std::fs::create_dir_all(&out_dir).expect("Failed to create migrations");
 
-    for entry in fs::read_dir(&migrations_dir).expect("Failed to read database/migrations") {
+    for entry in std::fs::read_dir(&migrations_dir).expect("Failed to read database/migrations") {
         let entry = entry.expect("Failed to read migration entry");
         if !entry.path().is_dir() {
             continue;
         }
 
         let destination = out_dir.join(entry.file_name());
-        fs::create_dir_all(&destination).expect("Failed to create migration directory");
-        fs::copy(
+        std::fs::create_dir_all(&destination).expect("Failed to create migration directory");
+        std::fs::copy(
             entry.path().join("migration.sql"),
             destination.join("migration.sql"),
         )
         .unwrap_or_else(|e| panic!("Failed to copy {}: {e}", entry.path().display()));
 
         let snapshot: serde_json::Value = serde_json::from_slice(
-            &fs::read(entry.path().join("snapshot.json"))
+            &std::fs::read(entry.path().join("snapshot.json"))
                 .unwrap_or_else(|e| panic!("Failed to read {}: {e}", entry.path().display())),
         )
         .unwrap_or_else(|e| panic!("Failed to parse {}: {e}", entry.path().display()));
@@ -51,7 +50,7 @@ fn main() {
             }
         }
 
-        fs::write(
+        std::fs::write(
             destination.join("snapshot.json"),
             serde_json::json!({
                 "id": snapshot["id"],

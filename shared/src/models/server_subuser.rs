@@ -84,9 +84,44 @@ impl BaseModel for ServerSubuser {
             extension_data: Self::map_extensions(prefix, row)?,
         })
     }
+
+    fn cache_invalidation_keys(&self) -> Vec<compact_str::CompactString> {
+        vec![Self::permissions_cache_key(
+            self.server.uuid,
+            self.user.uuid,
+        )]
+    }
 }
 
 impl ServerSubuser {
+    fn permissions_cache_key(
+        server_uuid: uuid::Uuid,
+        user_uuid: uuid::Uuid,
+    ) -> compact_str::CompactString {
+        compact_str::format_compact!("{}::{server_uuid}::{user_uuid}", Self::NAME)
+    }
+
+    pub async fn permissions_by_server_uuid_user_uuid_cached(
+        database: &crate::database::Database,
+        server_uuid: uuid::Uuid,
+        user_uuid: uuid::Uuid,
+    ) -> Result<
+        Option<(
+            Vec<compact_str::CompactString>,
+            Vec<compact_str::CompactString>,
+        )>,
+        anyhow::Error,
+    > {
+        database
+            .cache
+            .cached(
+                &Self::permissions_cache_key(server_uuid, user_uuid),
+                super::BY_UUID_CACHE_TTL,
+                || Self::permissions_by_server_uuid_user_uuid(database, server_uuid, user_uuid),
+            )
+            .await
+    }
+
     pub async fn permissions_by_server_uuid_user_uuid(
         database: &crate::database::Database,
         server_uuid: uuid::Uuid,
@@ -253,6 +288,27 @@ impl CreatableModel for ServerSubuser {
             LazyLock::new(|| Arc::new(ModelHandlerList::default()));
 
         &CREATE_LISTENERS
+    }
+
+    async fn create(
+        state: &crate::State,
+        options: Self::CreateOptions<'_>,
+    ) -> Result<Self, crate::database::DatabaseError> {
+        let mut transaction = state.database.write().begin().await?;
+
+        let result = match Self::create_with_transaction(state, options, &mut transaction).await {
+            Ok(result) => result,
+            Err(err) => {
+                transaction.rollback().await?;
+                return Err(err);
+            }
+        };
+
+        transaction.commit().await?;
+
+        super::invalidate_cache_keys(&state.database, &result.cache_invalidation_keys()).await;
+
+        Ok(result)
     }
 
     async fn create_with_transaction(

@@ -110,6 +110,13 @@ function ValuePicker({
 const TEXT_PREVIEW_CHARS = 512;
 const BINARY_PREVIEW_CHARS = 32;
 
+function textPreview(text: string) {
+  const lastCode = text.charCodeAt(TEXT_PREVIEW_CHARS - 1);
+  const end = lastCode >= 0xd800 && lastCode <= 0xdbff ? TEXT_PREVIEW_CHARS - 1 : TEXT_PREVIEW_CHARS;
+
+  return text.slice(0, end);
+}
+
 function Rendered({ value }: { value: Value }) {
   const { t } = useTranslations();
 
@@ -136,7 +143,7 @@ function Rendered({ value }: { value: Value }) {
 
   return (
     <span className='block truncate text-left'>
-      {value.value.slice(0, TEXT_PREVIEW_CHARS)}
+      {textPreview(value.value)}
       {value.truncated && '…'}
     </span>
   );

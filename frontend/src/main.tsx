@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { Extension, ExtensionContext } from 'shared';
 import App from '@/App.tsx';
 import getSettings from '@/api/getSettings.ts';
+import { preloadRouterForPath } from '@/routers/routerImports.ts';
 import { useGlobalStore } from '@/stores/global.ts';
 
 import.meta.glob('../extensions/*/src/app.css', { eager: true });
@@ -87,6 +88,8 @@ function setExtensionStylesEnabled(isEnabled: (identifier: string) => boolean) {
 setExtensionStylesEnabled(() => false);
 
 (async () => {
+  preloadRouterForPath(window.location.pathname);
+
   let disabled: string[] = [];
 
   try {

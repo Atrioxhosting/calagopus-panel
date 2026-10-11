@@ -56,35 +56,37 @@ mod get {
         let node = server.node.fetch_cached(&state.database).await?;
         let storage_url_retriever = state.storage.retrieve_urls().await?;
 
-        let token = node.create_jwt(
-            &state.database,
-            &state.jwt,
-            &WebsocketJwt {
-                base: BasePayload {
-                    scope: "websocket".into(),
-                    issuer: "panel".into(),
-                    subject: None,
-                    audience: Vec::new(),
-                    expiration_time: Some(chrono::Utc::now().timestamp() + 600),
-                    not_before: None,
-                    issued_at: Some(chrono::Utc::now().timestamp()),
-                    jwt_id: user.uuid.to_compact_string(),
+        let token = node
+            .create_jwt(
+                &state.database,
+                &state.jwt,
+                &WebsocketJwt {
+                    base: BasePayload {
+                        scope: "websocket".into(),
+                        issuer: "panel".into(),
+                        subject: None,
+                        audience: Vec::new(),
+                        expiration_time: Some(chrono::Utc::now().timestamp() + 600),
+                        not_before: None,
+                        issued_at: Some(chrono::Utc::now().timestamp()),
+                        jwt_id: user.uuid.to_compact_string(),
+                    },
+                    user_uuid: user.uuid,
+                    user_name: &user.username,
+                    user_avatar: user
+                        .avatar
+                        .as_ref()
+                        .map(|a| storage_url_retriever.get_url(a)),
+                    server_uuid: server.uuid,
+                    permissions: server.wings_permissions(
+                        &*state.settings.get().await?,
+                        &user,
+                        &credential_scope,
+                    ),
+                    ignored_files: server.subuser_ignored_files.as_deref().unwrap_or(&[]),
                 },
-                user_uuid: user.uuid,
-                user_name: &user.username,
-                user_avatar: user
-                    .avatar
-                    .as_ref()
-                    .map(|a| storage_url_retriever.get_url(a)),
-                server_uuid: server.uuid,
-                permissions: server.wings_permissions(
-                    &*state.settings.get().await?,
-                    &user,
-                    &credential_scope,
-                ),
-                ignored_files: server.subuser_ignored_files.as_deref().unwrap_or(&[]),
-            },
-        )?;
+            )
+            .await?;
 
         let mut url = node
             .public_url(

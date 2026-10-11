@@ -1,6 +1,6 @@
 import { SelectProps } from '@mantine/core';
 import classNames from 'classnames';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { z } from 'zod';
 import getServers from '@/api/server/getServers.ts';
@@ -58,10 +58,12 @@ export default function ServerSwitcher({ className, isServer }: { className?: st
   const location = useLocation();
   const navigate = useNavigate();
   const wide = usePageBreakpoint('md');
+  const [opened, setOpened] = useState(false);
 
   const servers = useSearchableResource<z.infer<typeof serverSchema>>({
     queryKey: queryKeys.user.servers.all(),
     fetcher: (search) => getServers(1, search),
+    canRequest: opened,
   });
 
   const otherServers = servers.items.filter((s) => s.uuid !== currentServer?.uuid);
@@ -96,7 +98,9 @@ export default function ServerSwitcher({ className, isServer }: { className?: st
       }))}
       value={null}
       onChange={handleChange}
+      onDropdownOpen={() => setOpened(true)}
       searchable
+      selectFirstOptionOnChange
       searchValue={servers.search}
       onSearchChange={servers.setSearch}
       loading={servers.loading}

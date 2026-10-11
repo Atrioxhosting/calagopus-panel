@@ -50,7 +50,7 @@ mod put {
                 .ok();
         }
 
-        let egg_configuration = server.egg.configuration(&state.database).await?;
+        let egg_configuration = server.egg_configuration(&state.database).await?;
 
         let is_predefined = server
             .egg

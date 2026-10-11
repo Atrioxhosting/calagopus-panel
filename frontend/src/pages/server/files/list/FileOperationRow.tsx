@@ -39,7 +39,7 @@ export default function FileOperationRow({
         : operation.destinationServer
       : null;
   const { data: remoteServer } = useQuery({
-    queryKey: queryKeys.user.servers.detail(remoteServerUuid ?? ''),
+    queryKey: queryKeys.server(remoteServerUuid ?? '').detail(),
     queryFn: remoteServerUuid ? () => getServer(remoteServerUuid) : skipToken,
     staleTime: Infinity,
     retry: false,

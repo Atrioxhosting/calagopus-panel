@@ -16,7 +16,7 @@ import SecurityKeyRow from './SecurityKeyRow.tsx';
 
 export default function DashboardSecurityKeys() {
   const { t } = useTranslations();
-  const { settings } = useGlobalStore();
+  const settings = useGlobalStore((state) => state.settings);
 
   const [openModal, setOpenModal] = useState<'create' | null>(null);
 

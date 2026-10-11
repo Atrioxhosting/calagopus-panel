@@ -13,6 +13,7 @@ export interface ServerSlice {
 
   serverResourceUsage: Record<string, z.infer<typeof serverResourceUsageSchema>>;
   resourceUsageTick: number;
+  failedResourceNodes: Record<string, true>;
 
   _nodeFetchTimestamps: Map<string, number>;
   _pendingNodeFetches: Map<string, Promise<void>>;
@@ -35,6 +36,7 @@ export const createServersSlice: StateCreator<UserStore, [], [], ServerSlice> = 
 
   serverResourceUsage: {},
   resourceUsageTick: 0,
+  failedResourceNodes: {},
 
   _nodeFetchTimestamps: new Map(),
   _pendingNodeFetches: new Map(),
@@ -89,14 +91,21 @@ export const createServersSlice: StateCreator<UserStore, [], [], ServerSlice> = 
           const timestamps = new Map(s._nodeFetchTimestamps);
           timestamps.set(nodeUuid, Date.now());
 
+          const { [nodeUuid]: _, ...failedResourceNodes } = s.failedResourceNodes;
+
           return {
             serverResourceUsage: updated,
             _nodeFetchTimestamps: timestamps,
             resourceUsageTick: s.resourceUsageTick + 1,
+            ...(nodeUuid in s.failedResourceNodes ? { failedResourceNodes } : {}),
           };
         });
       } catch (err) {
         console.error(`Failed to fetch resources for node ${nodeUuid}:`, err);
+
+        if (!(nodeUuid in get().failedResourceNodes)) {
+          set((s) => ({ failedResourceNodes: { ...s.failedResourceNodes, [nodeUuid]: true } }));
+        }
       } finally {
         get()._pendingNodeFetches.delete(nodeUuid);
       }

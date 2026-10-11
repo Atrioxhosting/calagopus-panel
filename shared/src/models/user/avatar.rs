@@ -94,10 +94,10 @@ fn random_path(user_uuid: uuid::Uuid) -> String {
     )
 }
 
-fn imported_path(user_uuid: uuid::Uuid, source_url: &str) -> String {
+fn imported_path_prefix(user_uuid: uuid::Uuid, source_url: &str) -> String {
     let digest = sha2::Sha256::digest(source_url.as_bytes());
 
-    format!("avatars/{}/{}.webp", user_uuid, hex::encode(&digest[..16]))
+    format!("avatars/{}/{}-", user_uuid, hex::encode(&digest[..16]))
 }
 
 async fn store(
@@ -109,7 +109,12 @@ async fn store(
 ) -> Result<(), anyhow::Error> {
     state
         .storage
-        .store(path, data.as_slice(), "image/webp")
+        .store_with_cache_control(
+            path,
+            data.as_slice(),
+            "image/webp",
+            Some("public, max-age=31536000, immutable"),
+        )
         .await?;
 
     if previous != Some(path) {
@@ -147,15 +152,17 @@ impl super::User {
     }
 
     /// Downloads, transcodes and stores `source_url` as the avatar of `user_uuid`. The path is
-    /// derived from `source_url`, so re-importing an unchanged url is a no-op.
+    /// prefixed by a digest of `source_url`, so re-importing an unchanged url is a no-op, and
+    /// suffixed by a digest of the stored bytes, so a path never changes content (avatars are
+    /// served as immutable).
     pub async fn import_avatar_by_uuid(
         state: &crate::State,
         user_uuid: uuid::Uuid,
         previous: Option<&str>,
         source_url: &str,
     ) -> Result<(), anyhow::Error> {
-        let path = imported_path(user_uuid, source_url);
-        if previous == Some(path.as_str()) {
+        let path_prefix = imported_path_prefix(user_uuid, source_url);
+        if previous.is_some_and(|previous| previous.starts_with(&path_prefix)) {
             return Ok(());
         }
 
@@ -187,6 +194,10 @@ impl super::User {
         }
 
         let data = transcode(data, import_limits(), false).await?;
+        let path = format!(
+            "{path_prefix}{}.webp",
+            hex::encode(&sha2::Sha256::digest(&data)[..8])
+        );
 
         store(state, user_uuid, previous, &path, data).await
     }

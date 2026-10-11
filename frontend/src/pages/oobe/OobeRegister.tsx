@@ -20,7 +20,7 @@ import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { OobeComponentProps } from '@/routers/OobeRouter.tsx';
 
 export default function OobeRegister({ onNext }: OobeComponentProps) {
-  const { t } = useTranslations();
+  const { t, language } = useTranslations();
   const { doLogin } = useAuth();
 
   const [loading, setLoading] = useState(false);
@@ -50,6 +50,7 @@ export default function OobeRegister({ onNext }: OobeComponentProps) {
       nameFirst: values.nameFirst,
       nameLast: values.nameLast,
       password: values.password,
+      language,
       captcha: '',
     })
       .then((response) => {

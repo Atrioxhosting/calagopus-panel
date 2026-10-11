@@ -46,7 +46,7 @@ export default function EggVariableContainer({
   dragHandleProps?: ComponentProps<'button'>;
 }) {
   const { addToast } = useToast();
-  const { languages } = useGlobalStore();
+  const languages = useGlobalStore((state) => state.languages);
   const { t } = useTranslations();
 
   const [openModal, setOpenModal] = useState<'delete' | 'duplicate' | null>(null);

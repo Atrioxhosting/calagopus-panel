@@ -342,6 +342,14 @@ impl BaseModel for ServerBackup {
             extension_data: Self::map_extensions(prefix, row)?,
         })
     }
+
+    fn cache_invalidation_keys(&self) -> Vec<compact_str::CompactString> {
+        vec![compact_str::format_compact!(
+            "{}::{}",
+            Self::NAME,
+            self.uuid
+        )]
+    }
 }
 
 impl ServerBackup {
@@ -1325,26 +1333,28 @@ impl ServerBackup {
             database: bool,
         }
 
-        let token = node.create_jwt(
-            &state.database,
-            &state.jwt,
-            &BackupDownloadJwt {
-                base: BasePayload {
-                    scope: "backup-download".into(),
-                    issuer: "panel".into(),
-                    subject: None,
-                    audience: Vec::new(),
-                    expiration_time: Some(chrono::Utc::now().timestamp() + 900),
-                    not_before: None,
-                    issued_at: Some(chrono::Utc::now().timestamp()),
-                    jwt_id: user.uuid.to_compact_string(),
+        let token = node
+            .create_jwt(
+                &state.database,
+                &state.jwt,
+                &BackupDownloadJwt {
+                    base: BasePayload {
+                        scope: "backup-download".into(),
+                        issuer: "panel".into(),
+                        subject: None,
+                        audience: Vec::new(),
+                        expiration_time: Some(chrono::Utc::now().timestamp() + 900),
+                        not_before: None,
+                        issued_at: Some(chrono::Utc::now().timestamp()),
+                        jwt_id: user.uuid.to_compact_string(),
+                    },
+                    backup_uuid: self.uuid,
+                    server_uuid: self.server.as_ref().map(|server| server.uuid),
+                    unique_id: uuid::Uuid::new_v4(),
+                    database: self.kind == ServerBackupKind::DatabaseInstance,
                 },
-                backup_uuid: self.uuid,
-                server_uuid: self.server.as_ref().map(|server| server.uuid),
-                unique_id: uuid::Uuid::new_v4(),
-                database: self.kind == ServerBackupKind::DatabaseInstance,
-            },
-        )?;
+            )
+            .await?;
 
         let mut url = node
             .public_url(state, request_host, "/download/backup")
@@ -1530,7 +1540,7 @@ impl ServerBackup {
             .unwrap_or_default();
 
         if let Some(startup) = startup_cmd
-            && let Ok(egg_config) = server.egg.configuration(&state.database).await
+            && let Ok(egg_config) = server.egg_configuration(&state.database).await
         {
             let is_predefined = server
                 .egg
@@ -2182,7 +2192,7 @@ impl CreatableModel for ServerBackup {
         let backup_disk = backup.disk;
         let database_dump = options
             .database_instance
-            .map(|instance| (instance.uuid, instance.r#type.dump_extension()));
+            .map(|instance| (instance.uuid, instance.r#type.export_extension()));
         let ignored_files_str = options
             .ignored_files
             .iter()

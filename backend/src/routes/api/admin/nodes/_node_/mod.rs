@@ -173,6 +173,7 @@ mod patch {
         models::{
             UpdatableModel,
             admin_activity::GetAdminActivityLogger,
+            egg_configuration::DisabledFeatures,
             node::{GetNode, UpdateNodeOptions},
             user::GetPermissionManager,
         },
@@ -208,6 +209,7 @@ mod patch {
             .bandwidth_per_gib
             .is_some_and(|value| value != node.bandwidth_per_gib);
 
+        let disabled_features = DisabledFeatures::resolve(&state.database).await?;
         match node.update(&state, data).await {
             Ok(_) => {}
             Err(err) if err.is_unique_violation() => {
@@ -242,6 +244,7 @@ mod patch {
 
         if sync_bandwidth {
             let node_uuid = node.uuid;
+            let state = state.clone();
             tokio::spawn(async move {
                 let mut page = 1;
                 loop {
@@ -275,6 +278,7 @@ mod patch {
                 }
             });
         }
+        disabled_features.propagate(&state).await;
 
         ApiResponse::new_serialized(Response {}).ok()
     }

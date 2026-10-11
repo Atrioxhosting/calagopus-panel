@@ -170,6 +170,7 @@ export default function OAuthProviderMappingModal({
         <OAuthProviderMappingMatcherBuilder
           matcher={form.values.matcher}
           onChange={(matcher) => form.setFieldValue('matcher', matcher)}
+          sources={Object.keys(oauthProvider.infoUrls)}
         />
 
         <ModalFooter>

@@ -101,7 +101,8 @@ mod delete {
     use shared::{
         ApiError, GetState,
         models::{
-            DeletableModel, admin_activity::GetAdminActivityLogger, user::GetPermissionManager,
+            DeletableModel, admin_activity::GetAdminActivityLogger,
+            egg_configuration::DisabledFeatures, user::GetPermissionManager,
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -129,6 +130,7 @@ mod delete {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("egg-configurations.delete")?;
 
+        let disabled_features = DisabledFeatures::resolve(&state.database).await?;
         egg_configuration.delete(&state, ()).await?;
 
         activity_logger
@@ -141,6 +143,8 @@ mod delete {
             )
             .await;
 
+        disabled_features.propagate(&state).await;
+
         ApiResponse::new_serialized(Response {}).ok()
     }
 }
@@ -152,8 +156,10 @@ mod patch {
     use shared::{
         ApiError, GetState,
         models::{
-            UpdatableModel, admin_activity::GetAdminActivityLogger,
-            egg_configuration::UpdateEggConfigurationOptions, user::GetPermissionManager,
+            UpdatableModel,
+            admin_activity::GetAdminActivityLogger,
+            egg_configuration::{DisabledFeatures, UpdateEggConfigurationOptions},
+            user::GetPermissionManager,
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -183,6 +189,7 @@ mod patch {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("egg-configurations.update")?;
 
+        let disabled_features = DisabledFeatures::resolve(&state.database).await?;
         match egg_configuration.update(&state, data).await {
             Ok(_) => {}
             Err(err) if err.is_unique_violation() => {
@@ -202,13 +209,16 @@ mod patch {
                     "description": egg_configuration.description,
                     "order": egg_configuration.order,
 
-                    "eggs": egg_configuration.eggs,
+                    "matcher": egg_configuration.matcher,
 
                     "config_allocations": egg_configuration.config_allocations,
                     "config_routes": egg_configuration.config_routes,
+                    "config_features": egg_configuration.config_features,
                 }),
             )
             .await;
+
+        disabled_features.propagate(&state).await;
 
         ApiResponse::new_serialized(Response {}).ok()
     }

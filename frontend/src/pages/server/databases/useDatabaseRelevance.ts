@@ -5,6 +5,7 @@ import getDatabaseInstances from '@/api/server/databases/instances/getDatabaseIn
 import getDatabaseInstanceTemplates from '@/api/server/databases/instances/getDatabaseInstanceTemplates.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { useResource } from '@/plugins/resource/useResource.ts';
+import { paginatedTableQueryKey } from '@/plugins/resource/useSearchablePaginatedTable.ts';
 import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useServerStore } from '@/stores/server.ts';
 
@@ -16,14 +17,14 @@ export function useDatabaseRelevance() {
   const canCreateAgent = useServerCan('database-instances.create');
 
   const { data: databases } = useQuery({
-    queryKey: queryKeys.server(server.uuid).databases.all(),
-    queryFn: () => getDatabases(server.uuid, 1),
+    queryKey: paginatedTableQueryKey(queryKeys.server(server.uuid).databases.all(), 1, ''),
+    queryFn: () => getDatabases(server.uuid, 1, ''),
     enabled: canReadClassic,
   });
 
   const { data: instances } = useQuery({
-    queryKey: queryKeys.server(server.uuid).databases.instances.all(),
-    queryFn: () => getDatabaseInstances(server.uuid, 1),
+    queryKey: paginatedTableQueryKey(queryKeys.server(server.uuid).databases.instances.all(), 1, ''),
+    queryFn: () => getDatabaseInstances(server.uuid, 1, ''),
     enabled: canReadAgent,
   });
 

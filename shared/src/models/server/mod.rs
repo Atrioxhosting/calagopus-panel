@@ -10,7 +10,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, postgres::PgRow, prelude::Type};
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     sync::{Arc, LazyLock},
 };
 use utoipa::ToSchema;
@@ -622,7 +622,7 @@ impl Server {
 
     /// Get a server by its identifier, ensuring the user has access to it.
     ///
-    /// The server is cached until it is written to; subuser access is checked live.
+    /// The server and the caller's subuser entry are cached until they are written to.
     pub async fn by_user_identifier(
         database: &crate::database::Database,
         user: &super::user::User,
@@ -646,7 +646,7 @@ impl Server {
         }
 
         if let Some((permissions, ignored_files)) =
-            super::server_subuser::ServerSubuser::permissions_by_server_uuid_user_uuid(
+            super::server_subuser::ServerSubuser::permissions_by_server_uuid_user_uuid_cached(
                 database,
                 server.uuid,
                 user.uuid,
@@ -815,7 +815,7 @@ impl Server {
 
         let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
             r#"
-            SELECT DISTINCT ON (servers.uuid, servers.created) {}, server_subusers.permissions, server_subusers.ignored_files, COUNT(*) OVER() AS total_count
+            SELECT {}, server_subusers.permissions, server_subusers.ignored_files, COUNT(*) OVER() AS total_count
             FROM servers
             LEFT JOIN server_allocations ON server_allocations.uuid = servers.allocation_uuid
             LEFT JOIN node_allocations ON node_allocations.uuid = server_allocations.allocation_uuid
@@ -825,9 +825,13 @@ impl Server {
             JOIN nests ON nests.uuid = nest_eggs.nest_uuid
             LEFT JOIN server_subusers ON server_subusers.server_uuid = servers.uuid AND server_subusers.user_uuid = $1
             WHERE
-                (servers.owner_uuid = $1 OR server_subusers.user_uuid = $1)
+                servers.uuid IN (
+                    SELECT owned.uuid FROM servers owned WHERE owned.owner_uuid = $1
+                    UNION ALL
+                    SELECT server_subusers.server_uuid FROM server_subusers WHERE server_subusers.user_uuid = $1
+                )
                 AND {search}
-            ORDER BY servers.created
+            ORDER BY servers.created, servers.uuid
             LIMIT $3 OFFSET $4
             "#,
             Self::columns_sql(None),
@@ -860,11 +864,14 @@ impl Server {
     ) -> Result<Vec<uuid::Uuid>, crate::database::DatabaseError> {
         let rows = sqlx::query(
             r#"
-            SELECT DISTINCT ON (servers.uuid, servers.created) servers.uuid
+            SELECT servers.uuid
             FROM servers
-            LEFT JOIN server_subusers ON server_subusers.server_uuid = servers.uuid AND server_subusers.user_uuid = $2
-            WHERE servers.node_uuid = $1 AND (servers.owner_uuid = $2 OR server_subusers.user_uuid = $2)
-            ORDER BY servers.created
+            WHERE servers.node_uuid = $1 AND servers.uuid IN (
+                SELECT owned.uuid FROM servers owned WHERE owned.owner_uuid = $2
+                UNION ALL
+                SELECT server_subusers.server_uuid FROM server_subusers WHERE server_subusers.user_uuid = $2
+            )
+            ORDER BY servers.created, servers.uuid
             "#
         )
         .bind(node_uuid)
@@ -889,7 +896,7 @@ impl Server {
 
         let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
             r#"
-            SELECT DISTINCT ON (servers.uuid, servers.created) {}, server_subusers.permissions, server_subusers.ignored_files, COUNT(*) OVER() AS total_count
+            SELECT {}, server_subusers.permissions, server_subusers.ignored_files, COUNT(*) OVER() AS total_count
             FROM servers
             LEFT JOIN server_allocations ON server_allocations.uuid = servers.allocation_uuid
             LEFT JOIN node_allocations ON node_allocations.uuid = server_allocations.allocation_uuid
@@ -901,7 +908,7 @@ impl Server {
             WHERE
                 servers.owner_uuid != $1 AND (server_subusers.user_uuid IS NULL OR server_subusers.user_uuid != $1)
                 AND {search}
-            ORDER BY servers.created
+            ORDER BY servers.created, servers.uuid
             LIMIT $3 OFFSET $4
             "#,
             Self::columns_sql(None),
@@ -936,12 +943,15 @@ impl Server {
         page: i64,
         per_page: i64,
         search: Option<&str>,
+        exclude: &HashSet<(uuid::Uuid, uuid::Uuid)>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
         let offset = (page - 1) * per_page;
+        let (excluded_egg_uuids, excluded_node_uuids): (Vec<_>, Vec<_>) =
+            exclude.iter().copied().unzip();
 
         let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
             r#"
-            SELECT DISTINCT ON (servers.uuid, servers.created) {}, server_subusers.permissions, server_subusers.ignored_files, COUNT(*) OVER() AS total_count
+            SELECT {}, server_subusers.permissions, server_subusers.ignored_files, COUNT(*) OVER() AS total_count
             FROM server_tunnels
             JOIN servers ON servers.uuid = server_tunnels.server_uuid
             LEFT JOIN server_allocations ON server_allocations.uuid = servers.allocation_uuid
@@ -952,13 +962,18 @@ impl Server {
             JOIN nests ON nests.uuid = nest_eggs.nest_uuid
             LEFT JOIN server_subusers ON server_subusers.server_uuid = servers.uuid AND server_subusers.user_uuid = $1
             WHERE
-                (servers.owner_uuid = $1 OR server_subusers.user_uuid = $1)
+                servers.uuid IN (
+                    SELECT owned.uuid FROM servers owned WHERE owned.owner_uuid = $1
+                    UNION ALL
+                    SELECT server_subusers.server_uuid FROM server_subusers WHERE server_subusers.user_uuid = $1
+                )
                 AND servers.uuid != $2
                 AND NOT servers.suspended
                 AND servers.destination_node_uuid IS NULL
                 AND servers.status IS NULL
+                AND (servers.egg_uuid, servers.node_uuid) NOT IN (SELECT * FROM UNNEST($6::uuid[], $7::uuid[]))
                 AND {search}
-            ORDER BY servers.created
+            ORDER BY servers.created, servers.uuid
             LIMIT $4 OFFSET $5
             "#,
             Self::columns_sql(None),
@@ -969,6 +984,8 @@ impl Server {
         .bind(search)
         .bind(per_page)
         .bind(offset)
+        .bind(excluded_egg_uuids)
+        .bind(excluded_node_uuids)
         .fetch_all(database.read())
         .await?;
 
@@ -992,12 +1009,15 @@ impl Server {
         page: i64,
         per_page: i64,
         search: Option<&str>,
+        exclude: &HashSet<(uuid::Uuid, uuid::Uuid)>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
         let offset = (page - 1) * per_page;
+        let (excluded_egg_uuids, excluded_node_uuids): (Vec<_>, Vec<_>) =
+            exclude.iter().copied().unzip();
 
         let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
             r#"
-            SELECT DISTINCT ON (servers.uuid, servers.created) {}, server_subusers.permissions, server_subusers.ignored_files, COUNT(*) OVER() AS total_count
+            SELECT {}, server_subusers.permissions, server_subusers.ignored_files, COUNT(*) OVER() AS total_count
             FROM server_tunnels
             JOIN servers ON servers.uuid = server_tunnels.server_uuid
             LEFT JOIN server_allocations ON server_allocations.uuid = servers.allocation_uuid
@@ -1013,8 +1033,9 @@ impl Server {
                 AND NOT servers.suspended
                 AND servers.destination_node_uuid IS NULL
                 AND servers.status IS NULL
+                AND (servers.egg_uuid, servers.node_uuid) NOT IN (SELECT * FROM UNNEST($6::uuid[], $7::uuid[]))
                 AND {search}
-            ORDER BY servers.created
+            ORDER BY servers.created, servers.uuid
             LIMIT $4 OFFSET $5
             "#,
             Self::columns_sql(None),
@@ -1025,6 +1046,8 @@ impl Server {
         .bind(search)
         .bind(per_page)
         .bind(offset)
+        .bind(excluded_egg_uuids)
+        .bind(excluded_node_uuids)
         .fetch_all(database.read())
         .await?;
 
@@ -1039,6 +1062,37 @@ impl Server {
                 .map(|row| Self::map(None, &row))
                 .try_collect_vec()?,
         })
+    }
+
+    pub async fn all_with_firewall_by_egg_node_pairs(
+        database: &crate::database::Database,
+        pairs: &HashSet<(uuid::Uuid, uuid::Uuid)>,
+    ) -> Result<Vec<Self>, crate::database::DatabaseError> {
+        let (egg_uuids, node_uuids): (Vec<_>, Vec<_>) = pairs.iter().copied().unzip();
+
+        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
+            r#"
+            SELECT {}
+            FROM server_firewalls
+            JOIN servers ON servers.uuid = server_firewalls.server_uuid
+            LEFT JOIN server_allocations ON server_allocations.uuid = servers.allocation_uuid
+            LEFT JOIN node_allocations ON node_allocations.uuid = server_allocations.allocation_uuid
+            JOIN users ON users.uuid = servers.owner_uuid
+            LEFT JOIN roles ON roles.uuid = users.role_uuid
+            JOIN nest_eggs ON nest_eggs.uuid = servers.egg_uuid
+            JOIN nests ON nests.uuid = nest_eggs.nest_uuid
+            WHERE (servers.egg_uuid, servers.node_uuid) IN (SELECT * FROM UNNEST($1::uuid[], $2::uuid[]))
+            "#,
+            Self::columns_sql(None)
+        )))
+        .bind(egg_uuids)
+        .bind(node_uuids)
+        .fetch_all(database.write())
+        .await?;
+
+        rows.into_iter()
+            .map(|row| Self::map(None, &row))
+            .try_collect_vec()
     }
 
     pub async fn by_node_uuid_with_pagination(
@@ -1398,6 +1452,19 @@ impl Server {
         Ok(true)
     }
 
+    pub async fn egg_configuration(
+        &self,
+        database: &crate::database::Database,
+    ) -> Result<super::egg_configuration::MergedEggConfiguration, anyhow::Error> {
+        let node = self.node.fetch_cached(database).await?;
+
+        super::egg_configuration::EggConfiguration::merged_for_target(
+            database,
+            &super::egg_configuration::EggConfigurationTarget::new(&self.egg, &node),
+        )
+        .await
+    }
+
     /// Syncs the server with the node. This will update server resources, schedules, name, etc.
     pub async fn sync(self, database: &crate::database::Database) -> Result<(), anyhow::Error> {
         self.node
@@ -1664,20 +1731,23 @@ impl Server {
             .await?;
         }
 
-        let token = options.destination_node.create_jwt(
-            &state.database,
-            &state.jwt,
-            &crate::jwt::BasePayload {
-                scope: "transfer".into(),
-                issuer: "panel".into(),
-                subject: Some(self.uuid.to_compact_string()),
-                audience: Vec::new(),
-                expiration_time: Some(chrono::Utc::now().timestamp() + 600),
-                not_before: None,
-                issued_at: Some(chrono::Utc::now().timestamp()),
-                jwt_id: self.node.uuid.to_compact_string(),
-            },
-        )?;
+        let token = options
+            .destination_node
+            .create_jwt(
+                &state.database,
+                &state.jwt,
+                &crate::jwt::BasePayload {
+                    scope: "transfer".into(),
+                    issuer: "panel".into(),
+                    subject: Some(self.uuid.to_compact_string()),
+                    audience: Vec::new(),
+                    expiration_time: Some(chrono::Utc::now().timestamp() + 600),
+                    not_before: None,
+                    issued_at: Some(chrono::Utc::now().timestamp()),
+                    jwt_id: self.node.uuid.to_compact_string(),
+                },
+            )
+            .await?;
 
         let url = options.destination_node.url("/api/transfers");
 
@@ -1967,6 +2037,8 @@ impl Server {
         self,
         database: &crate::database::Database,
     ) -> Result<RemoteApiServer, anyhow::Error> {
+        let firewall_enabled = self.egg_configuration(database).await?.firewall_enabled();
+
         let (variables, backups, schedules, mounts, devices, allocations, firewall_rules) = tokio::try_join!(
             sqlx::query!(
                 "SELECT nest_egg_variables.env_variable, COALESCE(server_variables.value, nest_egg_variables.default_value) AS value
@@ -2164,10 +2236,14 @@ impl Server {
                         })
                     })
                     .try_collect_vec()?,
-                firewall: firewall::decode_rules(firewall_rules)?
-                    .into_iter()
-                    .map(Into::into)
-                    .collect(),
+                firewall: if firewall_enabled {
+                    firewall::decode_rules(firewall_rules)?
+                        .into_iter()
+                        .map(Into::into)
+                        .collect()
+                } else {
+                    Vec::new()
+                },
                 egg: wings_api::ServerConfigurationEgg {
                     id: self.egg.uuid,
                     file_denylist: self.egg.file_denylist,
@@ -2331,10 +2407,12 @@ impl super::IntoApiObject for Server {
             None => None,
         };
 
-        let (node, egg_configuration) = tokio::try_join!(
-            self.node.fetch_cached(&state.database),
-            self.egg.configuration(&state.database)
-        )?;
+        let node = self.node.fetch_cached(&state.database).await?;
+        let egg_configuration = super::egg_configuration::EggConfiguration::merged_for_target(
+            &state.database,
+            &super::egg_configuration::EggConfigurationTarget::new(&self.egg, &node),
+        )
+        .await?;
 
         let feature_limits = finish_extendible!(
             ApiServerFeatureLimits {
@@ -3001,6 +3079,10 @@ impl UpdatableModel for Server {
         query_builder.where_eq("uuid", self.uuid);
 
         query_builder.execute(&mut **transaction).await?;
+
+        if egg.as_ref().is_some_and(|egg| egg.uuid != self.egg.uuid) {
+            crate::tunnel::bump_epoch_if_server_on_mesh(transaction, self.uuid).await?;
+        }
 
         if let Some(owner) = owner {
             self.owner = owner;

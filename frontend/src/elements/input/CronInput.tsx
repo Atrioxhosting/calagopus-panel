@@ -1,5 +1,5 @@
 import { CronExpressionParser } from 'cron-parser';
-import cronstrue from 'cronstrue/i18n';
+import cronstrue from 'cronstrue';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Stack from '@/elements/layout/Stack.tsx';

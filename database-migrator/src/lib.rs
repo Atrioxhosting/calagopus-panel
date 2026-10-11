@@ -182,8 +182,18 @@ impl Migration {
 }
 
 pub static MIGRATIONS: include_dir::Dir<'_> = include_dir::include_dir!("$OUT_DIR/migrations");
-pub static EXTENSION_MIGRATIONS: include_dir::Dir<'_> =
-    include_dir::include_dir!("$CARGO_MANIFEST_DIR/../database/extension-migrations");
+static EXTENSION_MIGRATIONS: std::sync::OnceLock<&'static include_dir::Dir<'static>> =
+    std::sync::OnceLock::new();
+
+pub fn register_extension_migrations(migrations: &'static include_dir::Dir<'static>) {
+    EXTENSION_MIGRATIONS.set(migrations).ok();
+}
+
+pub fn embedded_extension_migrations() -> &'static include_dir::Dir<'static> {
+    static EMPTY: include_dir::Dir<'static> = include_dir::Dir::new("", &[]);
+
+    EXTENSION_MIGRATIONS.get().copied().unwrap_or(&EMPTY)
+}
 
 pub fn collect_embedded_migrations() -> Result<Vec<Migration>, std::io::Error> {
     let mut migrations = Vec::new();
@@ -229,13 +239,14 @@ pub fn collect_embedded_extension_migrations(
 ) -> Result<Vec<ExtensionMigration>, std::io::Error> {
     let mut migrations = Vec::new();
 
-    let dir = match EXTENSION_MIGRATIONS.get_dir(extension_identifier) {
+    let extension_migrations = embedded_extension_migrations();
+    let dir = match extension_migrations.get_dir(extension_identifier) {
         Some(dir) => dir,
         None => return Ok(migrations),
     };
 
     for entry in dir.dirs() {
-        let up_sql = match EXTENSION_MIGRATIONS.get_file(entry.path().join("up.sql")) {
+        let up_sql = match extension_migrations.get_file(entry.path().join("up.sql")) {
             Some(file) => file.contents(),
             None => {
                 return Err(std::io::Error::new(
@@ -247,7 +258,7 @@ pub fn collect_embedded_extension_migrations(
                 ));
             }
         };
-        let down_sql = match EXTENSION_MIGRATIONS.get_file(entry.path().join("down.sql")) {
+        let down_sql = match extension_migrations.get_file(entry.path().join("down.sql")) {
             Some(file) => file.contents(),
             None => {
                 return Err(std::io::Error::new(

@@ -135,7 +135,7 @@ export default function ServerStats() {
           overlayIcon={overlayIcon}
           overlayLabel={overlayLabel}
         >
-          <StreamChart {...network.props} />
+          <StreamChart {...network.props} capacityLabel='1 Gbit/s' />
         </ChartBlock>
         <ExtensionSlot
           components={window.extensionContext.extensionRegistry.pages.server.console.statBlocks}

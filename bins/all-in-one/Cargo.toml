@@ -8,6 +8,7 @@ edition = { workspace = true }
 [dependencies]
 extension-internal-list = { path = "../../backend-extensions/internal-list" }
 backend = { workspace = true }
+embedded-assets = { workspace = true }
 shared = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

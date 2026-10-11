@@ -17,6 +17,7 @@ use utoipa::ToSchema;
 #[schema(no_recursion)]
 pub enum OAuthProviderMappingMatcher {
     None,
+    Never,
     And {
         #[garde(dive)]
         matchers: Vec<OAuthProviderMappingMatcher>,
@@ -35,6 +36,10 @@ pub enum OAuthProviderMappingMatcher {
         scopes: Vec<compact_str::CompactString>,
     },
     FieldExists {
+        #[garde(length(chars, min = 1, max = 64))]
+        #[schema(min_length = 1, max_length = 64)]
+        #[serde(default)]
+        source: Option<compact_str::CompactString>,
         #[garde(
             length(chars, min = 1, max = 255),
             custom(crate::utils::validate_json_path)
@@ -43,6 +48,10 @@ pub enum OAuthProviderMappingMatcher {
         path: String,
     },
     FieldEquals {
+        #[garde(length(chars, min = 1, max = 64))]
+        #[schema(min_length = 1, max_length = 64)]
+        #[serde(default)]
+        source: Option<compact_str::CompactString>,
         #[garde(
             length(chars, min = 1, max = 255),
             custom(crate::utils::validate_json_path)
@@ -54,6 +63,10 @@ pub enum OAuthProviderMappingMatcher {
         equals: compact_str::CompactString,
     },
     FieldContains {
+        #[garde(length(chars, min = 1, max = 64))]
+        #[schema(min_length = 1, max_length = 64)]
+        #[serde(default)]
+        source: Option<compact_str::CompactString>,
         #[garde(
             length(chars, min = 1, max = 255),
             custom(crate::utils::validate_json_path)
@@ -65,6 +78,10 @@ pub enum OAuthProviderMappingMatcher {
         contains: compact_str::CompactString,
     },
     FieldStartsWith {
+        #[garde(length(chars, min = 1, max = 64))]
+        #[schema(min_length = 1, max_length = 64)]
+        #[serde(default)]
+        source: Option<compact_str::CompactString>,
         #[garde(
             length(chars, min = 1, max = 255),
             custom(crate::utils::validate_json_path)
@@ -76,6 +93,10 @@ pub enum OAuthProviderMappingMatcher {
         starts_with: compact_str::CompactString,
     },
     FieldEndsWith {
+        #[garde(length(chars, min = 1, max = 64))]
+        #[schema(min_length = 1, max_length = 64)]
+        #[serde(default)]
+        source: Option<compact_str::CompactString>,
         #[garde(
             length(chars, min = 1, max = 255),
             custom(crate::utils::validate_json_path)
@@ -123,9 +144,17 @@ impl OAuthProviderMappingMatcher {
         }
     }
 
-    fn query_nodes<'a>(path: &str, info: &'a serde_json::Value) -> Vec<&'a serde_json::Value> {
+    fn query_nodes<'a>(
+        info: &'a super::oauth_provider::OAuthProviderInfo,
+        source: Option<&str>,
+        path: &str,
+    ) -> Vec<&'a serde_json::Value> {
+        let Some(value) = info.source(source) else {
+            return Vec::new();
+        };
+
         match serde_json_path::JsonPath::parse(path) {
-            Ok(path) => path.query(info).all(),
+            Ok(path) => path.query(value).all(),
             Err(err) => {
                 tracing::warn!(
                     path,
@@ -154,10 +183,11 @@ impl OAuthProviderMappingMatcher {
     pub fn matches(
         &self,
         granted_scopes: &[compact_str::CompactString],
-        info: &serde_json::Value,
+        info: &super::oauth_provider::OAuthProviderInfo,
     ) -> bool {
         match self {
             OAuthProviderMappingMatcher::None => true,
+            OAuthProviderMappingMatcher::Never => false,
             OAuthProviderMappingMatcher::And { matchers } => {
                 matchers.iter().all(|m| m.matches(granted_scopes, info))
             }
@@ -168,34 +198,42 @@ impl OAuthProviderMappingMatcher {
             OAuthProviderMappingMatcher::Scopes { scopes } => {
                 scopes.iter().all(|scope| granted_scopes.contains(scope))
             }
-            OAuthProviderMappingMatcher::FieldExists { path } => {
-                !Self::query_nodes(path, info).is_empty()
+            OAuthProviderMappingMatcher::FieldExists { source, path } => {
+                !Self::query_nodes(info, source.as_deref(), path).is_empty()
             }
-            OAuthProviderMappingMatcher::FieldEquals { path, equals } => {
-                Self::query_nodes(path, info)
-                    .into_iter()
-                    .any(|node| Self::node_equals_str(node, equals))
-            }
-            OAuthProviderMappingMatcher::FieldContains { path, contains } => {
-                Self::query_nodes(path, info)
-                    .into_iter()
-                    .any(|node| match node {
-                        serde_json::Value::Array(values) => values
-                            .iter()
-                            .any(|value| Self::node_equals_str(value, contains)),
-                        node => Self::node_string(node).contains(contains.as_str()),
-                    })
-            }
-            OAuthProviderMappingMatcher::FieldStartsWith { path, starts_with } => {
-                Self::query_nodes(path, info)
-                    .into_iter()
-                    .any(|node| Self::node_string(node).starts_with(starts_with.as_str()))
-            }
-            OAuthProviderMappingMatcher::FieldEndsWith { path, ends_with } => {
-                Self::query_nodes(path, info)
-                    .into_iter()
-                    .any(|node| Self::node_string(node).ends_with(ends_with.as_str()))
-            }
+            OAuthProviderMappingMatcher::FieldEquals {
+                source,
+                path,
+                equals,
+            } => Self::query_nodes(info, source.as_deref(), path)
+                .into_iter()
+                .any(|node| Self::node_equals_str(node, equals)),
+            OAuthProviderMappingMatcher::FieldContains {
+                source,
+                path,
+                contains,
+            } => Self::query_nodes(info, source.as_deref(), path)
+                .into_iter()
+                .any(|node| match node {
+                    serde_json::Value::Array(values) => values
+                        .iter()
+                        .any(|value| Self::node_equals_str(value, contains)),
+                    node => Self::node_string(node).contains(contains.as_str()),
+                }),
+            OAuthProviderMappingMatcher::FieldStartsWith {
+                source,
+                path,
+                starts_with,
+            } => Self::query_nodes(info, source.as_deref(), path)
+                .into_iter()
+                .any(|node| Self::node_string(node).starts_with(starts_with.as_str())),
+            OAuthProviderMappingMatcher::FieldEndsWith {
+                source,
+                path,
+                ends_with,
+            } => Self::query_nodes(info, source.as_deref(), path)
+                .into_iter()
+                .any(|node| Self::node_string(node).ends_with(ends_with.as_str())),
         }
     }
 }
@@ -442,7 +480,7 @@ impl OAuthProviderMapping {
         oauth_provider_uuid: uuid::Uuid,
         user_uuid: uuid::Uuid,
         granted_scopes: &[compact_str::CompactString],
-        info: &serde_json::Value,
+        info: &super::oauth_provider::OAuthProviderInfo,
     ) -> Result<(), crate::database::DatabaseError> {
         let mappings =
             Self::all_by_oauth_provider_uuid(&state.database, oauth_provider_uuid).await?;
@@ -867,4 +905,178 @@ pub struct AdminApiOAuthProviderMapping {
     pub mapping: OAuthProviderMappingType,
 
     pub created: chrono::DateTime<chrono::Utc>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::oauth_provider::OAuthProviderInfo;
+
+    fn provider_info() -> OAuthProviderInfo {
+        OAuthProviderInfo {
+            info: serde_json::json!({ "id": "1", "username": "alice" }),
+            sources: [
+                (
+                    "member".into(),
+                    serde_json::json!({ "roles": ["111", "222"] }),
+                ),
+                (
+                    "extra".into(),
+                    serde_json::json!({ "only_in_source": "yes", "id": "2" }),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        }
+    }
+
+    // OAuthProviderMappingMatcher::matches
+    #[test]
+    fn no_source_evaluates_against_main_info_only() {
+        let info = provider_info();
+
+        assert!(
+            OAuthProviderMappingMatcher::FieldEquals {
+                source: None,
+                path: "$.id".into(),
+                equals: "1".into(),
+            }
+            .matches(&[], &info)
+        );
+        assert!(
+            !OAuthProviderMappingMatcher::FieldExists {
+                source: None,
+                path: "$.only_in_source".into(),
+            }
+            .matches(&[], &info)
+        );
+        assert!(
+            !OAuthProviderMappingMatcher::FieldContains {
+                source: None,
+                path: "$.roles".into(),
+                contains: "222".into(),
+            }
+            .matches(&[], &info)
+        );
+    }
+
+    #[test]
+    fn none_always_matches_and_never_never_does() {
+        let info = provider_info();
+
+        assert!(OAuthProviderMappingMatcher::None.matches(&[], &info));
+        assert!(!OAuthProviderMappingMatcher::Never.matches(&[], &info));
+    }
+
+    #[test]
+    fn named_source_evaluates_against_that_source_only() {
+        let info = provider_info();
+
+        assert!(
+            OAuthProviderMappingMatcher::FieldExists {
+                source: Some("extra".into()),
+                path: "$.only_in_source".into(),
+            }
+            .matches(&[], &info)
+        );
+        assert!(
+            OAuthProviderMappingMatcher::FieldEquals {
+                source: Some("extra".into()),
+                path: "$.id".into(),
+                equals: "2".into(),
+            }
+            .matches(&[], &info)
+        );
+        assert!(
+            !OAuthProviderMappingMatcher::FieldEquals {
+                source: Some("extra".into()),
+                path: "$.id".into(),
+                equals: "1".into(),
+            }
+            .matches(&[], &info)
+        );
+        assert!(
+            !OAuthProviderMappingMatcher::FieldExists {
+                source: Some("extra".into()),
+                path: "$.username".into(),
+            }
+            .matches(&[], &info)
+        );
+    }
+
+    #[test]
+    fn missing_source_never_matches_and_its_negation_does() {
+        let info = provider_info();
+
+        let exists_root = OAuthProviderMappingMatcher::FieldExists {
+            source: Some("guild".into()),
+            path: "$".into(),
+        };
+        assert!(!exists_root.matches(&[], &info));
+        assert!(
+            OAuthProviderMappingMatcher::Not {
+                matcher: Box::new(exists_root),
+            }
+            .matches(&[], &info)
+        );
+        assert!(
+            !OAuthProviderMappingMatcher::FieldEquals {
+                source: Some("guild".into()),
+                path: "$.id".into(),
+                equals: "1".into(),
+            }
+            .matches(&[], &info)
+        );
+        assert!(
+            !OAuthProviderMappingMatcher::FieldStartsWith {
+                source: Some("guild".into()),
+                path: "$.username".into(),
+                starts_with: "a".into(),
+            }
+            .matches(&[], &info)
+        );
+        assert!(
+            !OAuthProviderMappingMatcher::FieldEndsWith {
+                source: Some("guild".into()),
+                path: "$.username".into(),
+                ends_with: "e".into(),
+            }
+            .matches(&[], &info)
+        );
+    }
+
+    #[test]
+    fn discord_member_roles_match_by_contained_role_id() {
+        let info = provider_info();
+
+        assert!(
+            OAuthProviderMappingMatcher::FieldContains {
+                source: Some("member".into()),
+                path: "$.roles".into(),
+                contains: "222".into(),
+            }
+            .matches(&[], &info)
+        );
+        assert!(
+            !OAuthProviderMappingMatcher::FieldContains {
+                source: Some("member".into()),
+                path: "$.roles".into(),
+                contains: "333".into(),
+            }
+            .matches(&[], &info)
+        );
+    }
+
+    #[test]
+    fn stored_matcher_without_source_key_evaluates_against_main_info() {
+        let info = provider_info();
+
+        let matches_main: OAuthProviderMappingMatcher =
+            serde_json::from_str(r#"{"type":"field_equals","path":"$.id","equals":"1"}"#).unwrap();
+        let matches_source: OAuthProviderMappingMatcher =
+            serde_json::from_str(r#"{"type":"field_equals","path":"$.id","equals":"2"}"#).unwrap();
+
+        assert!(matches_main.matches(&[], &info));
+        assert!(!matches_source.matches(&[], &info));
+    }
 }

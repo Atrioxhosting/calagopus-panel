@@ -10,7 +10,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router';
+import { NavLink, useParams } from 'react-router';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 import Button from '@/elements/buttons/Button.tsx';
@@ -131,61 +131,71 @@ export default function ServerStatusIndicator() {
 
   return (
     <>
-      <Card p='xs' className='min-h-fit'>
-        <div className='h-5 flex items-center min-w-0'>
-          <span className='text-sm font-medium min-w-0 flex-1'>
-            <ScrollingText>{server.name}</ScrollingText>
-          </span>
-        </div>
+      <NavLink to={`/server/${params.id}`} className='block'>
+        <Card p='xs' className='min-h-fit' hoverable>
+          <div className='h-5 flex items-center min-w-0'>
+            <span className='text-sm font-medium min-w-0 flex-1'>
+              <ScrollingText>{server.name}</ScrollingText>
+            </span>
+          </div>
 
-        <div className='h-4 flex items-center gap-2 min-w-0'>
-          <span className='size-3 shrink-0 flex items-center justify-center'>{indicator}</span>
-          <span className='text-xs leading-4 truncate text-(--mantine-color-dimmed)'>{label}</span>
-          {uptime && <span className='text-xs leading-4 ml-auto shrink-0 text-(--mantine-color-dimmed)'>{uptime}</span>}
-        </div>
-
-        {(hasPower || showRestart) && (
-          <div className='flex gap-2 mt-2'>
-            {hasPower && (
-              <Button
-                size='xs'
-                color={startPrimary ? 'green' : 'red'}
-                disabled={powerBlocked || (startPrimary ? !isOffline : isOffline)}
-                onClick={() => onPowerAction(buttonAction)}
-                className='flex-1 min-w-0'
-                leftSection={<FontAwesomeIcon icon={startPrimary ? faPlay : killable ? faSkull : faStop} size='xs' />}
-              >
-                {t(`common.enum.serverPowerAction.${buttonAction}`, {})}
-              </Button>
+          <div className='h-4 flex items-center gap-2 min-w-0'>
+            <span className='size-3 shrink-0 flex items-center justify-center'>{indicator}</span>
+            <span className='text-xs leading-4 truncate text-(--mantine-color-dimmed)'>{label}</span>
+            {uptime && (
+              <span className='text-xs leading-4 ml-auto shrink-0 text-(--mantine-color-dimmed)'>{uptime}</span>
             )}
-            {showRestart &&
-              (hasPower ? (
-                <Tooltip label={t('common.enum.serverPowerAction.restart', {})}>
+          </div>
+
+          {(hasPower || showRestart) && (
+            <div
+              className='flex gap-2 mt-2'
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              {hasPower && (
+                <Button
+                  size='xs'
+                  color={startPrimary ? 'green' : 'red'}
+                  disabled={powerBlocked || (startPrimary ? !isOffline : isOffline)}
+                  onClick={() => onPowerAction(buttonAction)}
+                  className='flex-1 min-w-0'
+                  leftSection={<FontAwesomeIcon icon={startPrimary ? faPlay : killable ? faSkull : faStop} size='xs' />}
+                >
+                  {t(`common.enum.serverPowerAction.${buttonAction}`, {})}
+                </Button>
+              )}
+              {showRestart &&
+                (hasPower ? (
+                  <Tooltip label={t('common.enum.serverPowerAction.restart', {})}>
+                    <Button
+                      size='xs'
+                      color='gray'
+                      disabled={powerBlocked}
+                      onClick={() => onPowerAction('restart')}
+                      className='px-2.5!'
+                    >
+                      <FontAwesomeIcon icon={faRotateRight} size='xs' />
+                    </Button>
+                  </Tooltip>
+                ) : (
                   <Button
                     size='xs'
                     color='gray'
                     disabled={powerBlocked}
                     onClick={() => onPowerAction('restart')}
-                    className='px-2.5!'
+                    fullWidth
+                    leftSection={<FontAwesomeIcon icon={faRotateRight} size='xs' />}
                   >
-                    <FontAwesomeIcon icon={faRotateRight} size='xs' />
+                    {t('common.enum.serverPowerAction.restart', {})}
                   </Button>
-                </Tooltip>
-              ) : (
-                <Button
-                  size='xs'
-                  color='gray'
-                  disabled={powerBlocked}
-                  onClick={() => onPowerAction('restart')}
-                  fullWidth
-                  leftSection={<FontAwesomeIcon icon={faRotateRight} size='xs' />}
-                >
-                  {t('common.enum.serverPowerAction.restart', {})}
-                </Button>
-              ))}
-          </div>
-        )}
-      </Card>
+                ))}
+            </div>
+          )}
+        </Card>
+      </NavLink>
 
       <ConfirmationModal
         opened={open}

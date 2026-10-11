@@ -31,7 +31,9 @@ const DUMMY_S_KEY_REF = { current: false } as React.RefObject<boolean>;
 function AllServersView({ getServerTo }: { getServerTo: (server: z.infer<typeof serverSchema>) => string }) {
   const { t } = useTranslations();
 
-  const { data, loading, search, setSearch, setPage } = useSearchablePaginatedTable<
+  const navigate = useNavigate();
+
+  const { data, loading, search, debouncedSearch, setSearch, setPage } = useSearchablePaginatedTable<
     Pagination<z.infer<typeof serverSchema>>
   >({
     queryKey: [...queryKeys.user.servers.all(), 'selector'],
@@ -47,6 +49,13 @@ function AllServersView({ getServerTo }: { getServerTo: (server: z.infer<typeof 
         placeholder={t('common.input.search', {})}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        onKeyDown={(e) => {
+          const firstServer = servers.data[0];
+          if (e.key === 'Enter' && firstServer && !loading && search === debouncedSearch) {
+            e.preventDefault();
+            navigate(getServerTo(firstServer));
+          }
+        }}
         className='w-full md:w-65.5'
       />
       {servers.total > servers.perPage && (

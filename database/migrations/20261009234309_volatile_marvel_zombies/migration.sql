@@ -1,0 +1,1 @@
+ALTER TABLE "oauth_providers" ADD COLUMN "info_urls" json DEFAULT '{}' NOT NULL;

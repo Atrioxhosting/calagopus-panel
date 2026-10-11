@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { z } from 'zod';
 import { getEmptyPaginationSet, httpErrorToHuman } from '@/api/axios.ts';
 import getServerGroups from '@/api/me/servers/groups/getServerGroups.ts';
@@ -28,7 +29,8 @@ import ServerItem from './ServerItem.tsx';
 
 export default function DashboardHomeAll() {
   const { t } = useTranslations();
-  const { setServerGroups } = useUserStore();
+  const navigate = useNavigate();
+  const setServerGroups = useUserStore((state) => state.setServerGroups);
   const [serverListShowOthers, setServerListShowOthers] = useServerListShowOthers();
   const { addToast } = useToast();
 
@@ -76,6 +78,7 @@ export default function DashboardHomeAll() {
     data: servers,
     loading,
     search,
+    debouncedSearch,
     setSearch,
     setPage,
   } = useSearchablePaginatedTable({
@@ -147,6 +150,13 @@ export default function DashboardHomeAll() {
             placeholder={t('common.input.search', {})}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              const firstServer = servers?.data[0];
+              if (e.key === 'Enter' && firstServer && !loading && search === debouncedSearch) {
+                e.preventDefault();
+                navigate(`/server/${firstServer.uuidShort}`);
+              }
+            }}
             className='flex-1 min-w-0 md:w-62.5'
           />
         </Group>

@@ -1,5 +1,6 @@
 use super::client::{ApiHttpError, WingsClient};
 use futures_util::{SinkExt, StreamExt, ready};
+use serde::Deserialize;
 use std::{
     io,
     pin::Pin,
@@ -36,19 +37,47 @@ impl QueryProtocol {
 }
 
 impl WingsClient {
-    async fn open_tunnel(
+    async fn open_tunnel(&self, endpoint: String) -> Result<WsStream, ApiHttpError> {
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert(
+            reqwest::header::ACCEPT,
+            reqwest::header::HeaderValue::from_static("application/msgpack"),
+        );
+
+        match self.open_websocket(endpoint, headers).await {
+            Err(ApiHttpError::WebSocket(WsError::Http(response))) => {
+                let error = match response.body() {
+                    Some(body) => {
+                        let mut de =
+                            rmp_serde::Deserializer::new(body.as_slice()).with_human_readable();
+                        match super::ApiError::deserialize(&mut de) {
+                            Ok(error) => error,
+                            Err(err) => super::ApiError {
+                                error: err.to_string().into(),
+                            },
+                        }
+                    }
+                    None => super::ApiError {
+                        error: "websocket upgrade rejected".into(),
+                    },
+                };
+
+                Err(ApiHttpError::Http(response.status(), error))
+            }
+            result => result,
+        }
+    }
+
+    async fn open_query_tunnel(
         &self,
         server: uuid::Uuid,
         protocol: QueryProtocol,
         port: u16,
     ) -> Result<WsStream, ApiHttpError> {
-        self.open_websocket(
-            format!(
-                "/api/servers/{server}/ws/query?protocol={}&port={port}",
-                protocol.as_str()
-            ),
-            reqwest::header::HeaderMap::new(),
-        )
+        self.open_tunnel(format!(
+            "/api/servers/{server}/ws/query?protocol={}&port={port}",
+            protocol.as_str()
+        ))
         .await
     }
 
@@ -56,9 +85,11 @@ impl WingsClient {
         &self,
         server: uuid::Uuid,
         port: u16,
-    ) -> Result<QueryTcpTunnel, ApiHttpError> {
-        Ok(QueryTcpTunnel {
-            stream: self.open_tunnel(server, QueryProtocol::Tcp, port).await?,
+    ) -> Result<QueryStreamTunnel, ApiHttpError> {
+        Ok(QueryStreamTunnel {
+            stream: self
+                .open_query_tunnel(server, QueryProtocol::Tcp, port)
+                .await?,
             read: Vec::new(),
             read_pos: 0,
         })
@@ -70,18 +101,42 @@ impl WingsClient {
         port: u16,
     ) -> Result<QueryUdpTunnel, ApiHttpError> {
         Ok(QueryUdpTunnel {
-            stream: self.open_tunnel(server, QueryProtocol::Udp, port).await?,
+            stream: self
+                .open_query_tunnel(server, QueryProtocol::Udp, port)
+                .await?,
+        })
+    }
+
+    pub async fn open_tunnel_unix(
+        &self,
+        server: uuid::Uuid,
+        path: &str,
+        ignored: &[compact_str::CompactString],
+    ) -> Result<QueryStreamTunnel, ApiHttpError> {
+        let mut endpoint = format!(
+            "/api/servers/{server}/ws/socket?path={}",
+            urlencoding::encode(path)
+        );
+        for value in ignored {
+            endpoint.push_str("&ignored=");
+            endpoint.push_str(&urlencoding::encode(value));
+        }
+
+        Ok(QueryStreamTunnel {
+            stream: self.open_tunnel(endpoint).await?,
+            read: Vec::new(),
+            read_pos: 0,
         })
     }
 }
 
-pub struct QueryTcpTunnel {
+pub struct QueryStreamTunnel {
     stream: WsStream,
     read: Vec<u8>,
     read_pos: usize,
 }
 
-impl AsyncRead for QueryTcpTunnel {
+impl AsyncRead for QueryStreamTunnel {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -109,7 +164,7 @@ impl AsyncRead for QueryTcpTunnel {
     }
 }
 
-impl AsyncWrite for QueryTcpTunnel {
+impl AsyncWrite for QueryStreamTunnel {
     fn poll_write(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,

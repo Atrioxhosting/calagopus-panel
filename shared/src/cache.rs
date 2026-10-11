@@ -1,6 +1,7 @@
 use crate::{env::RedisMode, response::ApiResponse};
 use axum::http::StatusCode;
 use compact_str::ToCompactString;
+use rand::distr::SampleString;
 use rustis::{
     client::Client,
     commands::{
@@ -11,6 +12,8 @@ use rustis::{
 };
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
+    borrow::Cow,
+    collections::HashMap,
     future::Future,
     sync::{
         Arc,
@@ -29,6 +32,13 @@ end
 return {hits, ttl}
 "#;
 
+const LOCK_RELEASE_SCRIPT: &str = r#"
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  return redis.call('DEL', KEYS[1])
+end
+return 0
+"#;
+
 #[derive(Clone, Serialize)]
 pub struct BulkStringRef<'a>(
     #[serde(
@@ -42,11 +52,6 @@ pub struct BulkStringRef<'a>(
 struct DataEntry {
     data: Arc<Vec<u8>>,
     intended_ttl: Duration,
-}
-
-#[derive(Clone, Debug)]
-struct LockEntry {
-    semaphore: Arc<tokio::sync::Semaphore>,
 }
 
 #[derive(Clone, Debug)]
@@ -179,10 +184,11 @@ impl CacheStats {
 
 pub struct Cache {
     client: Option<Arc<Client>>,
+    redis_prefix: Option<compact_str::CompactString>,
     use_internal_cache: bool,
     local: moka::future::Cache<compact_str::CompactString, DataEntry>,
     local_task: tokio::task::JoinHandle<()>,
-    local_locks: moka::future::Cache<compact_str::CompactString, LockEntry>,
+    local_locks: LocalLocks,
     local_locks_task: tokio::task::JoinHandle<()>,
     local_ratelimits: moka::future::Cache<compact_str::CompactString, (u64, u64)>,
     local_resolutions: moka::future::Cache<compact_str::CompactString, Resolution>,
@@ -241,7 +247,7 @@ impl Cache {
             }
         });
 
-        let local_locks = moka::future::Cache::builder().max_capacity(4096).build();
+        let local_locks = LocalLocks::default();
 
         let local_locks_task = tokio::spawn({
             let local_locks = local_locks.clone();
@@ -249,7 +255,9 @@ impl Cache {
             async move {
                 loop {
                     tokio::time::sleep(Duration::from_secs(10)).await;
-                    local_locks.run_pending_tasks().await;
+                    local_locks
+                        .lock()
+                        .retain(|_, semaphore| Arc::strong_count(semaphore) > 1);
                 }
             }
         });
@@ -262,6 +270,10 @@ impl Cache {
 
         let instance = Arc::new(Self {
             client,
+            redis_prefix: env
+                .redis_key_prefix
+                .as_deref()
+                .map(|prefix| compact_str::format_compact!("{prefix}::")),
             use_internal_cache: env.app_use_internal_cache,
             local,
             local_task,
@@ -289,6 +301,13 @@ impl Cache {
         );
 
         instance
+    }
+
+    fn redis_key<'a>(&self, key: &'a str) -> Cow<'a, str> {
+        match &self.redis_prefix {
+            Some(prefix) => Cow::Owned(format!("{prefix}{key}")),
+            None => Cow::Borrowed(key),
+        }
     }
 
     pub async fn version(&self) -> Result<compact_str::CompactString, rustis::Error> {
@@ -330,7 +349,11 @@ impl Cache {
 
         let remote = match &self.client {
             Some(redis_client) => match redis_client
-                .eval::<(u64, i64)>(RATELIMIT_SCRIPT, [key.as_str()], [limit_window])
+                .eval::<(u64, i64)>(
+                    RATELIMIT_SCRIPT,
+                    [self.redis_key(&key).as_ref()],
+                    [limit_window],
+                )
                 .await
             {
                 Ok((limit_used, ttl)) => Some((limit_used, now + ttl.max(0) as u64)),
@@ -396,7 +419,10 @@ impl Cache {
         );
 
         let remote = match &self.client {
-            Some(redis_client) => match redis_client.get::<Option<u64>>(key.as_str()).await {
+            Some(redis_client) => match redis_client
+                .get::<Option<u64>>(self.redis_key(&key).as_ref())
+                .await
+            {
                 Ok(limit_used) => Some(limit_used.unwrap_or(0)),
                 Err(err) => {
                     tracing::warn!(
@@ -433,89 +459,64 @@ impl Cache {
         timeout: Option<u64>,
     ) -> Result<CacheLock, anyhow::Error> {
         let lock_id = lock_id.into();
-        let redis_key = compact_str::format_compact!("lock::{}", lock_id);
-        let ttl_secs = ttl.unwrap_or(30);
+        let ttl_secs = ttl.unwrap_or(30).max(1);
         let deadline = timeout.map(|ms| Instant::now() + Duration::from_millis(ms));
 
         tracing::debug!("acquiring cache lock");
 
-        let entry = self
+        let semaphore = self
             .local_locks
+            .lock()
             .entry(lock_id.clone())
-            .or_insert_with(async {
-                LockEntry {
-                    semaphore: Arc::new(tokio::sync::Semaphore::new(1)),
-                }
-            })
-            .await
-            .into_value();
+            .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(1)))
+            .clone();
 
         let permit = match deadline {
             Some(dl) => {
                 let remaining = dl.saturating_duration_since(Instant::now());
-                tokio::time::timeout(remaining, entry.semaphore.acquire_owned())
+                tokio::time::timeout(remaining, semaphore.acquire_owned())
                     .await
                     .map_err(|_| anyhow::anyhow!("timed out waiting for cache lock `{}`", lock_id))?
                     .map_err(|_| anyhow::anyhow!("semaphore closed for lock `{}`", lock_id))?
             }
-            None => entry
-                .semaphore
+            None => semaphore
                 .acquire_owned()
                 .await
                 .map_err(|_| anyhow::anyhow!("semaphore closed for lock `{}`", lock_id))?,
         };
 
-        if let Some(redis_client) = &self.client {
-            match Self::try_acquire_redis_lock(redis_client, &redis_key, ttl_secs, deadline).await?
-            {
-                true => {
-                    tracing::debug!("acquired redis cache lock");
-                    Ok(CacheLock::new(
-                        lock_id,
-                        Some(redis_client.clone()),
-                        permit,
-                        ttl,
-                    ))
-                }
-                false => anyhow::bail!("timed out acquiring redis lock `{}`", lock_id),
-            }
-        } else {
+        let Some(redis_client) = &self.client else {
             tracing::debug!("acquired memory cache lock");
-            Ok(CacheLock::new(lock_id, None, permit, ttl))
+            return Ok(CacheLock::new(
+                lock_id,
+                HeldLock {
+                    permit: Some(permit),
+                    redis: None,
+                },
+                ttl_secs,
+            ));
+        };
+
+        let redis = RedisLock {
+            client: redis_client.clone(),
+            key: self.redis_key(&format!("lock::{lock_id}")).into(),
+            token: rand::distr::Alphanumeric
+                .sample_string(&mut rand::rng(), 32)
+                .into(),
+        };
+
+        // constructed before SET NX so a cancelled acquire still releases its key
+        let held = HeldLock {
+            permit: Some(permit),
+            redis: Some(redis.clone()),
+        };
+
+        if !redis.acquire(ttl_secs, deadline).await {
+            anyhow::bail!("timed out acquiring redis lock `{}`", lock_id);
         }
-    }
 
-    async fn try_acquire_redis_lock(
-        client: &Arc<Client>,
-        redis_key: &compact_str::CompactString,
-        ttl_secs: u64,
-        deadline: Option<Instant>,
-    ) -> Result<bool, anyhow::Error> {
-        loop {
-            let acquired = client
-                .set_with_options(
-                    redis_key.as_str(),
-                    "1",
-                    SetCondition::NX,
-                    SetExpiration::Ex(ttl_secs),
-                )
-                .await
-                .unwrap_or(false);
-
-            if acquired {
-                return Ok(true);
-            }
-
-            if let Some(dl) = deadline {
-                let remaining = dl.saturating_duration_since(Instant::now());
-                if remaining.is_zero() {
-                    return Ok(false);
-                }
-                tokio::time::sleep(remaining.min(Duration::from_millis(50))).await;
-            } else {
-                tokio::time::sleep(Duration::from_millis(50)).await;
-            }
-        }
+        tracing::debug!("acquired redis cache lock");
+        Ok(CacheLock::new(lock_id, held, ttl_secs))
     }
 
     #[tracing::instrument(
@@ -550,6 +551,7 @@ impl Cache {
         }
 
         let client_opt = self.client.clone();
+        let redis_key = self.redis_key(key);
         let outcome = AtomicU8::new(OUTCOME_COALESCED);
 
         let entry = self
@@ -561,7 +563,7 @@ impl Cache {
                     if let Some(client) = &client_opt {
                         tracing::debug!("checking redis cache");
                         let cached_value: Option<BulkString> = client
-                            .get(key)
+                            .get(redis_key.as_ref())
                             .await
                             .map_err(|err| {
                                 tracing::error!("redis get error: {:?}", err);
@@ -593,7 +595,7 @@ impl Cache {
                     if let Some(client) = &client_opt {
                         let _ = client
                             .set_with_options(
-                                key,
+                                redis_key.as_ref(),
                                 BulkStringRef(&serialized_arc),
                                 None,
                                 SetExpiration::Ex(ttl),
@@ -644,7 +646,7 @@ impl Cache {
 
         if let Some(client) = &self.client {
             tracing::debug!("get: checking redis cache");
-            let cached_value: Option<BulkString> = client.get(key).await?;
+            let cached_value: Option<BulkString> = client.get(self.redis_key(key).as_ref()).await?;
 
             if let Some(value) = cached_value {
                 tracing::debug!("get: found in redis cache");
@@ -664,7 +666,7 @@ impl Cache {
 
         if let Some(client) = &self.client {
             tracing::debug!("get_raw: checking redis cache");
-            let cached_value: Option<BulkString> = client.get(key).await?;
+            let cached_value: Option<BulkString> = client.get(self.redis_key(key).as_ref()).await?;
 
             if let Some(value) = cached_value {
                 tracing::debug!("get_raw: found in redis cache");
@@ -703,7 +705,7 @@ impl Cache {
         if let Some(client) = &self.client {
             client
                 .set_with_options(
-                    key,
+                    self.redis_key(key).as_ref(),
                     BulkStringRef(&serialized_arc),
                     None,
                     SetExpiration::Ex(ttl),
@@ -741,7 +743,7 @@ impl Cache {
         if let Some(client) = &self.client {
             client
                 .set_with_options(
-                    key,
+                    self.redis_key(key).as_ref(),
                     BulkStringRef(&serialized_arc),
                     None,
                     SetExpiration::Ex(ttl),
@@ -758,7 +760,7 @@ impl Cache {
         }
 
         if let Some(client) = &self.client {
-            Ok(client.exists(key).await? > 0)
+            Ok(client.exists(self.redis_key(key).as_ref()).await? > 0)
         } else {
             Ok(false)
         }
@@ -769,8 +771,25 @@ impl Cache {
         prefix: &str,
     ) -> Result<Vec<compact_str::CompactString>, anyhow::Error> {
         if let Some(client) = &self.client {
-            let keys = client.keys(format!("{}*", prefix)).await?;
-            Ok(keys)
+            let Some(redis_prefix) = &self.redis_prefix else {
+                return Ok(client.keys(format!("{prefix}*")).await?);
+            };
+
+            let mut pattern = String::with_capacity(redis_prefix.len() + prefix.len() + 1);
+            for c in redis_prefix.chars() {
+                if matches!(c, '*' | '?' | '[' | ']' | '\\') {
+                    pattern.push('\\');
+                }
+                pattern.push(c);
+            }
+            pattern.push_str(prefix);
+            pattern.push('*');
+
+            let keys: Vec<compact_str::CompactString> = client.keys(pattern).await?;
+            Ok(keys
+                .into_iter()
+                .filter_map(|key| key.strip_prefix(redis_prefix.as_str()).map(Into::into))
+                .collect())
         } else {
             let mut keys = Vec::new();
             for (key, _) in self.local.iter() {
@@ -807,7 +826,7 @@ impl Cache {
     pub async fn invalidate(&self, key: &str) -> Result<(), anyhow::Error> {
         self.local.invalidate(key).await;
         if let Some(client) = &self.client {
-            client.del(key).await?;
+            client.del(self.redis_key(key).as_ref()).await?;
         }
 
         Ok(())
@@ -831,62 +850,123 @@ impl Drop for Cache {
     }
 }
 
-pub struct CacheLock {
-    lock_id: Option<compact_str::CompactString>,
-    redis_client: Option<Arc<Client>>,
+type LocalLocks =
+    Arc<parking_lot::Mutex<HashMap<compact_str::CompactString, Arc<tokio::sync::Semaphore>>>>;
+
+#[derive(Clone)]
+struct RedisLock {
+    client: Arc<Client>,
+    key: compact_str::CompactString,
+    token: compact_str::CompactString,
+}
+
+impl RedisLock {
+    async fn acquire(&self, ttl_secs: u64, deadline: Option<Instant>) -> bool {
+        loop {
+            match self
+                .client
+                .set_with_options(
+                    self.key.as_str(),
+                    self.token.as_str(),
+                    SetCondition::NX,
+                    SetExpiration::Ex(ttl_secs),
+                )
+                .await
+            {
+                Ok(true) => return true,
+                Ok(false) => {}
+                Err(err) => {
+                    tracing::warn!(key = %self.key, "failed to acquire redis lock: {err:#?}")
+                }
+            }
+
+            if let Some(dl) = deadline {
+                let remaining = dl.saturating_duration_since(Instant::now());
+                if remaining.is_zero() {
+                    return false;
+                }
+                tokio::time::sleep(remaining.min(Duration::from_millis(50))).await;
+            } else {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            }
+        }
+    }
+
+    async fn release(self) {
+        match tokio::time::timeout(
+            Duration::from_secs(2),
+            self.client.eval::<i64>(
+                LOCK_RELEASE_SCRIPT,
+                [self.key.as_str()],
+                [self.token.as_str()],
+            ),
+        )
+        .await
+        {
+            Ok(Ok(_)) => {}
+            Ok(Err(err)) => {
+                tracing::warn!(key = %self.key, "failed to release redis lock: {err:#?}")
+            }
+            Err(_) => tracing::warn!(key = %self.key, "timed out releasing redis lock"),
+        }
+    }
+}
+
+struct HeldLock {
     permit: Option<tokio::sync::OwnedSemaphorePermit>,
-    ttl_guard: Option<tokio::task::JoinHandle<()>>,
+    redis: Option<RedisLock>,
+}
+
+impl HeldLock {
+    async fn release(mut self) {
+        if let Some(redis) = self.redis.take() {
+            redis.release().await;
+        }
+
+        self.permit.take();
+    }
+}
+
+impl Drop for HeldLock {
+    fn drop(&mut self) {
+        let permit = self.permit.take();
+
+        if let Some(redis) = self.redis.take()
+            && let Ok(runtime) = tokio::runtime::Handle::try_current()
+        {
+            runtime.spawn(async move {
+                redis.release().await;
+                drop(permit);
+            });
+        }
+    }
+}
+
+pub struct CacheLock {
+    release_tx: tokio::sync::oneshot::Sender<()>,
 }
 
 impl CacheLock {
-    fn new(
-        lock_id: compact_str::CompactString,
-        redis_client: Option<Arc<Client>>,
-        permit: tokio::sync::OwnedSemaphorePermit,
-        ttl: Option<u64>,
-    ) -> Self {
-        let ttl_guard = ttl.and_then(|secs| {
-            let lock_id_clone = lock_id.clone();
-            redis_client.clone().map(|client| {
-                tokio::spawn(async move {
-                    tokio::time::sleep(Duration::from_secs(secs)).await;
-                    tracing::warn!(%lock_id_clone, "cache lock TTL expired; force-releasing");
-                    let redis_key = compact_str::format_compact!("lock::{}", lock_id_clone);
-                    let _ = client.del(&redis_key).await;
-                })
-            })
+    fn new(lock_id: compact_str::CompactString, held: HeldLock, ttl_secs: u64) -> Self {
+        let (release_tx, release_rx) = tokio::sync::oneshot::channel();
+
+        tokio::spawn(async move {
+            tokio::select! {
+                _ = release_rx => {}
+                _ = tokio::time::sleep(Duration::from_secs(ttl_secs)) => {
+                    tracing::warn!(%lock_id, "cache lock TTL expired; releasing");
+                }
+            }
+
+            held.release().await;
         });
 
-        Self {
-            lock_id: Some(lock_id),
-            redis_client,
-            permit: Some(permit),
-            ttl_guard,
-        }
+        Self { release_tx }
     }
 
     #[inline]
     pub fn is_active(&self) -> bool {
-        self.lock_id.is_some() && self.ttl_guard.as_ref().is_none_or(|h| !h.is_finished())
-    }
-}
-
-impl Drop for CacheLock {
-    fn drop(&mut self) {
-        if let Some(ttl_guard) = self.ttl_guard.take() {
-            ttl_guard.abort();
-        }
-
-        self.permit.take();
-
-        if let Some(lock_id) = self.lock_id.take()
-            && let Some(client) = self.redis_client.take()
-        {
-            tokio::spawn(async move {
-                let redis_key = compact_str::format_compact!("lock::{}", lock_id);
-                let _ = client.del(&redis_key).await;
-            });
-        }
+        !self.release_tx.is_closed()
     }
 }
 
@@ -896,15 +976,20 @@ mod tests {
     use crate::database::DatabaseError;
 
     fn memory_only() -> Cache {
+        with_client(None)
+    }
+
+    fn with_client(client: Option<Arc<Client>>) -> Cache {
         Cache {
-            client: None,
+            client,
+            redis_prefix: None,
             use_internal_cache: true,
             local: moka::future::Cache::builder()
                 .max_capacity(16)
                 .expire_after(DataExpiry)
                 .build(),
             local_task: tokio::spawn(async {}),
-            local_locks: moka::future::Cache::builder().max_capacity(16).build(),
+            local_locks: LocalLocks::default(),
             local_locks_task: tokio::spawn(async {}),
             local_ratelimits: moka::future::Cache::builder().max_capacity(16).build(),
             local_resolutions: moka::future::Cache::builder().max_capacity(16).build(),
@@ -1062,5 +1147,145 @@ mod tests {
 
         assert!(is_row_not_found(&first));
         assert!(is_row_not_found(&second));
+    }
+
+    async fn redis_backed() -> Option<Cache> {
+        let url = std::env::var("TEST_REDIS_URL").ok()?;
+
+        Some(with_client(Some(Arc::new(
+            Client::connect(url).await.unwrap(),
+        ))))
+    }
+
+    fn unique_lock_id() -> String {
+        format!("test::{}", uuid::Uuid::new_v4())
+    }
+
+    async fn wait_for_key_gone(cache: &Cache, key: &str) -> bool {
+        let client = cache.client.as_ref().unwrap();
+        for _ in 0..40 {
+            if client.exists(key).await.unwrap() == 0 {
+                return true;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+
+        false
+    }
+
+    // Cache::lock
+    #[tokio::test]
+    async fn lock_is_exclusive_until_dropped() {
+        let cache = memory_only();
+
+        let guard = cache.lock("lock", None, Some(100)).await.unwrap();
+        assert!(cache.lock("lock", None, Some(100)).await.is_err());
+        cache.lock("other", None, Some(100)).await.unwrap();
+
+        drop(guard);
+        cache.lock("lock", None, Some(1000)).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn lock_ttl_releases_live_guard() {
+        let cache = memory_only();
+
+        let guard = cache.lock("lock", Some(1), None).await.unwrap();
+        assert!(guard.is_active());
+
+        let _second = cache.lock("lock", Some(30), Some(2500)).await.unwrap();
+        assert!(!guard.is_active());
+    }
+
+    #[tokio::test]
+    async fn redis_lock_ttl_releases_live_guard_in_process() {
+        let Some(cache) = redis_backed().await else {
+            return;
+        };
+        let id = unique_lock_id();
+
+        let guard = cache.lock(id.as_str(), Some(1), None).await.unwrap();
+        let second = cache.lock(id.as_str(), Some(30), Some(2500)).await.unwrap();
+        assert!(!guard.is_active());
+
+        drop(guard);
+        drop(second);
+        assert!(wait_for_key_gone(&cache, &format!("lock::{id}")).await);
+    }
+
+    #[tokio::test]
+    async fn redis_lock_stale_guard_keeps_next_holder() {
+        let (Some(holder), Some(contender)) = (redis_backed().await, redis_backed().await) else {
+            return;
+        };
+        let id = unique_lock_id();
+        let key = format!("lock::{id}");
+
+        let stale = holder.lock(id.as_str(), Some(1), None).await.unwrap();
+        let current = contender
+            .lock(id.as_str(), Some(30), Some(2500))
+            .await
+            .unwrap();
+
+        drop(stale);
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        let still_held = holder
+            .client
+            .as_ref()
+            .unwrap()
+            .exists(key.as_str())
+            .await
+            .unwrap()
+            == 1;
+        let still_exclusive = holder.lock(id.as_str(), Some(30), Some(200)).await.is_err();
+
+        drop(current);
+        assert!(wait_for_key_gone(&contender, &key).await);
+        assert!(still_held);
+        assert!(still_exclusive);
+    }
+
+    #[tokio::test]
+    async fn redis_lock_drop_releases_before_ttl() {
+        let (Some(holder), Some(contender)) = (redis_backed().await, redis_backed().await) else {
+            return;
+        };
+        let id = unique_lock_id();
+        let key = format!("lock::{id}");
+
+        drop(holder.lock(id.as_str(), Some(30), None).await.unwrap());
+        assert!(wait_for_key_gone(&holder, &key).await);
+
+        drop(
+            contender
+                .lock(id.as_str(), Some(30), Some(500))
+                .await
+                .unwrap(),
+        );
+        assert!(wait_for_key_gone(&holder, &key).await);
+    }
+
+    #[tokio::test]
+    async fn redis_lock_drop_keeps_foreign_holder() {
+        let Some(cache) = redis_backed().await else {
+            return;
+        };
+        let id = unique_lock_id();
+        let key = format!("lock::{id}");
+        let client = cache.client.clone().unwrap();
+
+        let guard = cache.lock(id.as_str(), Some(1), None).await.unwrap();
+        client
+            .set_with_options(key.as_str(), "foreign", None, SetExpiration::Ex(30))
+            .await
+            .unwrap();
+
+        drop(guard);
+        tokio::time::sleep(Duration::from_millis(1500)).await;
+
+        let value: Option<String> = client.get(key.as_str()).await.unwrap();
+        client.del(key.as_str()).await.unwrap();
+        assert_eq!(value.as_deref(), Some("foreign"));
     }
 }

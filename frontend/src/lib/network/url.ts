@@ -9,12 +9,12 @@ export const openUrl = (url: string, target = '_blank') => {
 };
 
 export const downloadUrl = (url: string) => {
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = '';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = url;
+  document.body.appendChild(iframe);
+
+  setTimeout(() => iframe.remove(), 60_000);
 };
 
 export const openPopup = (url: string) => {

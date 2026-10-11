@@ -85,13 +85,16 @@ mod get {
                 .await;
 
             ApiResponse::new_stream(export)
-                .with_header("Content-Type", "application/octet-stream")
+                .with_header(
+                    "Content-Type",
+                    database_instance.r#type.export_content_type(),
+                )
                 .with_header(
                     "Content-Disposition",
                     format!(
                         "attachment; filename=\"{}.{}\"",
                         database_instance.name,
-                        database_instance.r#type.dump_extension()
+                        database_instance.r#type.export_extension()
                     ),
                 )
                 .ok()

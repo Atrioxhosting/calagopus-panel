@@ -32,7 +32,7 @@ type DatabaseAgentHost = z.infer<typeof adminDatabaseAgentHostSchema>;
 
 export default function DatabaseAgentHostOverview({ databaseAgentHost }: { databaseAgentHost: DatabaseAgentHost }) {
   const { t } = useTranslations();
-  const { updateInformation } = useAdminStore();
+  const updateInformation = useAdminStore((state) => state.updateInformation);
 
   const { data: capacity } = useResource({
     queryKey: queryKeys.admin.databaseAgentHosts.capacity(databaseAgentHost.uuid),

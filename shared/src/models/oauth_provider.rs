@@ -5,6 +5,7 @@ use crate::{
 };
 use futures_util::TryStreamExt;
 use garde::Validate;
+use indexmap::IndexMap;
 use rand::distr::SampleString;
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, postgres::PgRow};
@@ -26,6 +27,7 @@ pub struct OAuthProvider {
     pub auth_url: String,
     pub token_url: String,
     pub info_url: String,
+    pub info_urls: IndexMap<compact_str::CompactString, String>,
     pub scopes: Vec<compact_str::CompactString>,
 
     pub identifier_path: String,
@@ -99,6 +101,10 @@ impl BaseModel for OAuthProvider {
             (
                 "oauth_providers.info_url",
                 compact_str::format_compact!("{prefix}info_url"),
+            ),
+            (
+                "oauth_providers.info_urls",
+                compact_str::format_compact!("{prefix}info_urls"),
             ),
             (
                 "oauth_providers.scopes",
@@ -182,6 +188,9 @@ impl BaseModel for OAuthProvider {
             auth_url: row.try_get(compact_str::format_compact!("{prefix}auth_url").as_str())?,
             token_url: row.try_get(compact_str::format_compact!("{prefix}token_url").as_str())?,
             info_url: row.try_get(compact_str::format_compact!("{prefix}info_url").as_str())?,
+            info_urls: serde_json::from_value(row.try_get::<serde_json::Value, _>(
+                compact_str::format_compact!("{prefix}info_urls").as_str(),
+            )?)?,
             scopes: row.try_get(compact_str::format_compact!("{prefix}scopes").as_str())?,
             identifier_path: row
                 .try_get(compact_str::format_compact!("{prefix}identifier_path").as_str())?,
@@ -211,11 +220,144 @@ impl BaseModel for OAuthProvider {
             extension_data: Self::map_extensions(prefix, row)?,
         })
     }
+
+    fn cache_invalidation_keys(&self) -> Vec<compact_str::CompactString> {
+        vec![
+            compact_str::format_compact!("{}::{}", Self::NAME, self.uuid),
+            compact_str::CompactString::const_new("oauth_providers::usable"),
+        ]
+    }
+}
+
+pub struct OAuthProviderInfo {
+    pub info: serde_json::Value,
+    pub sources: IndexMap<compact_str::CompactString, serde_json::Value>,
+}
+
+impl OAuthProviderInfo {
+    pub fn source(&self, source: Option<&str>) -> Option<&serde_json::Value> {
+        match source {
+            Some(source) => self.sources.get(source),
+            None => Some(&self.info),
+        }
+    }
 }
 
 impl OAuthProvider {
     const MAX_AVATAR_URL_LENGTH: usize = 2048;
     const MAX_DISCOVERY_SIZE: usize = 64 * 1024;
+    const MAX_INFO_SIZE: usize = 1024 * 1024;
+    const INFO_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+    const MAX_LOGGED_BODY_SIZE: usize = 4096;
+
+    /// Fetches the info url and every additional info url with the user's access token.
+    ///
+    /// An additional info url responding with 404 is left out of the sources, so matchers on it
+    /// fail as for a user outside of e.g. a discord guild. Any other failure aborts, since mappings
+    /// revoking on a transient error would strip access the user still has.
+    pub async fn fetch_info(
+        &self,
+        client: &reqwest::Client,
+        access_token: &str,
+    ) -> Result<OAuthProviderInfo, anyhow::Error> {
+        let info = async {
+            match Self::fetch_info_url(client, &self.info_url, access_token).await {
+                Ok(Some(info)) => Ok(info),
+                Ok(None) => Err(anyhow::anyhow!("info url responded with 404")),
+                Err(err) => Err(err),
+            }
+            .map_err(|err| {
+                tracing::warn!(
+                    oauth_provider = %self.uuid,
+                    "failed to fetch oauth info url: {:#?}",
+                    err
+                );
+
+                anyhow::Error::from(crate::response::DisplayError::new(
+                    "failed to fetch oauth user info",
+                ))
+            })
+        };
+
+        let sources = futures_util::future::try_join_all(self.info_urls.iter().map(
+            |(key, url)| async move {
+                match Self::fetch_info_url(client, url, access_token).await {
+                    Ok(value) => Ok(value.map(|value| (key.clone(), value))),
+                    Err(err) => {
+                        tracing::warn!(
+                            oauth_provider = %self.uuid,
+                            key = %key,
+                            "failed to fetch additional oauth info url: {:#?}",
+                            err
+                        );
+
+                        Err(anyhow::Error::from(crate::response::DisplayError::new(
+                            format!("failed to fetch additional oauth user info ({key})"),
+                        )))
+                    }
+                }
+            },
+        ));
+
+        let (info, sources) = tokio::try_join!(info, sources)?;
+
+        Ok(OAuthProviderInfo {
+            info,
+            sources: sources.into_iter().flatten().collect(),
+        })
+    }
+
+    async fn fetch_info_url(
+        client: &reqwest::Client,
+        url: &str,
+        access_token: &str,
+    ) -> Result<Option<serde_json::Value>, anyhow::Error> {
+        let response = client
+            .get(url)
+            .bearer_auth(access_token)
+            .timeout(Self::INFO_TIMEOUT)
+            .send()
+            .await?;
+
+        let status = response.status();
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Ok(None);
+        }
+
+        let mut content = Vec::new();
+        let mut stream = response.bytes_stream();
+
+        while let Some(chunk) = stream.try_next().await? {
+            if content.len() + chunk.len() > Self::MAX_INFO_SIZE {
+                return Err(anyhow::anyhow!("response is too large"));
+            }
+
+            content.extend_from_slice(&chunk);
+        }
+
+        let body = || {
+            crate::utils::slice_up_to(
+                &String::from_utf8_lossy(&content),
+                Self::MAX_LOGGED_BODY_SIZE,
+            )
+            .to_string()
+        };
+
+        if !status.is_success() {
+            return Err(anyhow::anyhow!(
+                "responded with status {status}: {}",
+                body()
+            ));
+        }
+
+        match serde_json::from_slice(&content) {
+            Ok(value) => Ok(Some(value)),
+            Err(err) => Err(anyhow::anyhow!(
+                "responded with invalid json ({err}): {}",
+                body()
+            )),
+        }
+    }
 
     pub async fn all_with_pagination(
         database: &crate::database::Database,
@@ -294,17 +436,35 @@ impl OAuthProvider {
             .try_collect_vec()
     }
 
+    /// Looks up a required field in the info url response. The response never ends up in the
+    /// returned error, as that is shown to whoever is logging in, so it is logged instead.
+    fn extract_required<'a>(
+        &self,
+        field: &str,
+        path: &str,
+        value: &'a serde_json::Value,
+    ) -> Result<&'a serde_json::Value, anyhow::Error> {
+        match serde_json_path::JsonPath::parse(path)?.query(value).first() {
+            Some(node) => Ok(node),
+            None => {
+                tracing::warn!(
+                    oauth_provider = %self.uuid,
+                    field,
+                    path,
+                    "unable to extract {field} from oauth info url response: {value}"
+                );
+
+                Err(crate::response::DisplayError::new(format!(
+                    "unable to extract {field} from oauth user info"
+                ))
+                .into())
+            }
+        }
+    }
+
     pub fn extract_identifier(&self, value: &serde_json::Value) -> Result<String, anyhow::Error> {
         Ok(
-            match serde_json_path::JsonPath::parse(&self.identifier_path)?
-                .query(value)
-                .first()
-                .ok_or_else(|| {
-                    crate::response::DisplayError::new(format!(
-                        "unable to extract identifier from {:?}",
-                        value
-                    ))
-                })? {
+            match self.extract_required("identifier", &self.identifier_path, value)? {
                 serde_json::Value::String(string) => {
                     crate::utils::truncate_up_to(string.clone(), 255)
                 }
@@ -314,52 +474,28 @@ impl OAuthProvider {
     }
 
     pub fn extract_email(&self, value: &serde_json::Value) -> Result<String, anyhow::Error> {
-        Ok(
-            match serde_json_path::JsonPath::parse(match &self.email_path {
-                Some(path) => path,
-                None => {
-                    return Ok(format!(
-                        "{}@oauth.c7s.rs",
-                        rand::distr::Alphanumeric.sample_string(&mut rand::rng(), 10)
-                    ));
-                }
-            })?
-            .query(value)
-            .first()
-            .ok_or_else(|| {
-                crate::response::DisplayError::new(format!(
-                    "unable to extract email from {:?}",
-                    value
-                ))
-            })? {
-                serde_json::Value::String(string) => {
-                    crate::utils::truncate_up_to(string.clone(), 255)
-                }
-                val => crate::utils::truncate_up_to(val.to_string(), 255),
-            },
-        )
+        let Some(path) = &self.email_path else {
+            return Ok(format!(
+                "{}@oauth.c7s.rs",
+                rand::distr::Alphanumeric.sample_string(&mut rand::rng(), 10)
+            ));
+        };
+
+        Ok(match self.extract_required("email", path, value)? {
+            serde_json::Value::String(string) => crate::utils::truncate_up_to(string.clone(), 255),
+            val => crate::utils::truncate_up_to(val.to_string(), 255),
+        })
     }
 
     pub fn extract_username(&self, value: &serde_json::Value) -> Result<String, anyhow::Error> {
-        Ok(
-            match serde_json_path::JsonPath::parse(match &self.username_path {
-                Some(path) => path,
-                None => return Ok(rand::distr::Alphanumeric.sample_string(&mut rand::rng(), 10)),
-            })?
-            .query(value)
-            .first()
-            .ok_or_else(|| {
-                crate::response::DisplayError::new(format!(
-                    "unable to extract username from {:?}",
-                    value
-                ))
-            })? {
-                serde_json::Value::String(string) => {
-                    crate::utils::truncate_up_to(string.clone(), 15)
-                }
-                val => crate::utils::truncate_up_to(val.to_string(), 15),
-            },
-        )
+        let Some(path) = &self.username_path else {
+            return Ok(rand::distr::Alphanumeric.sample_string(&mut rand::rng(), 10));
+        };
+
+        Ok(match self.extract_required("username", path, value)? {
+            serde_json::Value::String(string) => crate::utils::truncate_up_to(string.clone(), 15),
+            val => crate::utils::truncate_up_to(val.to_string(), 15),
+        })
     }
 
     fn extract_optional_name(
@@ -671,6 +807,7 @@ impl IntoAdminApiObject for OAuthProvider {
                 auth_url: self.auth_url,
                 token_url: self.token_url,
                 info_url: self.info_url,
+                info_urls: self.info_urls,
                 scopes: self.scopes,
                 identifier_path: self.identifier_path,
                 email_path: self.email_path,
@@ -764,6 +901,47 @@ impl ByUuid for OAuthProvider {
     }
 }
 
+const MAX_INFO_URLS: usize = 8;
+const MAX_INFO_URL_LENGTH: usize = 2048;
+
+pub fn validate_info_urls(
+    info_urls: &IndexMap<compact_str::CompactString, String>,
+    _context: &(),
+) -> garde::Result {
+    if info_urls.len() > MAX_INFO_URLS {
+        return Err(garde::Error::new(compact_str::format_compact!(
+            "an oauth provider cannot have more than {MAX_INFO_URLS} additional info urls"
+        )));
+    }
+
+    for (key, url) in info_urls {
+        if key.is_empty()
+            || key.len() > 64
+            || !key
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
+            return Err(garde::Error::new(compact_str::format_compact!(
+                "info url key {key:?} must be 1-64 characters of a-z, 0-9, _ or -"
+            )));
+        }
+
+        if url.len() > MAX_INFO_URL_LENGTH {
+            return Err(garde::Error::new(compact_str::format_compact!(
+                "info url {key} must be at most {MAX_INFO_URL_LENGTH} characters"
+            )));
+        }
+
+        if !reqwest::Url::parse(url).is_ok_and(|url| matches!(url.scheme(), "http" | "https")) {
+            return Err(garde::Error::new(compact_str::format_compact!(
+                "info url {key} must be a valid http or https url"
+            )));
+        }
+    }
+
+    Ok(())
+}
+
 #[derive(ToSchema, Deserialize, Validate)]
 pub struct CreateOAuthProviderOptions {
     #[garde(length(chars, min = 1, max = 255))]
@@ -804,6 +982,9 @@ pub struct CreateOAuthProviderOptions {
     #[garde(length(chars, min = 3, max = 255))]
     #[schema(min_length = 3, max_length = 255)]
     pub info_url: String,
+    #[garde(custom(validate_info_urls))]
+    #[serde(default)]
+    pub info_urls: IndexMap<compact_str::CompactString, String>,
     #[garde(length(max = 255))]
     #[schema(max_length = 255)]
     pub scopes: Vec<compact_str::CompactString>,
@@ -890,6 +1071,7 @@ impl CreatableModel for OAuthProvider {
             .set("auth_url", &options.auth_url)
             .set("token_url", &options.token_url)
             .set("info_url", &options.info_url)
+            .set("info_urls", OrderedJson(&options.info_urls))
             .set("scopes", &options.scopes)
             .set("identifier_path", &options.identifier_path)
             .set("email_path", &options.email_path)
@@ -967,6 +1149,8 @@ pub struct UpdateOAuthProviderOptions {
     #[garde(length(chars, min = 3, max = 255))]
     #[schema(min_length = 3, max_length = 255)]
     pub info_url: Option<String>,
+    #[garde(inner(custom(validate_info_urls)))]
+    pub info_urls: Option<IndexMap<compact_str::CompactString, String>>,
     #[garde(length(max = 255))]
     #[schema(max_length = 255)]
     pub scopes: Option<Vec<compact_str::CompactString>>,
@@ -1081,6 +1265,7 @@ impl UpdatableModel for OAuthProvider {
             .set("auth_url", options.auth_url.as_ref())
             .set("token_url", options.token_url.as_ref())
             .set("info_url", options.info_url.as_ref())
+            .set("info_urls", options.info_urls.as_ref().map(OrderedJson))
             .set("scopes", options.scopes.as_ref())
             .set("identifier_path", options.identifier_path.as_ref())
             .set(
@@ -1156,6 +1341,9 @@ impl UpdatableModel for OAuthProvider {
         }
         if let Some(info_url) = options.info_url {
             self.info_url = info_url;
+        }
+        if let Some(info_urls) = options.info_urls {
+            self.info_urls = info_urls;
         }
         if let Some(scopes) = options.scopes {
             self.scopes = scopes;
@@ -1264,6 +1452,7 @@ impl DuplicableModel for OAuthProvider {
             .set("auth_url", &self.auth_url)
             .set("token_url", &self.token_url)
             .set("info_url", &self.info_url)
+            .set("info_urls", OrderedJson(&self.info_urls))
             .set("scopes", &self.scopes)
             .set("identifier_path", &self.identifier_path)
             .set("email_path", &self.email_path)
@@ -1320,6 +1509,7 @@ pub struct AdminApiOAuthProvider {
     pub auth_url: String,
     pub token_url: String,
     pub info_url: String,
+    pub info_urls: IndexMap<compact_str::CompactString, String>,
     pub scopes: Vec<compact_str::CompactString>,
 
     pub identifier_path: String,

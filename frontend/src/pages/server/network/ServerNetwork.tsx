@@ -26,7 +26,7 @@ import ServerTunnel from './tunnel/ServerTunnel.tsx';
 export default function ServerNetwork() {
   const { t } = useTranslations();
   const { addToast } = useToast();
-  const { server } = useServerStore();
+  const server = useServerStore((state) => state.server);
   const canReadAllocations = useServerCan('allocations.read');
   const canReadFirewall = useServerCan('firewall.read');
   const canDelete = useServerCan('allocations.delete');

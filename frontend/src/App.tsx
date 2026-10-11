@@ -20,11 +20,7 @@ import RouterRoutes from './RouterRoutes.tsx';
 import { useGlobalStore } from './stores/global.ts';
 
 import '@mantine/core/styles.css';
-import '@mantine/charts/styles.css';
-import '@mantine/dates/styles.css';
-import '@mantine/schedule/styles.css';
 import '@gfazioli/mantine-window/styles.css';
-import '@gfazioli/mantine-audio/styles.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

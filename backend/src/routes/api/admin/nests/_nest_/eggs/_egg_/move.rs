@@ -9,7 +9,8 @@ mod post {
     use shared::{
         ApiError, GetState,
         models::{
-            ByUuid, admin_activity::GetAdminActivityLogger, nest::Nest, user::GetPermissionManager,
+            ByUuid, admin_activity::GetAdminActivityLogger, egg_configuration::DisabledFeatures,
+            nest::Nest, nest_egg::NestEgg, user::GetPermissionManager,
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -66,6 +67,7 @@ mod post {
                 .ok();
         }
 
+        let disabled_features = DisabledFeatures::resolve(&state.database).await?;
         sqlx::query!(
             "UPDATE nest_eggs
             SET nest_uuid = $2
@@ -75,6 +77,8 @@ mod post {
         )
         .execute(state.database.write())
         .await?;
+
+        NestEgg::invalidate_cached(&state.database, egg.uuid).await;
 
         activity_logger
             .log(
@@ -87,6 +91,8 @@ mod post {
                 }),
             )
             .await;
+
+        disabled_features.propagate(&state).await;
 
         ApiResponse::new_serialized(Response {}).ok()
     }

@@ -1,3 +1,4 @@
+import Select from '@/elements/input/Select.tsx';
 import TagsInput from '@/elements/input/TagsInput.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import RecursiveGroupBuilder from '@/elements/RecursiveGroupBuilder.tsx';
@@ -9,24 +10,31 @@ type Matcher = AdminOAuthProviderMappingMatcher;
 
 const matcherDefaults: Record<Matcher['type'], () => Matcher> = {
   none: () => ({ type: 'none' }),
+  never: () => ({ type: 'never' }),
   and: () => ({ type: 'and', matchers: [] }),
   or: () => ({ type: 'or', matchers: [] }),
   not: () => ({ type: 'not', matcher: { type: 'none' } }),
   scopes: () => ({ type: 'scopes', scopes: [] }),
-  field_exists: () => ({ type: 'field_exists', path: '' }),
-  field_equals: () => ({ type: 'field_equals', path: '', equals: '' }),
-  field_contains: () => ({ type: 'field_contains', path: '', contains: '' }),
-  field_starts_with: () => ({ type: 'field_starts_with', path: '', startsWith: '' }),
-  field_ends_with: () => ({ type: 'field_ends_with', path: '', endsWith: '' }),
+  field_exists: () => ({ type: 'field_exists', source: null, path: '' }),
+  field_equals: () => ({ type: 'field_equals', source: null, path: '', equals: '' }),
+  field_contains: () => ({ type: 'field_contains', source: null, path: '', contains: '' }),
+  field_starts_with: () => ({ type: 'field_starts_with', source: null, path: '', startsWith: '' }),
+  field_ends_with: () => ({ type: 'field_ends_with', source: null, path: '', endsWith: '' }),
 };
 
 interface MatcherBuilderProps {
   matcher: Matcher;
   onChange: (matcher: Matcher) => void;
+  sources: string[];
   depth?: number;
 }
 
-export default function OAuthProviderMappingMatcherBuilder({ matcher, onChange, depth = 0 }: MatcherBuilderProps) {
+export default function OAuthProviderMappingMatcherBuilder({
+  matcher,
+  onChange,
+  sources,
+  depth = 0,
+}: MatcherBuilderProps) {
   const { t } = useTranslations();
   const form = 'pages.admin.oAuthProviders.tabs.mappings.page.form';
 
@@ -39,6 +47,22 @@ export default function OAuthProviderMappingMatcherBuilder({ matcher, onChange, 
           description={t(`${form}.scopesDescription`, {})}
           value={node.scopes}
           onChange={(scopes) => change({ ...node, scopes })}
+        />
+      )}
+
+      {'source' in node && (sources.length > 0 || node.source !== null) && (
+        <Select
+          label={t(`${form}.source`, {})}
+          description={t(`${form}.sourceDescription`, {})}
+          data={[
+            { value: '', label: t(`${form}.sourceInfoUrl`, {}) },
+            ...[...new Set([...sources, ...(node.source !== null ? [node.source] : [])])].map((source) => ({
+              value: source,
+              label: source,
+            })),
+          ]}
+          value={node.source ?? ''}
+          onChange={(source) => change({ ...node, source: source || null })}
         />
       )}
 

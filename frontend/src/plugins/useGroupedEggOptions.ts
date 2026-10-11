@@ -4,6 +4,7 @@ import { useResource } from '@/plugins/resource/useResource.ts';
 
 export interface EggOptionGroup {
   group: string;
+  nestUuid: string;
   items: { label: string; value: string }[];
 }
 
@@ -16,6 +17,7 @@ export function useGroupedEggOptions() {
       getAllEggs().then((nests) =>
         nests.map((nest) => ({
           group: nest.nest.name,
+          nestUuid: nest.nest.uuid,
           items: nest.eggs.map((egg) => ({ label: egg.name, value: egg.uuid })),
         })),
       ),

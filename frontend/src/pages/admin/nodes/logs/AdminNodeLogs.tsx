@@ -30,7 +30,7 @@ export default function AdminNodeLogs({ node }: { node: z.infer<typeof adminNode
 
   const [lines, setLines] = useState(1000);
   const [selectedLog, setSelectedLog] = useState<NodeLogFile | null>(null);
-  const [content, setContent] = useState<string | null>(null);
+  const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [following, setFollowing] = useState(false);
@@ -38,9 +38,13 @@ export default function AdminNodeLogs({ node }: { node: z.infer<typeof adminNode
 
   const editorRef = useRef<Parameters<OnMount>[0]>(null);
   const linesRef = useRef(lines);
+  const pendingLines = useRef<string[]>([]);
+  const flushFrame = useRef(0);
 
   useEffect(() => {
-    linesRef.current = lines;
+    if (lines >= 1) {
+      linesRef.current = lines;
+    }
   });
 
   const { data: logFiles } = useResource({
@@ -50,35 +54,60 @@ export default function AdminNodeLogs({ node }: { node: z.infer<typeof adminNode
   const logs = useMemo(() => (logFiles ? [...logFiles].reverse() : []), [logFiles]);
 
   useEffect(() => {
-    setContent(null);
+    setContent('');
+    setLoadVersion((version) => version + 1);
     setLoaded(false);
   }, [selectedLog]);
 
-  const appendLine = (line: string) => {
+  useEffect(() => {
+    pendingLines.current = [];
+
     const editor = editorRef.current;
+    if (!editor) return;
 
-    const atBottom = editor
-      ? editor.getScrollTop() + editor.getLayoutInfo().height >= editor.getScrollHeight() - 4
-      : true;
+    editor.setValue(content);
+    editor.setScrollTop(editor.getScrollHeight());
+  }, [content, loadVersion]);
 
-    setContent((prev) => {
-      const next = prev === null ? line : `${prev}\n${line}`;
-      const cap = linesRef.current;
+  useEffect(() => () => cancelAnimationFrame(flushFrame.current), []);
 
-      if (cap > 0) {
-        const arr = next.split('\n');
-        if (arr.length > cap) {
-          return arr.slice(arr.length - cap).join('\n');
-        }
-      }
+  const flushLines = () => {
+    flushFrame.current = 0;
 
-      return next;
-    });
+    const editor = editorRef.current;
+    const model = editor?.getModel();
+    if (!editor || !model || pendingLines.current.length === 0) return;
 
-    if (atBottom && editor) {
-      requestAnimationFrame(() => {
-        editor.setScrollTop(editor.getScrollHeight());
-      });
+    const atBottom = editor.getScrollTop() + editor.getLayoutInfo().height >= editor.getScrollHeight() - 4;
+    const text = pendingLines.current.join('\n');
+    pendingLines.current = [];
+
+    const lastLine = model.getLineCount();
+    const lastColumn = model.getLineMaxColumn(lastLine);
+    model.applyEdits([
+      {
+        range: { startLineNumber: lastLine, startColumn: lastColumn, endLineNumber: lastLine, endColumn: lastColumn },
+        text: model.getValueLength() === 0 ? text : `\n${text}`,
+      },
+    ]);
+
+    const excess = model.getLineCount() - linesRef.current;
+    if (excess > 0) {
+      model.applyEdits([
+        { range: { startLineNumber: 1, startColumn: 1, endLineNumber: excess + 1, endColumn: 1 }, text: '' },
+      ]);
+    }
+
+    if (atBottom) {
+      editor.setScrollTop(editor.getScrollHeight());
+    }
+  };
+
+  const appendLine = (line: string) => {
+    pendingLines.current.push(line);
+
+    if (!flushFrame.current) {
+      flushFrame.current = requestAnimationFrame(flushLines);
     }
   };
 
@@ -125,17 +154,6 @@ export default function AdminNodeLogs({ node }: { node: z.infer<typeof adminNode
     [node.uuid, addToast],
   );
 
-  useEffect(() => {
-    if (loadVersion === 0) return;
-
-    requestAnimationFrame(() => {
-      const editor = editorRef.current;
-      if (editor) {
-        editor.setScrollTop(editor.getScrollHeight());
-      }
-    });
-  }, [loadVersion]);
-
   const doView = () => {
     if (!selectedLog) return;
 
@@ -145,7 +163,7 @@ export default function AdminNodeLogs({ node }: { node: z.infer<typeof adminNode
   const debouncedLoadLogs = useMemo(() => debounce(loadLogs, 500), [loadLogs]);
 
   useEffect(() => {
-    if (!selectedLog || !loaded) return;
+    if (!selectedLog || !loaded || lines < 1) return;
 
     debouncedLoadLogs(selectedLog, lines);
   }, [lines]);
@@ -178,6 +196,7 @@ export default function AdminNodeLogs({ node }: { node: z.infer<typeof adminNode
                 withAsterisk
                 label={t('common.form.lines', {})}
                 value={lines}
+                min={1}
                 className='w-full'
                 onChange={(value) => setLines(Number(value))}
               />
@@ -222,10 +241,11 @@ export default function AdminNodeLogs({ node }: { node: z.infer<typeof adminNode
             <MonacoEditor
               height='65vh'
               theme='vs-dark'
-              value={content || ''}
               defaultLanguage='text'
               onMount={(editor) => {
                 editorRef.current = editor;
+                editor.setValue(content);
+                editor.setScrollTop(editor.getScrollHeight());
               }}
               options={{
                 readOnly: true,

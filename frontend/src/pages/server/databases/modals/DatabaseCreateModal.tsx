@@ -1,6 +1,5 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import createDatabase from '@/api/server/databases/createDatabase.ts';
 import getDatabaseHosts from '@/api/server/databases/getDatabaseHosts.ts';
@@ -12,9 +11,9 @@ import FormModal from '@/elements/modals/FormModal.tsx';
 import { ModalFooter } from '@/elements/modals/Modal.tsx';
 import { groupDatabaseHostsByType } from '@/lib/domain/database.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
-import { databaseHostSchema } from '@/lib/schemas/generic.ts';
 import { serverDatabaseCreateSchema } from '@/lib/schemas/server/databases.ts';
 import { useModalForm } from '@/plugins/form/useModalForm.ts';
+import { useResource } from '@/plugins/resource/useResource.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
@@ -22,10 +21,14 @@ import { useServerStore } from '@/stores/server.ts';
 export default function DatabaseCreateModal({ ...props }: ModalProps) {
   const { t } = useTranslations();
   const { addToast } = useToast();
-  const { server } = useServerStore();
+  const server = useServerStore((state) => state.server);
   const queryClient = useQueryClient();
 
-  const [databaseHosts, setDatabaseHosts] = useState<z.infer<typeof databaseHostSchema>[]>([]);
+  const { data: databaseHosts = [] } = useResource({
+    queryKey: queryKeys.server(server.uuid).databases.hosts(),
+    queryFn: () => getDatabaseHosts(server.uuid),
+    enabled: props.opened,
+  });
 
   const { form, handleClose, handleSubmit, loading, isDirty } = useModalForm<
     z.infer<typeof serverDatabaseCreateSchema>
@@ -39,10 +42,6 @@ export default function DatabaseCreateModal({ ...props }: ModalProps) {
       queryClient.invalidateQueries({ queryKey: queryKeys.server(server.uuid).databases.all() });
     },
   });
-
-  useEffect(() => {
-    getDatabaseHosts(server.uuid).then((data) => setDatabaseHosts(data));
-  }, []);
 
   const selectedHost = databaseHosts.find((host) => host.uuid === form.getValues().databaseHostUuid);
 

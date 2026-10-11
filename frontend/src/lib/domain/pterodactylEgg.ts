@@ -1,9 +1,13 @@
+import { z } from 'zod';
+
 interface ExportedEggReplacement {
   match: string;
+  if_value: string | null;
   replace_with: unknown;
 }
 
 interface ExportedEggFile {
+  create_new: boolean;
   parser: string;
   replace: ExportedEggReplacement[];
 }
@@ -24,7 +28,7 @@ interface ExportedEgg {
   author: string;
   config: {
     files: Record<string, ExportedEggFile>;
-    startup: { done: string[] };
+    startup: { done: string[]; strip_ansi: boolean };
     stop: { type: string; value: string | null };
   };
   scripts: {
@@ -37,6 +41,59 @@ interface ExportedEgg {
   variables: ExportedEggVariable[];
 }
 
+const UPSTREAM_SIGNALS = ['SIGABRT', 'SIGINT', 'SIGTERM', 'SIGKILL'];
+
+function toScalarReplacement(value: unknown): unknown {
+  return value !== null && typeof value === 'object' ? JSON.stringify(value) : value;
+}
+
+function toFind(replacements: ExportedEggReplacement[]): Record<string, unknown> {
+  const unconditional = new Map<string, unknown>();
+  const conditional = new Map<string, Record<string, unknown>>();
+
+  for (const replacement of replacements) {
+    if (replacement.if_value) {
+      const values = conditional.get(replacement.match) ?? {};
+      values[replacement.if_value] = toScalarReplacement(replacement.replace_with);
+      conditional.set(replacement.match, values);
+    } else {
+      unconditional.set(replacement.match, toScalarReplacement(replacement.replace_with));
+    }
+  }
+
+  const find: Record<string, unknown> = {};
+  for (const replacement of replacements) {
+    if (replacement.match in find) continue;
+
+    find[replacement.match] = unconditional.has(replacement.match)
+      ? unconditional.get(replacement.match)
+      : conditional.get(replacement.match);
+  }
+
+  return find;
+}
+
+function toStop(stop: ExportedEgg['config']['stop'] | undefined): string {
+  switch (stop?.type) {
+    case 'signal':
+      if (stop.value === 'SIGINT') return '^C';
+      return `^${stop.value && UPSTREAM_SIGNALS.includes(stop.value) ? stop.value : 'SIGTERM'}`;
+    case 'docker':
+      return '^SIGTERM';
+    default:
+      return stop?.value ?? '';
+  }
+}
+
+function toAuthor(author: string): string {
+  if (z.email().safeParse(author).success) return author;
+
+  const embedded = author.match(/[^\s<>()]+@[^\s<>()]+/)?.[0];
+  if (embedded && z.email().safeParse(embedded).success) return embedded;
+
+  return 'unknown@example.com';
+}
+
 export function toPterodactylEgg(exported: object): object {
   const egg = exported as ExportedEgg;
 
@@ -44,22 +101,9 @@ export function toPterodactylEgg(exported: object): object {
   for (const [filename, file] of Object.entries(egg.config?.files ?? {})) {
     files[filename] = {
       parser: file.parser,
-      find: Object.fromEntries(
-        (file.replace ?? []).map((replacement) => [replacement.match, replacement.replace_with]),
-      ),
+      create_file: file.create_new ?? true,
+      find: toFind(file.replace ?? []),
     };
-  }
-
-  let stop: string;
-  if (egg.config?.stop?.type === 'signal') {
-    stop =
-      egg.config.stop.value === 'SIGINT'
-        ? '^C'
-        : egg.config.stop.value === 'SIGKILL'
-          ? '^^C'
-          : (egg.config.stop.value ?? '');
-  } else {
-    stop = egg.config?.stop?.value ?? '';
   }
 
   const startup = egg.startup_commands?.Default ?? Object.values(egg.startup_commands ?? {})[0] ?? '';
@@ -72,7 +116,7 @@ export function toPterodactylEgg(exported: object): object {
     },
     exported_at: new Date().toISOString(),
     name: egg.name,
-    author: egg.author,
+    author: toAuthor(egg.author ?? ''),
     description: egg.description,
     features: egg.features ?? [],
     docker_images: egg.docker_images ?? {},
@@ -80,9 +124,12 @@ export function toPterodactylEgg(exported: object): object {
     startup,
     config: {
       files: JSON.stringify(files),
-      startup: JSON.stringify({ done: egg.config?.startup?.done ?? [] }),
+      startup: JSON.stringify({
+        done: egg.config?.startup?.done ?? [],
+        strip_ansi: egg.config?.startup?.strip_ansi ?? false,
+      }),
       logs: '{}',
-      stop,
+      stop: toStop(egg.config?.stop),
     },
     scripts: {
       installation: {
@@ -93,12 +140,12 @@ export function toPterodactylEgg(exported: object): object {
     },
     variables: (egg.variables ?? []).map((variable) => ({
       name: variable.name,
-      description: variable.description,
+      description: variable.description ?? '',
       env_variable: variable.env_variable,
-      default_value: variable.default_value,
+      default_value: variable.default_value ?? '',
       user_viewable: variable.user_viewable,
       user_editable: variable.user_editable,
-      rules: (variable.rules ?? []).join('|'),
+      rules: variable.rules?.length ? variable.rules.join('|') : 'nullable',
       field_type: 'text',
     })),
   };

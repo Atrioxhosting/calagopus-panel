@@ -55,27 +55,29 @@ mod get {
 
         let node = server.node.fetch_cached(&state.database).await?;
 
-        let token = node.create_jwt(
-            &state.database,
-            &state.jwt,
-            &FileUploadJwt {
-                base: BasePayload {
-                    scope: "file-upload".into(),
-                    issuer: "panel".into(),
-                    subject: None,
-                    audience: Vec::new(),
-                    expiration_time: Some(chrono::Utc::now().timestamp() + 900),
-                    not_before: None,
-                    issued_at: Some(chrono::Utc::now().timestamp()),
-                    jwt_id: user.uuid.to_compact_string(),
+        let token = node
+            .create_jwt(
+                &state.database,
+                &state.jwt,
+                &FileUploadJwt {
+                    base: BasePayload {
+                        scope: "file-upload".into(),
+                        issuer: "panel".into(),
+                        subject: None,
+                        audience: Vec::new(),
+                        expiration_time: Some(chrono::Utc::now().timestamp() + 900),
+                        not_before: None,
+                        issued_at: Some(chrono::Utc::now().timestamp()),
+                        jwt_id: user.uuid.to_compact_string(),
+                    },
+                    server_uuid: server.uuid,
+                    user_uuid: user.uuid,
+                    user_name: &user.username,
+                    unique_id: uuid::Uuid::new_v4(),
+                    ignored_files: server.subuser_ignored_files.as_deref().unwrap_or(&[]),
                 },
-                server_uuid: server.uuid,
-                user_uuid: user.uuid,
-                user_name: &user.username,
-                unique_id: uuid::Uuid::new_v4(),
-                ignored_files: server.subuser_ignored_files.as_deref().unwrap_or(&[]),
-            },
-        )?;
+            )
+            .await?;
 
         let mut url = node
             .public_url(&state, request_host.as_deref(), "/upload/file")

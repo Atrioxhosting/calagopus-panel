@@ -18,7 +18,6 @@ import ServerBackups from '@/pages/server/backups/ServerBackups.tsx';
 import ServerSystemBackups from '@/pages/server/backups/system/ServerSystemBackups.tsx';
 import DatabaseExplorerView from '@/pages/server/databases/explorer/DatabaseExplorerView.tsx';
 import DatabaseInstanceExplorerView from '@/pages/server/databases/instances/DatabaseInstanceExplorerView.tsx';
-import DatabaseInstanceView from '@/pages/server/databases/instances/DatabaseInstanceView.tsx';
 import ServerDatabaseInstances from '@/pages/server/databases/instances/ServerDatabaseInstances.tsx';
 import ServerDatabases from '@/pages/server/databases/ServerDatabases.tsx';
 import ServerDevices from '@/pages/server/devices/ServerDevices.tsx';
@@ -41,6 +40,7 @@ const ServerConsole = lazy(() => import('@/pages/server/console/ServerConsole.ts
 const PopoutConsole = lazy(() => import('@/pages/server/console/PopoutConsole.tsx'));
 const ServerFilesEditor = lazy(() => import('@/pages/server/files/editor/FileEditor.tsx'));
 const FileRevisionDiff = lazy(() => import('@/pages/server/files/editor/FileRevisionDiff.tsx'));
+const DatabaseInstanceView = lazy(() => import('@/pages/server/databases/instances/DatabaseInstanceView.tsx'));
 
 const routes: ServerRouteDefinition[] = [
   {

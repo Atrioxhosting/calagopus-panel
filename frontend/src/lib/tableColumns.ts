@@ -263,7 +263,7 @@ export const eggConfigurationTableColumns = (): string[] => {
     t('common.table.columns.id', {}),
     t('pages.admin.eggConfigurations.table.columns.order', {}),
     t('common.table.columns.name', {}),
-    t('common.table.columns.eggs', {}),
+    t('pages.admin.eggConfigurations.table.columns.appliesTo', {}),
     t('common.table.columns.created', {}),
   ];
 };

@@ -80,7 +80,9 @@ mod post {
         models::{
             CreatableModel, IntoAdminApiObject,
             admin_activity::GetAdminActivityLogger,
-            egg_configuration::{CreateEggConfigurationOptions, EggConfiguration},
+            egg_configuration::{
+                CreateEggConfigurationOptions, DisabledFeatures, EggConfiguration,
+            },
             user::GetPermissionManager,
         },
         response::{ApiResponse, ApiResponseResult},
@@ -105,6 +107,7 @@ mod post {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("egg-configurations.create")?;
 
+        let disabled_features = DisabledFeatures::resolve(&state.database).await?;
         let egg_configuration = match EggConfiguration::create(&state, data).await {
             Ok(egg_configuration) => egg_configuration,
             Err(err) if err.is_unique_violation() => {
@@ -126,13 +129,16 @@ mod post {
                     "description": egg_configuration.description,
                     "order": egg_configuration.order,
 
-                    "eggs": egg_configuration.eggs,
+                    "matcher": egg_configuration.matcher,
 
                     "config_allocations": egg_configuration.config_allocations,
                     "config_routes": egg_configuration.config_routes,
+                    "config_features": egg_configuration.config_features,
                 }),
             )
             .await;
+
+        disabled_features.propagate(&state).await;
 
         ApiResponse::new_serialized(Response {
             egg_configuration: egg_configuration.into_admin_api_object(&state, ()).await?,

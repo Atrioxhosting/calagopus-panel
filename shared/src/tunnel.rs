@@ -1,8 +1,15 @@
-use crate::{database::Database, prelude::*};
+use crate::{
+    database::Database,
+    models::egg_configuration::{EggConfiguration, EggConfigurationTarget},
+    prelude::*,
+};
 use ed25519_dalek::pkcs8::EncodePrivateKey;
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, Type};
-use std::sync::{Arc, OnceLock};
+use std::{
+    collections::HashSet,
+    sync::{Arc, OnceLock},
+};
 use tundra_common::{
     hash::Hash32,
     jwt::JwtIssuer,
@@ -172,6 +179,7 @@ pub async fn snapshot(database: &Database) -> Result<Snapshot, crate::database::
         .await?;
 
     let epoch = epoch(&mut *transaction).await?;
+    let configurations = EggConfiguration::all(&mut *transaction).await?;
 
     let nodes = sqlx::query(
         r#"
@@ -218,26 +226,35 @@ pub async fn snapshot(database: &Database) -> Result<Snapshot, crate::database::
             });
     }
 
-    let servers = sqlx::query(
+    let mut servers = Vec::new();
+    for row in sqlx::query(
         r#"
         SELECT
             server_tunnels.server_uuid,
             server_tunnels.idx,
             server_tunnels.name,
             servers.node_uuid,
-            servers.uuid_short
+            servers.uuid_short,
+            servers.egg_uuid,
+            nest_eggs.nest_uuid,
+            nodes.location_uuid
         FROM server_tunnels
         JOIN servers ON servers.uuid = server_tunnels.server_uuid
         JOIN node_tunnels ON node_tunnels.node_uuid = servers.node_uuid
+        JOIN nest_eggs ON nest_eggs.uuid = servers.egg_uuid
+        JOIN nodes ON nodes.uuid = servers.node_uuid
         "#,
     )
     .fetch_all(&mut *transaction)
     .await?
-    .into_iter()
-    .map(|row| {
-        let uuid: uuid::Uuid = row.try_get("server_uuid")?;
+    {
+        let target = EggConfigurationTarget::map(&row)?;
+        if !EggConfiguration::merge(&configurations, &target).private_network_enabled() {
+            continue;
+        }
 
-        Ok::<_, crate::database::DatabaseError>(ServerEntry {
+        let uuid: uuid::Uuid = row.try_get("server_uuid")?;
+        servers.push(ServerEntry {
             uuid,
             idx: row.try_get::<i32, _>("idx")? as u16,
             node_uuid: row.try_get("node_uuid")?,
@@ -246,31 +263,33 @@ pub async fn snapshot(database: &Database) -> Result<Snapshot, crate::database::
             container_ref: String::new(),
             dial_addr: None,
             ports: ports.remove(&uuid).unwrap_or_default(),
-        })
-    })
-    .try_collect_vec()?;
+        });
+    }
 
-    let acls = sqlx::query(
+    let on_mesh = servers
+        .iter()
+        .map(|server| server.uuid)
+        .collect::<HashSet<_>>();
+    let mut acls = Vec::new();
+    for row in sqlx::query(
         r#"
         SELECT server_tunnel_connections.src_server_uuid, server_tunnel_connections.dst_server_uuid
         FROM server_tunnel_connections
-        JOIN servers AS src ON src.uuid = server_tunnel_connections.src_server_uuid
-        JOIN node_tunnels AS src_node ON src_node.node_uuid = src.node_uuid
-        JOIN servers AS dst ON dst.uuid = server_tunnel_connections.dst_server_uuid
-        JOIN node_tunnels AS dst_node ON dst_node.node_uuid = dst.node_uuid
         ORDER BY server_tunnel_connections.src_server_uuid, server_tunnel_connections.dst_server_uuid
         "#,
     )
     .fetch_all(&mut *transaction)
     .await?
-    .into_iter()
-    .map(|row| {
-        Ok::<_, crate::database::DatabaseError>(AclEntry {
+    {
+        let acl = AclEntry {
             src_server: row.try_get("src_server_uuid")?,
             dst_server: row.try_get("dst_server_uuid")?,
-        })
-    })
-    .try_collect_vec()?;
+        };
+
+        if on_mesh.contains(&acl.src_server) && on_mesh.contains(&acl.dst_server) {
+            acls.push(acl);
+        }
+    }
 
     transaction.commit().await?;
 

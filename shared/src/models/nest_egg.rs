@@ -428,6 +428,14 @@ impl BaseModel for NestEgg {
             extension_data: Self::map_extensions(prefix, row)?,
         })
     }
+
+    fn cache_invalidation_keys(&self) -> Vec<compact_str::CompactString> {
+        vec![compact_str::format_compact!(
+            "{}::{}",
+            Self::NAME,
+            self.uuid
+        )]
+    }
 }
 
 impl NestEgg {
@@ -558,6 +566,8 @@ impl NestEgg {
         )
         .execute(database.write())
         .await?;
+
+        Self::invalidate_cached(database, self.uuid).await;
 
         let unused_variables = sqlx::query!(
             "SELECT nest_egg_variables.uuid
@@ -835,25 +845,6 @@ impl NestEgg {
         .bind(nest_uuid)
         .fetch_one(database.read())
         .await
-    }
-
-    pub async fn configuration(
-        &self,
-        database: &crate::database::Database,
-    ) -> Result<super::egg_configuration::MergedEggConfiguration, anyhow::Error> {
-        database
-            .cache
-            .cached(
-                &format!("nest_egg::{}::configuration", self.uuid),
-                10,
-                || async {
-                    super::egg_configuration::EggConfiguration::merged_by_egg_uuid(
-                        database, self.uuid,
-                    )
-                    .await
-                },
-            )
-            .await
     }
 
     #[inline]

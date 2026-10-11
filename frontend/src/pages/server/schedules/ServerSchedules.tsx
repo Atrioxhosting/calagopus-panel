@@ -1,7 +1,7 @@
 import { faCalendarDays, faPlus, faStopwatch, faUpload } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { load } from 'js-yaml';
-import { ChangeEvent, Ref, useRef, useState } from 'react';
+import { ChangeEvent, lazy, Ref, Suspense, useRef, useState } from 'react';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import getSchedules from '@/api/server/schedules/getSchedules.ts';
@@ -25,21 +25,24 @@ import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore, useServerStoreApi } from '@/stores/server.ts';
 import { applyScheduleCompletion } from '@/stores/slices/server/schedules.ts';
-import ScheduleCalendarModal from './modals/ScheduleCalendarModal.tsx';
 import ScheduleCreateOrUpdateModal from './modals/ScheduleCreateOrUpdateModal.tsx';
 import ScheduleActionBar from './ScheduleActionBar.tsx';
 import ScheduleRow from './ScheduleRow.tsx';
 
+const ScheduleCalendarModal = lazy(() => import('./modals/ScheduleCalendarModal.tsx'));
+
 export default function ServerSchedules() {
   const { t } = useTranslations();
   const { addToast } = useToast();
-  const { server } = useServerStore();
+  const server = useServerStore((state) => state.server);
   const serverStoreApi = useServerStoreApi();
 
   const canCreate = useServerCan('schedules.create');
   const canSelect = useServerCan(['schedules.update', 'schedules.delete']);
 
   const [openModal, setOpenModal] = useState<'create' | 'calendar' | null>(null);
+  const [calendarMounted, setCalendarMounted] = useState(false);
+  if (openModal === 'calendar' && !calendarMounted) setCalendarMounted(true);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -172,7 +175,11 @@ export default function ServerSchedules() {
       <input type='file' accept='.json,.yml,.yaml' ref={fileInputRef} className='hidden' onChange={handleFileUpload} />
 
       <ScheduleCreateOrUpdateModal opened={openModal === 'create'} onClose={() => setOpenModal(null)} />
-      <ScheduleCalendarModal opened={openModal === 'calendar'} onClose={() => setOpenModal(null)} />
+      {calendarMounted && (
+        <Suspense fallback={null}>
+          <ScheduleCalendarModal opened={openModal === 'calendar'} onClose={() => setOpenModal(null)} />
+        </Suspense>
+      )}
       <ImportOverlay
         visible={canCreate && isDragging}
         title={t('pages.server.schedules.dropzone.title', {})}

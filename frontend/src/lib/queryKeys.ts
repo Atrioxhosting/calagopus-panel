@@ -326,6 +326,7 @@ const user = {
   },
   commandSnippets: {
     all: () => ['user', 'command-snippets'] as const,
+    egg: (eggUuid: string) => ['user', 'command-snippets', 'egg', eggUuid] as const,
   },
   eggs: {
     all: () => ['user', 'eggs'] as const,
@@ -338,7 +339,6 @@ const user = {
   },
   servers: {
     all: () => ['user', 'servers'] as const,
-    detail: (uuid: string) => ['user', 'servers', { uuid }] as const,
   },
   serverGroups: {
     all: () => ['user', 'server-groups'] as const,

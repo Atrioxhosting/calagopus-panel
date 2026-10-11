@@ -4,7 +4,6 @@ use shared::models::{
     admin_activity::AdminActivity,
     announcement::Announcement,
     backup_configuration::BackupConfiguration,
-    egg_configuration::EggConfiguration,
     node::Node,
     oauth_provider_mapping::OAuthProviderMapping,
     server::Server,
@@ -261,15 +260,6 @@ pub async fn define_background_tasks(
                     tracing::info!(
                         "cleaned up {} invalid UUIDs in announcements",
                         cleaned_announcements
-                    );
-                }
-
-                let cleaned_egg_configurations =
-                    EggConfiguration::cleanup_uuid_arrays(&state.database).await?;
-                if cleaned_egg_configurations > 0 {
-                    tracing::info!(
-                        "cleaned up {} invalid UUIDs in egg configurations",
-                        cleaned_egg_configurations
                     );
                 }
 

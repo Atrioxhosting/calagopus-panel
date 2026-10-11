@@ -928,13 +928,13 @@ impl Node {
     }
 
     #[inline]
-    pub fn create_jwt<T: Serialize>(
+    pub async fn create_jwt<T: Serialize>(
         &self,
         database: &crate::database::Database,
         jwt: &crate::jwt::Jwt,
         payload: &T,
     ) -> Result<String, anyhow::Error> {
-        Ok(jwt.create_custom(self.token.blocking_decrypt(database)?.as_bytes(), payload)?)
+        Ok(jwt.create_custom(self.token.decrypt(database).await?.as_bytes(), payload)?)
     }
 }
 

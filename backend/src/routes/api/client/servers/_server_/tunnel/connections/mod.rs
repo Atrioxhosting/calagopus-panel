@@ -76,6 +76,16 @@ mod post {
                 .ok();
         }
 
+        if !target
+            .egg_configuration(&state.database)
+            .await?
+            .private_network_enabled()
+        {
+            return ApiResponse::error("the private network is not enabled for that server")
+                .with_status(StatusCode::EXPECTATION_FAILED)
+                .ok();
+        }
+
         // the grant lets this server past the target's firewall, so it needs the target's
         // consent as much as this one's
         permissions

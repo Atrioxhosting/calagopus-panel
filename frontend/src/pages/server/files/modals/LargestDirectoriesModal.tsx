@@ -22,6 +22,8 @@ import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
 
+import '@mantine/charts/styles.css';
+
 const TREEMAP_COLORS = [
   'blue.8',
   'teal.8',

@@ -108,6 +108,3 @@ tokio-tungstenite = { workspace = true }
 arc-swap = "1.9.1"
 flate2 = "1.1.10"
 ed25519-dalek = { version = "3.0.0", features = ["pkcs8"] }
-
-[build-dependencies]
-flate2 = "1.1.10"

@@ -1,5 +1,35 @@
 use super::State;
+use axum::{
+    extract::Request,
+    http::StatusCode,
+    middleware::Next,
+    response::{IntoResponse, Response},
+};
+use shared::{GetState, models::server::GetServer, response::ApiResponse};
 use utoipa_axum::{router::OpenApiRouter, routes};
+
+async fn enabled(
+    state: GetState,
+    server: GetServer,
+    mut req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let configuration = server.egg_configuration(&state.database).await;
+
+    match configuration {
+        Ok(configuration) if configuration.firewall_enabled() => {
+            req.extensions_mut().insert(server.0);
+
+            Ok(next.run(req).await)
+        }
+        Ok(_) => Ok(
+            ApiResponse::error("the firewall is not enabled for this server")
+                .with_status(StatusCode::EXPECTATION_FAILED)
+                .into_response(),
+        ),
+        Err(err) => Ok(ApiResponse::from(err).into_response()),
+    }
+}
 
 mod get {
     use serde::Serialize;
@@ -23,6 +53,7 @@ mod get {
     #[utoipa::path(get, path = "/", responses(
         (status = OK, body = inline(Response)),
         (status = UNAUTHORIZED, body = ApiError),
+        (status = EXPECTATION_FAILED, body = ApiError),
     ), params(
         (
             "server" = uuid::Uuid,
@@ -146,5 +177,6 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
     OpenApiRouter::new()
         .routes(routes!(get::route))
         .routes(routes!(put::route))
+        .route_layer(axum::middleware::from_fn_with_state(state.clone(), enabled))
         .with_state(state.clone())
 }

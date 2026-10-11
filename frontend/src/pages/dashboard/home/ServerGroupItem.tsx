@@ -14,6 +14,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useComputedColorScheme } from '@mantine/core';
 import classNames from 'classnames';
 import { ComponentProps, memo, useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { z } from 'zod';
 import { getEmptyPaginationSet, httpErrorToHuman } from '@/api/axios.ts';
 import deleteServerGroup from '@/api/me/servers/groups/deleteServerGroup.ts';
@@ -126,6 +127,7 @@ export default function ServerGroupItem({
   pendingServer?: z.infer<typeof serverSchema> | null;
 }) {
   const { t, tItem } = useTranslations();
+  const navigate = useNavigate();
   const updateStateServerGroup = useUserStore((state) => state.updateServerGroup);
   const removeServerGroup = useUserStore((state) => state.removeServerGroup);
   const { addToast } = useToast();
@@ -145,7 +147,7 @@ export default function ServerGroupItem({
 
   const { handleBulkPowerAction, bulkActionLoading: groupActionLoading } = useBulkPowerActions();
 
-  const { loading, search, setSearch, setPage, refetch } = useSearchablePaginatedTable({
+  const { loading, search, debouncedSearch, setSearch, setPage, refetch } = useSearchablePaginatedTable({
     queryKey: [...queryKeys.user.servers.all(), serverGroup.uuid],
     fetcher: (page, search) => getServerGroupServers(serverGroup.uuid, page, search),
     setStoreData: setServers,
@@ -345,6 +347,13 @@ export default function ServerGroupItem({
               size='xs'
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                const firstServer = orderedServers[0];
+                if (e.key === 'Enter' && isExpanded && firstServer && !loading && search === debouncedSearch) {
+                  e.preventDefault();
+                  navigate(getServerTo?.(firstServer) ?? `/server/${firstServer.uuidShort}`);
+                }
+              }}
               leftSection={<FontAwesomeIcon icon={faSearch} />}
               className='min-w-32 max-sm:flex-1 max-sm:max-w-48 max-sm:mr-auto'
             />

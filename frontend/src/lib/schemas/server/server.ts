@@ -35,6 +35,8 @@ export const serverEggConfigurationSchema = z.looseObject({
   allocationSelfAssignEnabled: z.boolean(),
   allocationSelfAssignRequirePrimary: z.boolean(),
   startupAllowCustomCommand: z.boolean(),
+  firewallEnabled: z.boolean(),
+  privateNetworkEnabled: z.boolean(),
   routeOrder: z.array(eggConfigurationRouteItemSchema).nullable(),
 });
 

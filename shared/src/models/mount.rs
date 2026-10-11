@@ -95,6 +95,14 @@ impl BaseModel for Mount {
             extension_data: Self::map_extensions(prefix, row)?,
         })
     }
+
+    fn cache_invalidation_keys(&self) -> Vec<compact_str::CompactString> {
+        vec![compact_str::format_compact!(
+            "{}::{}",
+            Self::NAME,
+            self.uuid
+        )]
+    }
 }
 
 impl Mount {

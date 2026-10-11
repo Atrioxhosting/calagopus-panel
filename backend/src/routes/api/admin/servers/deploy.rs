@@ -8,9 +8,15 @@ mod post {
     use shared::{
         ApiError, GetState,
         models::{
-            CreatableModel, IntoAdminApiObject, admin_activity::GetAdminActivityLogger,
-            nest_egg_variable::NestEggVariable, node::Node, node_allocation::NodeAllocation,
-            server::Server, user::GetPermissionManager,
+            ByUuid, CreatableModel, IntoAdminApiObject,
+            admin_activity::GetAdminActivityLogger,
+            egg_configuration::{EggConfiguration, EggConfigurationTarget},
+            nest_egg::NestEgg,
+            nest_egg_variable::NestEggVariable,
+            node::Node,
+            node_allocation::NodeAllocation,
+            server::Server,
+            user::GetPermissionManager,
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -191,21 +197,16 @@ mod post {
         )
         .await?;
 
-        let mut allocation_configuration = None;
-        if let Some(allocations) = data.deployment.allocations {
-            allocation_configuration = Some(allocations);
+        let egg = if data.deployment.allocations.is_none() {
+            NestEgg::by_uuid_optional_cached(&state.database, data.egg_uuid).await?
         } else {
-            let egg_configuration =
-                shared::models::egg_configuration::EggConfiguration::merged_by_egg_uuid(
-                    &state.database,
-                    data.egg_uuid,
-                )
-                .await?;
-
-            if let Some(allocations) = egg_configuration.config_allocations {
-                allocation_configuration = Some(allocations.deployment);
-            }
-        }
+            None
+        };
+        let egg_configurations = if egg.is_some() {
+            EggConfiguration::all_cached(&state.database).await?
+        } else {
+            Vec::new()
+        };
 
         let mut deployment_variables = HashMap::new();
 
@@ -213,49 +214,69 @@ mod post {
         let mut allocation_uuids = data.allocation_uuids;
         let mut allocation_error: Option<String> = None;
 
+        let candidates = nodes
+            .into_iter()
+            .map(|node| {
+                let allocations = data.deployment.allocations.clone().or_else(|| {
+                    egg.as_ref().and_then(|egg| {
+                        EggConfiguration::merge(
+                            &egg_configurations,
+                            &EggConfigurationTarget::new(egg, &node),
+                        )
+                        .config_allocations
+                        .map(|allocations| allocations.deployment)
+                    })
+                });
+
+                (node, allocations)
+            })
+            .collect::<Vec<_>>();
+
         let mut node_uuid = None;
-        if (allocation_uuid.is_none() || allocation_uuids.is_none())
-            && let Some(allocations) = &allocation_configuration
-        {
-            for node in nodes {
-                let (deployment_allocation_uuid, deployment_allocation_uuids) =
-                    match NodeAllocation::get_from_deployment(
-                        &state,
-                        allocations,
-                        &node,
-                        &mut deployment_variables,
-                    )
-                    .await
-                    {
-                        Ok(result) => result,
-                        Err(shared::database::DatabaseError::Any(err)) => {
-                            allocation_error = Some(err.to_string());
-                            continue;
-                        }
-                        Err(err) => return ApiResponse::from(err).ok(),
-                    };
-
-                if deployment_allocation_uuids.len() != allocations.additional.len() {
-                    allocation_error = Some(format!(
-                        "a node could only satisfy {} of the {} required additional allocations",
-                        deployment_allocation_uuids.len(),
-                        allocations.additional.len()
-                    ));
-                    continue;
-                }
-
-                if allocation_uuid.is_none() {
-                    allocation_uuid = deployment_allocation_uuid;
-                }
-                if allocation_uuids.is_none() {
-                    allocation_uuids = Some(deployment_allocation_uuids);
-                }
-
+        for (node, allocations) in &candidates {
+            let Some(allocations) = allocations
+                .as_ref()
+                .filter(|_| allocation_uuid.is_none() || allocation_uuids.is_none())
+            else {
                 node_uuid = Some(node.uuid);
                 break;
+            };
+
+            let (deployment_allocation_uuid, deployment_allocation_uuids) =
+                match NodeAllocation::get_from_deployment(
+                    &state,
+                    allocations,
+                    node,
+                    &mut deployment_variables,
+                )
+                .await
+                {
+                    Ok(result) => result,
+                    Err(shared::database::DatabaseError::Any(err)) => {
+                        allocation_error = Some(err.to_string());
+                        continue;
+                    }
+                    Err(err) => return ApiResponse::from(err).ok(),
+                };
+
+            if deployment_allocation_uuids.len() != allocations.additional.len() {
+                allocation_error = Some(format!(
+                    "a node could only satisfy {} of the {} required additional allocations",
+                    deployment_allocation_uuids.len(),
+                    allocations.additional.len()
+                ));
+                continue;
             }
-        } else {
-            node_uuid = nodes.into_iter().next().map(|n| n.uuid);
+
+            if allocation_uuid.is_none() {
+                allocation_uuid = deployment_allocation_uuid;
+            }
+            if allocation_uuids.is_none() {
+                allocation_uuids = Some(deployment_allocation_uuids);
+            }
+
+            node_uuid = Some(node.uuid);
+            break;
         }
 
         let Some(node_uuid) = node_uuid else {

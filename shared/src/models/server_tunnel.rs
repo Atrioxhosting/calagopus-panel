@@ -365,6 +365,7 @@ impl ServerTunnelConnection {
         database: &crate::database::Database,
         server_uuid: uuid::Uuid,
         incoming: bool,
+        configurations: &[super::egg_configuration::EggConfiguration],
     ) -> Result<Vec<ServerTunnelPeer>, crate::database::DatabaseError> {
         let (own, peer) = if incoming {
             ("dst_server_uuid", "src_server_uuid")
@@ -380,10 +381,16 @@ impl ServerTunnelConnection {
                 server_tunnels.name,
                 servers.name AS server_name,
                 servers.uuid_short,
-                server_tunnel_connections.created
+                server_tunnel_connections.created,
+                servers.egg_uuid,
+                nest_eggs.nest_uuid,
+                servers.node_uuid,
+                nodes.location_uuid
             FROM server_tunnel_connections
             JOIN server_tunnels ON server_tunnels.server_uuid = server_tunnel_connections.{peer}
             JOIN servers ON servers.uuid = server_tunnels.server_uuid
+            JOIN nest_eggs ON nest_eggs.uuid = servers.egg_uuid
+            JOIN nodes ON nodes.uuid = servers.node_uuid
             WHERE server_tunnel_connections.{own} = $1
             ORDER BY server_tunnels.name
             "#
@@ -400,6 +407,13 @@ impl ServerTunnelConnection {
 
         let mut peers = Vec::with_capacity(rows.len());
         for (row, server_uuid) in rows.into_iter().zip(peer_uuids) {
+            let target = super::egg_configuration::EggConfigurationTarget::map(&row)?;
+            if !super::egg_configuration::EggConfiguration::merge(configurations, &target)
+                .private_network_enabled()
+            {
+                continue;
+            }
+
             peers.push(ServerTunnelPeer {
                 server_uuid,
                 server_name: row.try_get("server_name")?,

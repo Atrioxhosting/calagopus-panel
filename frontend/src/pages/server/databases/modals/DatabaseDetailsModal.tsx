@@ -24,7 +24,7 @@ type Props = ModalProps & {
 export default function DatabaseDetailsModal({ database, ...props }: Props) {
   const { t } = useTranslations();
   const { addToast } = useToast();
-  const { server } = useServerStore();
+  const server = useServerStore((state) => state.server);
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 

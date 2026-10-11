@@ -34,7 +34,7 @@ type Props = ModalProps & {
 export default function ScheduleCreateOrUpdateModal({ propSchedule, onScheduleUpdate, ...props }: Props) {
   const { t } = useTranslations();
   const { addToast } = useToast();
-  const { server } = useServerStore();
+  const server = useServerStore((state) => state.server);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
 import { bytesToString } from '@/lib/format/size.ts';
 
 export const CHART_WINDOW = 20_000;
@@ -39,6 +39,7 @@ export interface StreamChartProps {
   format: (value: number) => string;
   highlighted?: string | null;
   limit?: number | null;
+  capacityLabel?: string;
   compact?: boolean;
 }
 
@@ -81,6 +82,76 @@ function niceCeil(value: number, scale: ChartScale): number {
   return ([1, 2, 4, 5, 10].find((step) => magnitude * step >= value) ?? 10) * magnitude;
 }
 
+const clockListeners = new Set<() => void>();
+let clockEnd = Date.now() - CHART_DELAY;
+let clockInterval: ReturnType<typeof setInterval> | null = null;
+
+function refreshStaleClock() {
+  const end = Date.now() - CHART_DELAY;
+  if (end - clockEnd >= CHART_TICK) {
+    clockEnd = end;
+  }
+}
+
+function tickClock() {
+  clockEnd = Date.now() - CHART_DELAY;
+  for (const listener of clockListeners) {
+    listener();
+  }
+}
+
+function startClock() {
+  if (clockInterval === null && !document.hidden) {
+    clockInterval = setInterval(tickClock, CHART_TICK);
+  }
+}
+
+function stopClock() {
+  if (clockInterval !== null) {
+    clearInterval(clockInterval);
+    clockInterval = null;
+  }
+}
+
+function onClockVisibilityChange() {
+  if (document.hidden) {
+    stopClock();
+    return;
+  }
+
+  tickClock();
+  startClock();
+}
+
+function subscribeClock(listener: () => void) {
+  if (clockListeners.size === 0) {
+    refreshStaleClock();
+    document.addEventListener('visibilitychange', onClockVisibilityChange);
+    startClock();
+  }
+  clockListeners.add(listener);
+
+  return () => {
+    clockListeners.delete(listener);
+    if (clockListeners.size === 0) {
+      document.removeEventListener('visibilitychange', onClockVisibilityChange);
+      stopClock();
+    }
+  };
+}
+
+function getClockEnd() {
+  if (clockListeners.size === 0) {
+    refreshStaleClock();
+  }
+
+  return clockEnd;
+}
+
+function useChartClock(): number {
+  return useSyncExternalStore(subscribeClock, getClockEnd);
+}
+
 function seriesColor(index: number): string {
   return `var(--chart-series-${(index % CHART_SERIES_COLORS) + 1})`;
 }
@@ -96,18 +167,17 @@ export function useStreamChart({
   min = 0,
   limit = null,
 }: UseStreamChartOptions) {
+  const end = useChartClock();
   const [samples, setSamples] = useState<Sample[]>([]);
-  const [end, setEnd] = useState(() => Date.now() - CHART_DELAY);
+  const [drawn, setDrawn] = useState({ end, samples });
   const [hidden, setHidden] = useState(NO_HIDDEN_SERIES);
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [ceiling, setCeiling] = useState(0);
   const [previousHidden, setPreviousHidden] = useState<ReadonlySet<string>>(NO_HIDDEN_SERIES);
 
-  useEffect(() => {
-    const interval = setInterval(() => setEnd(Date.now() - CHART_DELAY), CHART_TICK);
-
-    return () => clearInterval(interval);
-  }, []);
+  if (drawn.end !== end) {
+    setDrawn({ end, samples });
+  }
 
   const push = useCallback((values: number | null | (number | null)[]) => {
     const now = Date.now();
@@ -123,7 +193,7 @@ export function useStreamChart({
   const clear = useCallback(() => {
     setSamples([]);
     setCeiling(0);
-    setEnd(Date.now() - CHART_DELAY);
+    setDrawn({ end: getClockEnd(), samples: [] });
   }, []);
 
   const toggleSeries = useCallback(
@@ -145,8 +215,8 @@ export function useStreamChart({
     [labels.length],
   );
 
-  const start = end - CHART_WINDOW;
-  const visible = samples.filter((sample) => sample.t >= start - 2 * CHART_TICK);
+  const start = drawn.end - CHART_WINDOW;
+  const visible = drawn.samples.filter((sample) => sample.t >= start - 2 * CHART_TICK);
 
   let peak = min;
   for (const sample of visible) {
@@ -180,12 +250,12 @@ export function useStreamChart({
     return row;
   });
   const ticks = Array.from({ length: CHART_TICKS }, (_, i) => (nextCeiling * i) / (CHART_TICKS - 1));
-  const values = samples.at(-1)?.values ?? [];
+  const latest = samples.at(-1);
 
   const series = useMemo<StreamChartSeries[]>(
     () =>
       labels.map((label, index) => {
-        const value = values[index] ?? null;
+        const value = latest?.values[index] ?? null;
         const key = `v${index}`;
 
         return {
@@ -198,13 +268,13 @@ export function useStreamChart({
           hidden: hidden.has(key),
         };
       }),
-    [labels, values, format, hidden],
+    [labels, latest, format, hidden],
   );
 
   return {
     props: {
       data,
-      domain: [end - CHART_WINDOW, end] as [number, number],
+      domain: [start, drawn.end] as [number, number],
       ticks,
       yMax: nextCeiling,
       series,

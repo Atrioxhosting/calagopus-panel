@@ -9,6 +9,7 @@ mod post {
         models::{
             ByUuid,
             admin_activity::GetAdminActivityLogger,
+            egg_configuration::{EggConfiguration, EggConfigurationTarget},
             node::{GetNode, Node},
             node_allocation::NodeAllocation,
             server::Server,
@@ -111,7 +112,11 @@ mod post {
             match data.allocation_mode {
                 MassTransferAllocationMode::None => {}
                 MassTransferAllocationMode::EggConfigDeployment => {
-                    let egg_configuration = server.egg.configuration(&state.database).await?;
+                    let egg_configuration = EggConfiguration::merged_for_target(
+                        &state.database,
+                        &EggConfigurationTarget::new(&server.egg, &destination_node),
+                    )
+                    .await?;
 
                     if let Some(allocations) = &egg_configuration.config_allocations {
                         let mut deployment_variables = HashMap::new();
@@ -302,8 +307,11 @@ mod post {
                     if required_allocation_count > 0 {
                         let (start_port, end_port) =
                             if let MassTransferAllocationMode::EggConfigSelfAssignRange = mode {
-                                let egg_configuration =
-                                    server.egg.configuration(&state.database).await?;
+                                let egg_configuration = EggConfiguration::merged_for_target(
+                                    &state.database,
+                                    &EggConfigurationTarget::new(&server.egg, &destination_node),
+                                )
+                                .await?;
 
                                 if let Some(config_allocations) =
                                     &egg_configuration.config_allocations

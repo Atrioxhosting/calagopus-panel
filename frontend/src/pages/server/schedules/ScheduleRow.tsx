@@ -37,7 +37,7 @@ const ScheduleRow = forwardRef<HTMLTableRowElement, ScheduleRowProps>(function S
   const { t } = useTranslations();
   const { addToast } = useToast();
   const navigate = useNavigate();
-  const { server } = useServerStore();
+  const server = useServerStore((state) => state.server);
   const queryClient = useQueryClient();
   const navigateUrl = `/server/${server.uuidShort}/schedules/${schedule.uuid}`;
 

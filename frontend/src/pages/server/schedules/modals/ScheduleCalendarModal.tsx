@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ModalProps } from '@mantine/core';
 import { Schedule, ScheduleEventData, ScheduleViewLevel } from '@mantine/schedule';
 import { CronExpressionParser } from 'cron-parser';
-import cronstrue from 'cronstrue/i18n';
+import cronstrue from 'cronstrue';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import getSchedules from '@/api/server/schedules/getSchedules.ts';
@@ -16,6 +16,9 @@ import { queryKeys } from '@/lib/queryKeys.ts';
 import { useResource } from '@/plugins/resource/useResource.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
+
+import '@mantine/dates/styles.css';
+import '@mantine/schedule/styles.css';
 
 const MAX_OCCURRENCES_PER_TRIGGER = 500;
 const MAX_TOTAL_EVENTS = 300;
@@ -71,7 +74,7 @@ function getVisibleRange(date: Date, view: ScheduleViewLevel): [Date, Date] {
 
 export default function ScheduleCalendarModal(props: ModalProps) {
   const { t, language } = useTranslations();
-  const { server } = useServerStore();
+  const server = useServerStore((state) => state.server);
   const navigate = useNavigate();
 
   const [date, setDate] = useState(new Date());

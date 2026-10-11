@@ -10,6 +10,7 @@ import { countryFlags } from './vite-plugins/country-flags.ts';
 import { deprecatedPaths } from './vite-plugins/deprecated-paths.ts';
 import { extensionChunkGroups } from './vite-plugins/extension-chunks.ts';
 import { extensionOverrides } from './vite-plugins/extension-overrides.ts';
+import { fontAwesomeIcons } from './vite-plugins/fontawesome-icons.ts';
 import { precompressAssets } from './vite-plugins/precompress.ts';
 import { translationsPlugin } from './vite-plugins/translations.ts';
 
@@ -44,6 +45,7 @@ export default defineConfig({
     }),
     translationsPlugin(),
     countryFlags(),
+    fontAwesomeIcons(),
     bootSpinner(),
     viteStaticCopy({
       targets: [
@@ -82,8 +84,12 @@ export default defineConfig({
     chunkSizeWarningLimit: 1024,
     target: 'es2022',
     cssCodeSplit: true,
+    reportCompressedSize: usePrecompress,
     rolldownOptions: {
       external: ['monaco-editor'],
+      experimental: {
+        lazyBarrel: true,
+      },
       checks: {
         pluginTimings: false,
       },
@@ -103,12 +109,12 @@ export default defineConfig({
             ...extensionChunkGroups(),
             {
               name: 'react',
-              test: /node_modules\/react/,
+              test: /node_modules\/(react|react-dom|react-is|scheduler|use-sync-external-store)\//,
               priority: 20,
             },
             {
               name: 'tanstack',
-              test: /node_modules\/@tanstack\//,
+              test: /node_modules\/@tanstack\/(query-core|react-query)\//,
               priority: 16,
             },
             {
@@ -118,13 +124,16 @@ export default defineConfig({
             },
             {
               name: 'recharts',
-              test: (id: string) => /node_modules\/(recharts|@mantine\/charts)\//.test(id) && !id.endsWith('.css'),
+              test: (id: string) =>
+                /node_modules\/(recharts|@mantine\/charts|d3-[a-z-]+|victory-vendor|internmap|@reduxjs\/toolkit|redux|redux-thunk|react-redux|reselect|immer|decimal\.js-light|eventemitter3|es-toolkit)\//.test(
+                  id,
+                ) && !id.endsWith('.css'),
               priority: 15,
               includeDependenciesRecursively: false,
             },
             {
               name: 'mantine',
-              test: /node_modules\/(@mantine|@floating-ui|clsx|react-textarea-autosize)\//,
+              test: /node_modules\/(@mantine\/(core|hooks|form)|@floating-ui|clsx|react-textarea-autosize)\//,
               priority: 12,
             },
             {
@@ -134,7 +143,7 @@ export default defineConfig({
             },
             {
               name: 'markdown',
-              test: /node_modules\/(react-markdown|remark-gfm|rehype-raw|rehype-sanitize|unified|mdast-util-|micromark|hast-util-|html-void-elements|zwitch|bail|trough|vfile|property-information|space-separated-tokens|comma-separated-tokens)\//,
+              test: /node_modules\/(react-markdown|remark-gfm|unified|mdast-util-|micromark|hast-util-|html-void-elements|zwitch|bail|trough|vfile|property-information|space-separated-tokens|comma-separated-tokens)\//,
               priority: 11,
             },
             {
@@ -144,7 +153,7 @@ export default defineConfig({
             },
             {
               name: 'zod',
-              test: /node_modules\/zod\//,
+              test: /node_modules\/zod\/(?!v4\/locales\/)/,
               priority: 11,
             },
             {
@@ -161,7 +170,7 @@ export default defineConfig({
             },
             {
               name: 'vendor',
-              test: /node_modules\/(axios|zustand|history|semver|uuid|classnames|object-deep-merge|deepmerge-ts)\//,
+              test: /node_modules\/(axios|zustand|history|classnames|object-deep-merge|deepmerge-ts)\//,
               priority: 10,
             },
             {
@@ -171,7 +180,7 @@ export default defineConfig({
             },
             {
               name: 'cron',
-              test: /node_modules\/(cron-parser|cronstrue|luxon)\//,
+              test: /node_modules\/(cron-parser|cronstrue|luxon)\/(?!locales\/)/,
               priority: 10,
             },
           ],

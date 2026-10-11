@@ -21,7 +21,7 @@ import ApiKeyRow from './ApiKeyRow.tsx';
 
 export default function DashboardApiKeys() {
   const { t } = useTranslations();
-  const { settings } = useGlobalStore();
+  const settings = useGlobalStore((state) => state.settings);
 
   const [openModal, setOpenModal] = useState<'create' | null>(null);
   const [createdToken, setCreatedToken] = useState<string | null>(null);

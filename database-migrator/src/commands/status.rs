@@ -146,7 +146,7 @@ impl shared::extensions::commands::CliCommand<StatusArgs> for StatusCommand {
                 } else {
                     tracing::info!("collecting embedded migrations...");
 
-                    for entry in crate::EXTENSION_MIGRATIONS.dirs() {
+                    for entry in crate::embedded_extension_migrations().dirs() {
                         let extension_identifier = match entry.path().file_name() {
                             Some(name) => name.to_string_lossy().to_string(),
                             None => continue,

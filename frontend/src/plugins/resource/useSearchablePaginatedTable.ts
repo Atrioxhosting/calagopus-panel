@@ -26,6 +26,10 @@ function parseNumber(num: string | null): number | null {
   return Number.isFinite(parsed) && parsed >= 1 ? parsed : null;
 }
 
+export function paginatedTableQueryKey(queryKey: readonly unknown[], page: number, search: string) {
+  return [...queryKey, { page, search }];
+}
+
 export function useSearchablePaginatedTable<T>({
   queryKey = [],
   fetcher,
@@ -83,7 +87,7 @@ export function useSearchablePaginatedTable<T>({
   }, [search]);
 
   const { data, isFetching, isPlaceholderData, error, refetch } = useQuery({
-    queryKey: [...queryKey, ...deps, { page, search: debouncedSearch }],
+    queryKey: paginatedTableQueryKey([...queryKey, ...deps], page, debouncedSearch),
     queryFn: () => fetcher(page, debouncedSearch),
     placeholderData: keepPreviousData,
     enabled: canRequest,

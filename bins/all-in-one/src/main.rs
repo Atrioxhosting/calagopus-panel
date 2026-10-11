@@ -342,6 +342,8 @@ async fn handle_aio_wings(
 
 #[tokio::main]
 async fn main() {
+    embedded_assets::register();
+
     backend::EXTENSIONS
         .set(Arc::new(
             shared::extensions::manager::ExtensionManager::new(extension_internal_list::list()),

@@ -2,6 +2,8 @@ import { DateTimePickerProps, DateTimePicker as MantineDateTimePicker } from '@m
 import { forwardRef } from 'react';
 import { makeComponentHookable } from 'shared';
 
+import '@mantine/dates/styles.css';
+
 const DateTimePicker = forwardRef<HTMLButtonElement, DateTimePickerProps>(({ className, ...rest }, ref) => {
   return (
     <MantineDateTimePicker

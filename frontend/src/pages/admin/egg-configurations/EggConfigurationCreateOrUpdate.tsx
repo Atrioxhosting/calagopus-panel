@@ -14,6 +14,7 @@ import Alert from '@/elements/feedback/Alert.tsx';
 import { FormEngine, useFormEngine } from '@/elements/form-engine/index.ts';
 import Group from '@/elements/layout/Group.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
+import { eggConfigurationMatcherUsesEggs } from '@/lib/domain/eggConfiguration.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import {
   adminEggConfigurationSchema,
@@ -132,7 +133,7 @@ export default function EggConfigurationCreateOrUpdate({
         />
       )}
 
-      {!eggsLoading && eggOptions.length === 0 && (
+      {!eggsLoading && eggOptions.length === 0 && eggConfigurationMatcherUsesEggs(form.values.matcher) && (
         <Alert color='yellow' mb='xs' icon={<FontAwesomeIcon icon={faTriangleExclamation} />}>
           {t('pages.admin.eggConfigurations.tabs.general.page.form.eggsEmpty', {})}
         </Alert>

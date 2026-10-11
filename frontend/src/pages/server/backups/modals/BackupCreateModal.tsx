@@ -39,7 +39,7 @@ export default function BackupCreateModal({
   const { data: groups } = useQuery({
     queryKey: queryKeys.server(server.uuid).backups.groups.all(),
     queryFn: () => getBackupGroups(server.uuid),
-    enabled: canReadGroups,
+    enabled: canReadGroups && props.opened,
   });
 
   const instances = useSearchableResource<z.infer<typeof serverDatabaseInstanceSchema>>({

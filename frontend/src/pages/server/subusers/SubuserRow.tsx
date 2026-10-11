@@ -29,7 +29,7 @@ const SubuserRow = forwardRef<HTMLTableRowElement, SubuserRowProps>(function Sub
 ) {
   const { t } = useTranslations();
   const { addToast } = useToast();
-  const { server } = useServerStore();
+  const server = useServerStore((state) => state.server);
   const queryClient = useQueryClient();
 
   const [openModal, setOpenModal] = useState<'update' | 'remove' | null>(null);

@@ -1,4 +1,4 @@
-import { faCircleQuestion } from '@fortawesome/free-solid-svg-icons';
+import { faCircleQuestion } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { UseFormReturnType } from '@mantine/form';
 import { ReactNode } from 'react';

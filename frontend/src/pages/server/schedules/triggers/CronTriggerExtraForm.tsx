@@ -1,4 +1,4 @@
-import cronstrue from 'cronstrue/i18n';
+import cronstrue from 'cronstrue';
 import { useMemo, useState } from 'react';
 import { CrontabEditor } from '@/elements/input/CronInput.tsx';
 import NumberInput from '@/elements/input/NumberInput.tsx';

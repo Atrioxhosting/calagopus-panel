@@ -91,6 +91,7 @@ pub struct Env {
     log_reload_handle: ReloadHandle,
 
     pub redis_mode: RedisMode,
+    pub redis_key_prefix: Option<String>,
 
     pub sentry_url: Option<String>,
     pub sentry_tracing_sample_rate: f32,
@@ -243,6 +244,10 @@ impl Env {
             log_reload_handle,
 
             redis_mode,
+            redis_key_prefix: std::env::var("REDIS_KEY_PREFIX")
+                .ok()
+                .map(|s| s.trim_matches('"').trim_end_matches(':').to_string())
+                .filter(|s| !s.is_empty()),
 
             sentry_url: std::env::var("SENTRY_URL")
                 .ok()

@@ -165,37 +165,22 @@ mod post {
                         .ok();
                 };
 
-                let matched_step_idx = match totp.check_current(&data.code) {
-                    Some(idx) => idx,
-                    None => {
-                        return ApiResponse::error("invalid confirmation code")
-                            .with_status(StatusCode::BAD_REQUEST)
-                            .ok();
-                    }
+                let Some(matched_step) = totp.check_current(&data.code) else {
+                    return ApiResponse::error("invalid confirmation code")
+                        .with_status(StatusCode::BAD_REQUEST)
+                        .ok();
                 };
 
-                if let Some(totp_last_used) = &user.totp_last_used {
-                    let last_used_step_idx =
-                        totp_last_used.and_utc().timestamp() as u64 / totp.step();
-
-                    if matched_step_idx <= last_used_step_idx {
-                        return ApiResponse::error("this code has already been used")
-                            .with_status(StatusCode::BAD_REQUEST)
-                            .ok();
-                    }
+                if !user
+                    .consume_totp_step(&state.database, matched_step)
+                    .await?
+                {
+                    return ApiResponse::error("this code has already been used")
+                        .with_status(StatusCode::BAD_REQUEST)
+                        .ok();
                 }
 
-                sqlx::query!(
-                    "UPDATE users
-                    SET totp_last_used = NOW()
-                    WHERE users.uuid = $1",
-                    user.uuid
-                )
-                .execute(state.database.write())
-                .await?;
-
                 user.reencrypt_totp_secret(&state.database).await?;
-                User::invalidate_cached(&state.database, user.uuid).await;
 
                 "two-factor"
             }

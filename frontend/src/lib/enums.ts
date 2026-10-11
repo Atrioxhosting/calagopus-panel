@@ -60,7 +60,10 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { z } from 'zod';
 import { adminBackupConfigurationSchema } from '@/lib/schemas/admin/backupConfigurations.ts';
-import { adminEggConfigurationDeploymentSchema } from '@/lib/schemas/admin/eggConfigurations.ts';
+import {
+  type AdminEggConfigurationMatcher,
+  adminEggConfigurationDeploymentSchema,
+} from '@/lib/schemas/admin/eggConfigurations.ts';
 import { processConfigurationConfigParser } from '@/lib/schemas/admin/eggs.ts';
 import { AdminOAuthProviderMappingMatcher } from '@/lib/schemas/admin/oauthProviders.ts';
 import { adminSettingsEmailSchema, adminSettingsStorageSchema } from '@/lib/schemas/admin/settings.ts';
@@ -164,8 +167,8 @@ export const databaseAgentTypeDefaultPortMapping: Record<z.infer<typeof database
 };
 
 export const databaseAgentTypeDumpExtensionMapping: Record<z.infer<typeof databaseAgentType>, string> = {
-  postgres: '.sql',
-  mariadb: '.sql',
+  postgres: '.sql,.gz',
+  mariadb: '.sql,.gz',
   mongodb: '.archive',
   redis: '.rdb',
 };
@@ -340,8 +343,42 @@ export const eggConfigurationDeploymentTypeLabelMapping: Record<
     getTranslations().t('pages.admin.eggConfigurations.tabs.general.page.enum.deploymentType.dividePrimary', {}),
 };
 
+export const eggConfigurationMatcherLabelMapping: Record<AdminEggConfigurationMatcher['type'], () => string> = {
+  never: () => getTranslations().t('pages.admin.eggConfigurations.tabs.general.page.enum.matcherType.never', {}),
+  all: () => getTranslations().t('pages.admin.eggConfigurations.tabs.general.page.enum.matcherType.all', {}),
+  and: () => getTranslations().t('pages.admin.eggConfigurations.tabs.general.page.enum.matcherType.and', {}),
+  or: () => getTranslations().t('pages.admin.eggConfigurations.tabs.general.page.enum.matcherType.or', {}),
+  not: () => getTranslations().t('pages.admin.eggConfigurations.tabs.general.page.enum.matcherType.not', {}),
+  eggs: () => getTranslations().t('pages.admin.eggConfigurations.tabs.general.page.enum.matcherType.eggs', {}),
+  nests: () => getTranslations().t('pages.admin.eggConfigurations.tabs.general.page.enum.matcherType.nests', {}),
+  nodes: () => getTranslations().t('pages.admin.eggConfigurations.tabs.general.page.enum.matcherType.nodes', {}),
+  locations: () =>
+    getTranslations().t('pages.admin.eggConfigurations.tabs.general.page.enum.matcherType.locations', {}),
+};
+
+export function eggConfigurationMatcherSummary(matcher: AdminEggConfigurationMatcher): string {
+  const label = eggConfigurationMatcherLabelMapping[matcher.type]();
+
+  switch (matcher.type) {
+    case 'and':
+    case 'or':
+      return `${label} (${matcher.matchers.length})`;
+    case 'eggs':
+      return `${label} (${matcher.eggs.length})`;
+    case 'nests':
+      return `${label} (${matcher.nests.length})`;
+    case 'nodes':
+      return `${label} (${matcher.nodes.length})`;
+    case 'locations':
+      return `${label} (${matcher.locations.length})`;
+    default:
+      return label;
+  }
+}
+
 export const oauthProviderMappingMatcherLabelMapping: Record<AdminOAuthProviderMappingMatcher['type'], () => string> = {
   none: () => getTranslations().t('pages.admin.oAuthProviders.tabs.mappings.page.enum.matcherType.none', {}),
+  never: () => getTranslations().t('pages.admin.oAuthProviders.tabs.mappings.page.enum.matcherType.never', {}),
   and: () => getTranslations().t('pages.admin.oAuthProviders.tabs.mappings.page.enum.matcherType.and', {}),
   or: () => getTranslations().t('pages.admin.oAuthProviders.tabs.mappings.page.enum.matcherType.or', {}),
   not: () => getTranslations().t('pages.admin.oAuthProviders.tabs.mappings.page.enum.matcherType.not', {}),

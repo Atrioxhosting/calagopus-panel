@@ -120,7 +120,7 @@ mod post {
     ) -> ApiResponseResult {
         permissions.has_server_permission("allocations.create")?;
 
-        let egg_configuration = server.egg.configuration(&state.database).await?;
+        let egg_configuration = server.egg_configuration(&state.database).await?;
 
         if !egg_configuration
             .config_allocations

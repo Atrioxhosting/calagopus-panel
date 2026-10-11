@@ -1,11 +1,14 @@
-import { faList, faNetworkWired, faPlay } from '@fortawesome/free-solid-svg-icons';
+import { faList, faNetworkWired, faPlay, faToggleOn } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useMemo } from 'react';
 import { ServerRouteDefinition } from 'shared';
 import { z } from 'zod';
 import { type FieldDef } from '@/elements/form-engine/index.ts';
 import Switch from '@/elements/input/Switch.tsx';
+import SegmentedControl from '@/elements/layout/SegmentedControl.tsx';
+import Stack from '@/elements/layout/Stack.tsx';
 import RouteOrderEditor from '@/elements/navigation/RouteOrderEditor.tsx';
+import Text from '@/elements/typography/Text.tsx';
 import {
   type AdminEggConfiguration,
   adminEggConfigurationSchema,
@@ -15,21 +18,24 @@ import { eggConfigurationRouteItemSchema } from '@/lib/schemas/generic.ts';
 import { useGroupedEggOptions } from '@/plugins/useGroupedEggOptions.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import EggConfigurationAllocationsSection from './EggConfigurationAllocationsSection.tsx';
+import EggConfigurationMatcherBuilder from './EggConfigurationMatcherBuilder.tsx';
 
 type EggConfigFormValues = z.infer<typeof adminEggConfigurationUpdateSchema>;
 
 type EggConfigurationAllocations = NonNullable<AdminEggConfiguration['configAllocations']>;
 type EggConfigurationPrimaryAllocation = NonNullable<EggConfigurationAllocations['deployment']['primary']>;
 type EggConfigurationStartup = NonNullable<AdminEggConfiguration['configStartup']>;
+type EggConfigurationFeatures = NonNullable<AdminEggConfiguration['configFeatures']>;
 
 export const eggConfigurationEmptyFormValues: EggConfigFormValues = {
   name: '',
   description: null,
   order: 0,
-  eggs: [],
+  matcher: { type: 'eggs', eggs: [] },
   configAllocations: null,
   configStartup: null,
   configRoutes: null,
+  configFeatures: null,
 };
 
 export const defaultEggConfigurationPrimaryAllocation: EggConfigurationPrimaryAllocation = {
@@ -56,16 +62,25 @@ export const defaultEggConfigurationStartup: EggConfigurationStartup = {
   allowCustomStartupCommand: false,
 };
 
+export const defaultEggConfigurationFeatures: EggConfigurationFeatures = {
+  firewall: null,
+  privateNetwork: null,
+};
+
+const featureStateToValue = (state: boolean | null) => (state === null ? 'inherit' : state ? 'enabled' : 'disabled');
+const valueToFeatureState = (value: string) => (value === 'inherit' ? null : value === 'enabled');
+
 export const eggConfigurationToFormValues = (
   eggConfiguration: z.infer<typeof adminEggConfigurationSchema>,
 ): EggConfigFormValues => ({
   name: eggConfiguration.name,
   description: eggConfiguration.description,
   order: eggConfiguration.order,
-  eggs: eggConfiguration.eggs,
+  matcher: eggConfiguration.matcher,
   configAllocations: eggConfiguration.configAllocations,
   configStartup: eggConfiguration.configStartup,
   configRoutes: eggConfiguration.configRoutes,
+  configFeatures: eggConfiguration.configFeatures,
 });
 
 interface EggConfigurationFormFieldsOptions {
@@ -95,18 +110,28 @@ export function useEggConfigurationFormFields({
         label: t('pages.admin.eggConfigurations.tabs.general.page.form.order', {}),
         required: true,
       },
-      {
-        type: 'multiselectgroup',
-        name: 'eggs',
-        label: t('common.form.eggs', {}),
-        data: eggOptions,
-        props: {
-          placeholder: t('pages.admin.eggConfigurations.tabs.general.page.form.eggsPlaceholder', {}),
-          searchable: true,
-          loading: eggsLoading,
-        },
-      },
       { type: 'textarea', name: 'description', label: t('common.form.description', {}), rows: 3 },
+      {
+        type: 'custom',
+        name: 'matcher',
+        colSpan: 'full',
+        render: (f) => (
+          <Stack gap='xs'>
+            <div>
+              <Text fw={500}>{t('pages.admin.eggConfigurations.tabs.general.page.form.matcher', {})}</Text>
+              <Text size='xs' c='dimmed'>
+                {t('pages.admin.eggConfigurations.tabs.general.page.form.matcherDescription', {})}
+              </Text>
+            </div>
+            <EggConfigurationMatcherBuilder
+              matcher={f.values.matcher}
+              onChange={(matcher) => f.setFieldValue('matcher', matcher)}
+              eggOptions={eggOptions}
+              eggsLoading={eggsLoading}
+            />
+          </Stack>
+        ),
+      },
       {
         type: 'section',
         name: 'configAllocations',
@@ -115,6 +140,41 @@ export function useEggConfigurationFormFields({
         title: t('pages.admin.eggConfigurations.tabs.general.page.allocation.title', {}),
         nullableDefault: defaultEggConfigurationAllocations,
         render: (f) => <EggConfigurationAllocationsSection form={f} />,
+      },
+      {
+        type: 'section',
+        name: 'configFeatures',
+        colSpan: 'full',
+        icon: <FontAwesomeIcon icon={faToggleOn} />,
+        title: t('pages.admin.eggConfigurations.tabs.general.page.features.title', {}),
+        nullableDefault: defaultEggConfigurationFeatures,
+        render: (f) =>
+          f.values.configFeatures ? (
+            <Stack>
+              <Text size='xs' c='dimmed'>
+                {t('pages.admin.eggConfigurations.tabs.general.page.features.description', {})}
+              </Text>
+              {(['firewall', 'privateNetwork'] as const).map((feature) => (
+                <div key={feature}>
+                  <Text size='sm' fw={500}>
+                    {t(`pages.admin.eggConfigurations.tabs.general.page.features.form.${feature}`, {})}
+                  </Text>
+                  <Text size='xs' c='dimmed'>
+                    {t(`pages.admin.eggConfigurations.tabs.general.page.features.form.${feature}Description`, {})}
+                  </Text>
+                  <SegmentedControl
+                    mt='xs'
+                    value={featureStateToValue(f.values.configFeatures?.[feature] ?? null)}
+                    onChange={(value) => f.setFieldValue(`configFeatures.${feature}`, valueToFeatureState(value))}
+                    data={(['inherit', 'enabled', 'disabled'] as const).map((value) => ({
+                      value,
+                      label: t(`pages.admin.eggConfigurations.tabs.general.page.enum.featureState.${value}`, {}),
+                    }))}
+                  />
+                </div>
+              ))}
+            </Stack>
+          ) : null,
       },
       {
         type: 'section',

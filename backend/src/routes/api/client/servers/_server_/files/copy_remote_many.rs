@@ -181,25 +181,27 @@ mod post {
                 .fetch_cached(&state.database)
                 .await?;
 
-            let token = destination_node.create_jwt(
-                &state.database,
-                &state.jwt,
-                &FileTransferUploadJwt {
-                    base: BasePayload {
-                        scope: "transfer".into(),
-                        issuer: "panel".into(),
-                        subject: Some(destination_server.uuid.to_compact_string()),
-                        audience: Vec::new(),
-                        expiration_time: Some(chrono::Utc::now().timestamp() + 600),
-                        not_before: None,
-                        issued_at: Some(chrono::Utc::now().timestamp()),
-                        jwt_id: destination_server.node.uuid.to_compact_string(),
+            let token = destination_node
+                .create_jwt(
+                    &state.database,
+                    &state.jwt,
+                    &FileTransferUploadJwt {
+                        base: BasePayload {
+                            scope: "transfer".into(),
+                            issuer: "panel".into(),
+                            subject: Some(destination_server.uuid.to_compact_string()),
+                            audience: Vec::new(),
+                            expiration_time: Some(chrono::Utc::now().timestamp() + 600),
+                            not_before: None,
+                            issued_at: Some(chrono::Utc::now().timestamp()),
+                            jwt_id: destination_server.node.uuid.to_compact_string(),
+                        },
+                        server: server.uuid,
+                        root: data.root.clone(),
+                        destination_path: data.destination.clone(),
                     },
-                    server: server.uuid,
-                    root: data.root.clone(),
-                    destination_path: data.destination.clone(),
-                },
-            )?;
+                )
+                .await?;
 
             let same_node = source_node.uuid == destination_node.uuid;
             let request_body = wings_api::servers_server_files_copy_remote::post::RequestBody {

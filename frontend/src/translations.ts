@@ -145,6 +145,8 @@ const baseTranslations = defineTranslations({
           noMatches: 'No matches',
           exception: 'Exception',
           tooManyPatterns: 'Matching is not counted automatically for more than {max} patterns.',
+          unanchoredException:
+            '`{pattern}` matches at any depth, use `{anchored}` to only match it in the root directory.',
         },
         cronInput: {
           segments: {
@@ -496,6 +498,7 @@ const baseTranslations = defineTranslations({
           installing: 'Installing',
           installFailed: 'Install Failed',
           backupRestoreFailed: 'Backup Restore Failed',
+          resourcesUnavailable: 'Resource Usage Unavailable',
         },
       },
       enum: {
@@ -4125,6 +4128,7 @@ const baseTranslations = defineTranslations({
           table: {
             columns: {
               order: 'Order',
+              appliesTo: 'Applies To',
             },
           },
           tabs: {
@@ -4135,9 +4139,41 @@ const baseTranslations = defineTranslations({
                 form: {
                   order: 'Order',
                   eggsPlaceholder: 'Select Eggs',
-                  eggsEmpty: 'No eggs are configured. Create a nest and egg before creating an egg configuration.',
+                  eggsEmpty:
+                    'No eggs are configured. Matching by egg or nest has nothing to select until a nest and egg exist.',
+                  nestsPlaceholder: 'Select Nests',
+                  nodesPlaceholder: 'Select Nodes',
+                  locationsPlaceholder: 'Select Locations',
+                  matcher: 'Applies To',
+                  matcherDescription:
+                    'Decides which servers this configuration applies to, by their egg, nest, node or location. When several configurations apply to a server, those with a higher order override those with a lower one.',
+                  matcherType: 'Matcher Type',
+                },
+                matcher: {
+                  allMustMatch: 'All matchers must match:',
+                  anyMustMatch: 'Any matcher must match:',
+                  mustNotMatch: 'Matcher must not match:',
+                },
+                button: {
+                  addMatcher: 'Add Matcher',
                 },
                 enum: {
+                  matcherType: {
+                    never: 'Never (Applies to nothing)',
+                    all: 'All (Always applies)',
+                    and: 'AND (All must match)',
+                    or: 'OR (Any must match)',
+                    not: 'NOT (Must not match)',
+                    eggs: 'Eggs',
+                    nests: 'Nests',
+                    nodes: 'Nodes',
+                    locations: 'Locations',
+                  },
+                  featureState: {
+                    inherit: 'Inherit',
+                    enabled: 'Enabled',
+                    disabled: 'Disabled',
+                  },
                   deploymentType: {
                     random: 'Random',
                     range: 'Port Range',
@@ -4185,6 +4221,19 @@ const baseTranslations = defineTranslations({
                       assignToVariablePlaceholder: 'e.g. SERVER_PORT',
                     },
                     removeRule: 'Remove deployment rule',
+                  },
+                },
+                features: {
+                  title: 'Feature Configuration',
+                  description:
+                    'Unlike other sections, each feature set to Inherit keeps the value from lower-order configurations. Features nobody sets stay enabled.',
+                  form: {
+                    firewall: 'Firewall',
+                    firewallDescription:
+                      'Lets users manage firewall rules for their servers. Disabling keeps existing rules but stops enforcing them.',
+                    privateNetwork: 'Private Network',
+                    privateNetworkDescription:
+                      'Lets servers join the private network and connect to other servers. Disabling removes them from the network until it is enabled again.',
                   },
                 },
                 startup: {
@@ -4646,6 +4695,9 @@ const baseTranslations = defineTranslations({
                   authUrl: 'Auth URL',
                   tokenUrl: 'Token URL',
                   infoUrl: 'Info URL',
+                  infoUrls: 'Additional Info URLs',
+                  infoUrlsDescription:
+                    'Extra endpoints fetched with the access token on every login, usable as a source in mapping matchers. A 404 response counts as absent, any other error fails the login.',
                   basicAuth: 'Basic Auth',
                   basicAuthDescription:
                     'Uses HTTP Basic Authentication to transmit the client id and secret, not common anymore.',
@@ -4722,6 +4774,7 @@ const baseTranslations = defineTranslations({
                   },
                   matcherType: {
                     none: 'None (Always applies)',
+                    never: 'Never (Applies to nothing)',
                     and: 'AND (All must match)',
                     or: 'OR (Any must match)',
                     not: 'NOT (Must not match)',
@@ -4752,9 +4805,13 @@ const baseTranslations = defineTranslations({
                   matcherType: 'Matcher Type',
                   scopes: 'Scopes',
                   scopesDescription: 'OAuth scopes that must all have been granted for this matcher to match.',
+                  source: 'Source',
+                  sourceDescription:
+                    'The response the path is evaluated against. A source that responded with 404 never matches.',
+                  sourceInfoUrl: 'Info URL',
                   path: 'Field Path',
                   pathDescription:
-                    'The path used to extract the compared field from the Info URL response (https://serdejsonpath.live).',
+                    'The path used to extract the compared field from the source response (https://serdejsonpath.live).',
                   equals: 'Equals',
                   contains: 'Contains',
                   startsWith: 'Starts With',

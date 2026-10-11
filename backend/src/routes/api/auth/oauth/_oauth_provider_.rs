@@ -22,8 +22,12 @@ use shared::{
     database::BASE64_ENGINE,
     jwt::BasePayload,
     models::{
-        ByUuid, CreatableModel, oauth_provider::OAuthProvider, user::User,
-        user_activity::UserActivity, user_oauth_link::UserOAuthLink, user_session::UserSession,
+        ByUuid, CreatableModel,
+        oauth_provider::{OAuthProvider, OAuthProviderInfo},
+        user::User,
+        user_activity::UserActivity,
+        user_oauth_link::UserOAuthLink,
+        user_session::UserSession,
     },
     response::ApiResponse,
 };
@@ -41,7 +45,7 @@ async fn apply_oauth_provider_mappings(
     oauth_provider: &OAuthProvider,
     user_uuid: uuid::Uuid,
     token: &impl TokenResponse,
-    info: &serde_json::Value,
+    info: &OAuthProviderInfo,
 ) {
     let granted_scopes: Vec<compact_str::CompactString> = token
         .scopes()
@@ -253,16 +257,11 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
 
                 let token = token_request.request_async(&http_client).await?;
 
-                let info: serde_json::Value = state
-                    .client
-                    .get(&oauth_provider.info_url)
-                    .bearer_auth(token.access_token().secret())
-                    .send()
-                    .await?
-                    .json()
+                let info = oauth_provider
+                    .fetch_info(&state.client, token.access_token().secret())
                     .await?;
 
-                let identifier = oauth_provider.extract_identifier(&info)?;
+                let identifier = oauth_provider.extract_identifier(&info.info)?;
 
                 let options = shared::models::user_oauth_link::CreateUserOAuthLinkOptions {
                     user_uuid: user.uuid,
@@ -280,7 +279,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                 }
 
                 apply_oauth_provider_mappings(&state, &oauth_provider, user.uuid, &token, &info).await;
-                import_oauth_avatar(&state, &oauth_provider, &user, &info);
+                import_oauth_avatar(&state, &oauth_provider, &user, &info.info);
 
                 if let Err(err) = UserActivity::create(
                     &state,
@@ -322,23 +321,18 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
 
                 let token = token_request.request_async(&http_client).await?;
 
-                let info: serde_json::Value = state
-                    .client
-                    .get(&oauth_provider.info_url)
-                    .bearer_auth(token.access_token().secret())
-                    .send()
-                    .await?
-                    .json()
+                let info = oauth_provider
+                    .fetch_info(&state.client, token.access_token().secret())
                     .await?;
 
-                let identifier = oauth_provider.extract_identifier(&info)?;
+                let identifier = oauth_provider.extract_identifier(&info.info)?;
 
                 match UserOAuthLink::by_oauth_provider_uuid_identifier(&state.database, oauth_provider.uuid, &identifier).await? {
                     Some(oauth_link) => {
                         let user = oauth_link.user.fetch(&state.database).await?;
 
                         apply_oauth_provider_mappings(&state, &oauth_provider, user.uuid, &token, &info).await;
-                        import_oauth_avatar(&state, &oauth_provider, &user, &info);
+                        import_oauth_avatar(&state, &oauth_provider, &user, &info.info);
 
                         let settings = state.settings.get().await?;
                         let methods = available_methods(&user, &settings);
@@ -480,10 +474,10 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                                 .ok();
                         }
 
-                        let username = oauth_provider.extract_username(&info)?.into();
-                        let email = oauth_provider.extract_email(&info)?.into();
-                        let name_first = oauth_provider.extract_name_first(&info)?.map(Into::into);
-                        let name_last = oauth_provider.extract_name_last(&info)?.map(Into::into);
+                        let username = oauth_provider.extract_username(&info.info)?.into();
+                        let email = oauth_provider.extract_email(&info.info)?.into();
+                        let name_first = oauth_provider.extract_name_first(&info.info)?.map(Into::into);
+                        let name_last = oauth_provider.extract_name_last(&info.info)?.map(Into::into);
 
                         let options = shared::models::user::CreateUserOptions {
                             role_uuid: None,
@@ -524,7 +518,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                         }
 
                         apply_oauth_provider_mappings(&state, &oauth_provider, user.uuid, &token, &info).await;
-                        import_oauth_avatar(&state, &oauth_provider, &user, &info);
+                        import_oauth_avatar(&state, &oauth_provider, &user, &info.info);
 
                         let key = UserSession::create(
                             &state,

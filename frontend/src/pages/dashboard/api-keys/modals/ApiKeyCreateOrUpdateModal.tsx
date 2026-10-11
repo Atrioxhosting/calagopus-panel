@@ -2,6 +2,7 @@ import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { z } from 'zod';
+import { useShallow } from 'zustand/react/shallow';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import getPermissions from '@/api/getPermissions.ts';
 import createApiKey from '@/api/me/api-keys/createApiKey.ts';
@@ -33,7 +34,12 @@ export default function ApiKeyCreateOrUpdateModal({ contextApiKey, onCreated, ..
   const { t } = useTranslations();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
-  const { availablePermissions, setAvailablePermissions } = useGlobalStore();
+  const { availablePermissions, setAvailablePermissions } = useGlobalStore(
+    useShallow((state) => ({
+      availablePermissions: state.availablePermissions,
+      setAvailablePermissions: state.setAvailablePermissions,
+    })),
+  );
   const { user } = useAuth();
 
   const { form, handleClose, handleSubmit, loading, isDirty } = useModalForm<z.infer<typeof userApiKeyUpdateSchema>>({

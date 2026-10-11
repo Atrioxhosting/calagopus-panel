@@ -192,6 +192,14 @@ impl BaseModel for DatabaseAgentHost {
             extension_data: Self::map_extensions(prefix, row)?,
         })
     }
+
+    fn cache_invalidation_keys(&self) -> Vec<compact_str::CompactString> {
+        vec![compact_str::format_compact!(
+            "{}::{}",
+            Self::NAME,
+            self.uuid
+        )]
+    }
 }
 
 impl DatabaseAgentHost {
@@ -315,6 +323,8 @@ impl DatabaseAgentHost {
         .bind(encrypted_token)
         .execute(state.database.write())
         .await?;
+
+        Self::invalidate_cached(&state.database, self.uuid).await;
 
         Ok(token)
     }

@@ -12,11 +12,13 @@
   font-display: swap;
   src:
     local("Helvetica"),
-    url("./assets/fonts/Helvetica.woff") format("woff");
+    url("./assets/fonts/Helvetica.woff2") format("woff2");
 }
 
 @theme {
-  --font-sans: "Helvetica", "Arial", "sans-serif";
+  --font-sans:
+    "Helvetica", "Arial", system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
 
   --color-neutral-850: oklch(25.4% 0 0);
 

@@ -214,6 +214,20 @@ impl Storage {
         data: impl tokio::io::AsyncRead + Unpin,
         content_type: impl AsRef<str>,
     ) -> Result<u64, anyhow::Error> {
+        self.store_with_cache_control(path, data, content_type, None)
+            .await
+    }
+
+    /// Like [`Self::store`], additionally attaching `cache_control` as object metadata where the
+    /// driver serves files itself (S3). Files on the local filesystem are served by the panel,
+    /// which decides their caching policy at request time.
+    pub async fn store_with_cache_control(
+        &self,
+        path: impl AsRef<str>,
+        data: impl tokio::io::AsyncRead + Unpin,
+        content_type: impl AsRef<str>,
+        cache_control: Option<&str>,
+    ) -> Result<u64, anyhow::Error> {
         let path = path.as_ref();
         let content_type = content_type.as_ref();
 
@@ -258,7 +272,7 @@ impl Storage {
                 let bucket = bucket.clone();
                 drop(settings);
 
-                upload_multipart(&s3_client, &bucket, path, content_type, data).await
+                upload_multipart(&s3_client, &bucket, path, content_type, cache_control, data).await
             }
         }
     }
@@ -679,6 +693,7 @@ async fn upload_multipart(
     bucket: &str,
     key: &str,
     content_type: &str,
+    cache_control: Option<&str>,
     mut data: impl tokio::io::AsyncRead + Unpin,
 ) -> Result<u64, anyhow::Error> {
     let first_part = read_part(&mut data, PART_SIZE).await?;
@@ -690,6 +705,7 @@ async fn upload_multipart(
             .bucket(bucket)
             .key(key)
             .content_type(content_type)
+            .set_cache_control(cache_control.map(str::to_string))
             .body(ByteStream::from(first_part))
             .send()
             .await?;
@@ -701,6 +717,7 @@ async fn upload_multipart(
         .bucket(bucket)
         .key(key)
         .content_type(content_type)
+        .set_cache_control(cache_control.map(str::to_string))
         .send()
         .await?;
 

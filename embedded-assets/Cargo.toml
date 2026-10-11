@@ -1,0 +1,14 @@
+[package]
+name = "embedded-assets"
+rust-version = { workspace = true }
+license = { workspace = true }
+version = { workspace = true }
+edition = { workspace = true }
+
+[dependencies]
+shared = { workspace = true }
+database-migrator = { workspace = true }
+include_dir = { workspace = true }
+
+[build-dependencies]
+flate2 = "1.1.10"

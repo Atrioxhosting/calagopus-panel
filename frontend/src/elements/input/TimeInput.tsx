@@ -2,6 +2,8 @@ import { TimeInput as MantineTimeInput, TimeInputProps } from '@mantine/dates';
 import { forwardRef } from 'react';
 import { makeComponentHookable } from 'shared';
 
+import '@mantine/dates/styles.css';
+
 const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(({ className, ...rest }, ref) => {
   return (
     <MantineTimeInput

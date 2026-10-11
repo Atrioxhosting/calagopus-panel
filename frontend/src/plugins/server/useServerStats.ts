@@ -4,9 +4,15 @@ import { adminServerSchema } from '@/lib/schemas/admin/servers.ts';
 import { serverSchema } from '@/lib/schemas/server/server.ts';
 import { useUserStore } from '@/stores/user.ts';
 
-export function useServerStats(server: z.infer<typeof adminServerSchema> | z.infer<typeof serverSchema>) {
+type StatsServer = z.infer<typeof adminServerSchema> | z.infer<typeof serverSchema>;
+
+function serverNodeUuid(server: StatsServer): string | undefined {
+  return ('nodeUuid' in server ? server.nodeUuid : server.node?.uuid) as string | undefined;
+}
+
+export function useServerStats(server: StatsServer) {
   const subscribeToNode = useUserStore((state) => state.subscribeToNode);
-  const nodeUuid = ('nodeUuid' in server ? server.nodeUuid : server.node?.uuid) as string | undefined;
+  const nodeUuid = serverNodeUuid(server);
 
   const stats = useUserStore((state) => state.serverResourceUsage[server.uuid] ?? null);
 
@@ -16,4 +22,10 @@ export function useServerStats(server: z.infer<typeof adminServerSchema> | z.inf
   }, [nodeUuid, subscribeToNode]);
 
   return stats;
+}
+
+export function useServerStatsUnavailable(server: StatsServer) {
+  const nodeUuid = serverNodeUuid(server);
+
+  return useUserStore((state) => !!nodeUuid && nodeUuid in state.failedResourceNodes);
 }

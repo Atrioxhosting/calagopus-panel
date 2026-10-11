@@ -1,7 +1,7 @@
 import { faCloudDownload, faDatabase, faMemory, faMicrochip, faUserLarge } from '@fortawesome/free-solid-svg-icons';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { z } from 'zod';
 import ChartBlock from '@/elements/charts/ChartBlock.tsx';
 import ChartLegend from '@/elements/charts/ChartLegend.tsx';
@@ -73,23 +73,18 @@ export default function SystemStatistics({ wsPath, labels }: { wsPath: string; l
     path: wsPath,
     schema: adminSystemStatisticsSchema,
     reconnectDelay: 5000,
-    onMessage: setStats,
+    onMessage: (data) => {
+      setStats(data);
+      cpu.push(data.cpu.used);
+      memory.push(data.memory.used);
+      disk.push([data.disk.readingRate, data.disk.writingRate]);
+      network.push([data.network.receivingRate, data.network.sendingRate]);
+    },
     onConnectionLost: () => {
       setStats(null);
       addToast(labels.connectionLost, 'error');
     },
   });
-
-  useEffect(() => {
-    if (!stats) {
-      return;
-    }
-
-    cpu.push(stats.cpu.used);
-    memory.push(stats.memory.used);
-    disk.push([stats.disk.readingRate, stats.disk.writingRate]);
-    network.push([stats.network.receivingRate, stats.network.sendingRate]);
-  }, [stats]);
 
   if (!stats) {
     return <Spinner.Centered />;

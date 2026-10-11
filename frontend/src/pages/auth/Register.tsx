@@ -26,7 +26,7 @@ import AuthWrapper from './AuthWrapper.tsx';
 
 export default function Register() {
   const { doLogin } = useAuth();
-  const { t } = useTranslations();
+  const { t, language } = useTranslations();
   const navigate = useNavigate();
   const settings = useGlobalStore((state) => state.settings);
 
@@ -50,7 +50,7 @@ export default function Register() {
     setLoading(true);
     try {
       const token = await captcha.getToken();
-      const response = await register({ ...authRegisterSchema.parse(form.values), captcha: token });
+      const response = await register({ ...authRegisterSchema.parse(form.values), language, captcha: token });
       doLogin(response.user!);
     } catch (err) {
       setError(httpErrorToHuman(err));

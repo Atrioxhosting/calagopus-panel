@@ -57,12 +57,81 @@ export const adminEggConfigurationDeploymentSchema: ZodType<EggConfigurationDepl
   }),
 );
 
+export const adminEggConfigurationMatcherNeverSchema = z.object({
+  type: z.literal('never'),
+});
+
+export const adminEggConfigurationMatcherAllSchema = z.object({
+  type: z.literal('all'),
+});
+
+export const adminEggConfigurationMatcherEggsSchema = z.object({
+  type: z.literal('eggs'),
+  eggs: z.array(z.uuid()).max(100),
+});
+
+export const adminEggConfigurationMatcherNestsSchema = z.object({
+  type: z.literal('nests'),
+  nests: z.array(z.uuid()).max(100),
+});
+
+export const adminEggConfigurationMatcherNodesSchema = z.object({
+  type: z.literal('nodes'),
+  nodes: z.array(z.uuid()).max(100),
+});
+
+export const adminEggConfigurationMatcherLocationsSchema = z.object({
+  type: z.literal('locations'),
+  locations: z.array(z.uuid()).max(100),
+});
+
+export type AdminEggConfigurationMatcher =
+  | z.infer<typeof adminEggConfigurationMatcherNeverSchema>
+  | z.infer<typeof adminEggConfigurationMatcherAllSchema>
+  | {
+      type: 'and' | 'or';
+      matchers: AdminEggConfigurationMatcher[];
+    }
+  | {
+      type: 'not';
+      matcher: AdminEggConfigurationMatcher;
+    }
+  | z.infer<typeof adminEggConfigurationMatcherEggsSchema>
+  | z.infer<typeof adminEggConfigurationMatcherNestsSchema>
+  | z.infer<typeof adminEggConfigurationMatcherNodesSchema>
+  | z.infer<typeof adminEggConfigurationMatcherLocationsSchema>;
+
+export const adminEggConfigurationMatcherSchema: ZodType<AdminEggConfigurationMatcher> = z.lazy(() =>
+  z.discriminatedUnion('type', [
+    adminEggConfigurationMatcherNeverSchema,
+    adminEggConfigurationMatcherAllSchema,
+
+    z.object({
+      type: z.literal('and'),
+      matchers: z.array(adminEggConfigurationMatcherSchema),
+    }),
+    z.object({
+      type: z.literal('or'),
+      matchers: z.array(adminEggConfigurationMatcherSchema),
+    }),
+    z.object({
+      type: z.literal('not'),
+      matcher: adminEggConfigurationMatcherSchema,
+    }),
+
+    adminEggConfigurationMatcherEggsSchema,
+    adminEggConfigurationMatcherNestsSchema,
+    adminEggConfigurationMatcherNodesSchema,
+    adminEggConfigurationMatcherLocationsSchema,
+  ]),
+);
+
 export const adminEggConfigurationSchema = z.looseObject({
   uuid: z.string(),
   name: z.string().min(1).max(255),
   description: z.preprocess(nullableString, z.string().max(1024).nullable()),
   order: z.number().min(0),
-  eggs: z.uuid().array(),
+  matcher: adminEggConfigurationMatcherSchema,
   configAllocations: z
     .object({
       deployment: z.object({
@@ -92,6 +161,12 @@ export const adminEggConfigurationSchema = z.looseObject({
   configRoutes: z
     .object({
       order: z.array(eggConfigurationRouteItemSchema),
+    })
+    .nullable(),
+  configFeatures: z
+    .object({
+      firewall: z.boolean().nullable(),
+      privateNetwork: z.boolean().nullable(),
     })
     .nullable(),
   created: z.coerce.date(),

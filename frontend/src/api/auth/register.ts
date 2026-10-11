@@ -4,7 +4,10 @@ import { authRegisterSchema } from '@/lib/schemas/auth.ts';
 import { fullUserSchema } from '@/lib/schemas/user.ts';
 import { parseFromApi, serializeForApi } from '@/lib/serialization/api-transform.ts';
 
-const registerWithCaptchaSchema = authRegisterSchema.extend({ captcha: z.string().nullable().optional() });
+const registerWithCaptchaSchema = authRegisterSchema.extend({
+  language: z.string().optional(),
+  captcha: z.string().nullable().optional(),
+});
 
 interface Response {
   user: z.infer<typeof fullUserSchema>;
