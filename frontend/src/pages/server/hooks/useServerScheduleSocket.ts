@@ -1,4 +1,5 @@
 import { useShallow } from 'zustand/react/shallow';
+import getSchedule from '@/api/server/schedules/getSchedule.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import useWebsocketEvent, { SocketEvent } from '@/plugins/websocket/useWebsocketEvent.ts';
 import { useServerStore, useServerStoreApi } from '@/stores/server.ts';
@@ -7,10 +8,12 @@ import useInvalidateServerCache from './useInvalidateServerCache.ts';
 export default function useServerScheduleSocket() {
   const serverStoreApi = useServerStoreApi();
   const invalidateCacheKey = useInvalidateServerCache();
-  const { setRunningScheduleStep, setScheduleSteps } = useServerStore(
+  const { setRunningScheduleStep, setScheduleSteps, recordScheduleCompletion, setSchedule } = useServerStore(
     useShallow((state) => ({
       setRunningScheduleStep: state.setRunningScheduleStep,
       setScheduleSteps: state.setScheduleSteps,
+      recordScheduleCompletion: state.recordScheduleCompletion,
+      setSchedule: state.setSchedule,
     })),
   );
 
@@ -32,8 +35,23 @@ export default function useServerScheduleSocket() {
     }
   });
 
-  useWebsocketEvent(SocketEvent.SCHEDULE_COMPLETED, (uuid) => {
+  useWebsocketEvent(SocketEvent.SCHEDULE_COMPLETED, (uuid, successful, timestamp) => {
     setRunningScheduleStep(uuid, null);
-    invalidateCacheKey(queryKeys.server(serverStoreApi.getState().server.uuid).schedules.all());
+    if (timestamp) {
+      recordScheduleCompletion(uuid, new Date(timestamp), successful === 'true');
+    }
+
+    const serverUuid = serverStoreApi.getState().server.uuid;
+    invalidateCacheKey(queryKeys.server(serverUuid).schedules.all());
+
+    if (serverStoreApi.getState().schedule?.uuid === uuid) {
+      getSchedule(serverUuid, uuid)
+        .then((fetched) => {
+          if (serverStoreApi.getState().schedule?.uuid === uuid) {
+            setSchedule(fetched);
+          }
+        })
+        .catch((e) => console.error(e));
+    }
   });
 }

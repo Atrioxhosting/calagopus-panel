@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useEffect, useMemo, useRef } from 'react';
 import { z } from 'zod';
 import ChartBlock from '@/elements/charts/ChartBlock.tsx';
+import ChartSyncGroup from '@/elements/charts/ChartSyncGroup.tsx';
 import StreamChart from '@/elements/charts/StreamChart.tsx';
 import { formatBytes, formatPercent, useStreamChart } from '@/lib/chart.ts';
 import { mbToBytes } from '@/lib/format/size.ts';
@@ -53,25 +54,27 @@ export default function DatabaseInstanceStats({
   const overlayLabel = offline ? t('pages.server.databases.instance.view.stats.offline', {}) : undefined;
 
   return (
-    <div className='grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0'>
-      <ChartBlock
-        icon={<FontAwesomeIcon icon={faMicrochip} />}
-        title={t('common.stat.cpuLoad', {})}
-        value={cpu.value}
-        overlayIcon={overlayIcon}
-        overlayLabel={overlayLabel}
-      >
-        <StreamChart {...cpu.props} />
-      </ChartBlock>
-      <ChartBlock
-        icon={<FontAwesomeIcon icon={faMemory} />}
-        title={t('common.stat.memoryLoad', {})}
-        value={memory.value}
-        overlayIcon={overlayIcon}
-        overlayLabel={overlayLabel}
-      >
-        <StreamChart {...memory.props} />
-      </ChartBlock>
-    </div>
+    <ChartSyncGroup>
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0'>
+        <ChartBlock
+          icon={<FontAwesomeIcon icon={faMicrochip} />}
+          title={t('common.stat.cpuLoad', {})}
+          value={cpu.value}
+          overlayIcon={overlayIcon}
+          overlayLabel={overlayLabel}
+        >
+          <StreamChart {...cpu.props} />
+        </ChartBlock>
+        <ChartBlock
+          icon={<FontAwesomeIcon icon={faMemory} />}
+          title={t('common.stat.memoryLoad', {})}
+          value={memory.value}
+          overlayIcon={overlayIcon}
+          overlayLabel={overlayLabel}
+        >
+          <StreamChart {...memory.props} />
+        </ChartBlock>
+      </div>
+    </ChartSyncGroup>
   );
 }

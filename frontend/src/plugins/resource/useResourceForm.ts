@@ -48,8 +48,11 @@ export const useResourceForm = <T, U extends HasUuid>(options: UseResourceFormOp
     };
 
     if (doUpdate && updateFn) {
+      const submittedValues = form.getValues();
+
       updateFn()
         .then(() => {
+          form.resetDirty(submittedValues);
           addToast(t('elements.resource.tooltip.updated', { resource: resourceName }), 'success');
           doBustCache();
         })

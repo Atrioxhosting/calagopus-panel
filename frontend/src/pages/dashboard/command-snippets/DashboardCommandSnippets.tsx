@@ -35,6 +35,8 @@ export default function DashboardCommandSnippets() {
     fetcher: getCommandSnippets,
   });
 
+  const atLimit = (commandSnippets?.total ?? 0) >= settings.user.maxCommandSnippetCount;
+
   const {
     selected: selectedCommandSnippets,
     toggle: toggleCommandSnippet,
@@ -55,14 +57,14 @@ export default function DashboardCommandSnippets() {
       setSearch={setSearch}
       contentRight={
         <ConditionalTooltip
-          enabled={(commandSnippets?.total ?? 0) >= settings.user.maxCommandSnippetCount}
+          enabled={atLimit}
           label={t('pages.account.commandSnippets.tooltip.limitReached', { max: settings.user.maxCommandSnippetCount })}
         >
           <Button
             onClick={() => setOpenModal('create')}
             color='blue'
             leftSection={<FontAwesomeIcon icon={faPlus} />}
-            disabled={(commandSnippets?.total ?? 0) >= settings.user.maxCommandSnippetCount}
+            disabled={atLimit}
           >
             {t('common.button.create', {})}
           </Button>
@@ -100,6 +102,7 @@ export default function DashboardCommandSnippets() {
             <SelectionArea.Selectable key={snippet.uuid} item={snippet}>
               {(innerRef: Ref<HTMLElement>) => (
                 <CommandSnippetRow
+                  atLimit={atLimit}
                   commandSnippet={snippet}
                   ref={innerRef as Ref<HTMLTableRowElement>}
                   isSelected={selectedCommandSnippets.has(snippet.uuid)}

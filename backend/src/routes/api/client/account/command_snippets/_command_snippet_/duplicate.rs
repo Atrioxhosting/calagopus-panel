@@ -34,6 +34,7 @@ mod post {
         (status = BAD_REQUEST, body = ApiError),
         (status = NOT_FOUND, body = ApiError),
         (status = CONFLICT, body = ApiError),
+        (status = EXPECTATION_FAILED, body = ApiError),
     ), params(
         (
             "command_snippet" = uuid::Uuid,
@@ -66,6 +67,23 @@ mod post {
             }
         };
 
+        let command_snippets_lock = state
+            .cache
+            .lock(
+                format!("users::{}::command_snippets", user.uuid),
+                Some(30),
+                Some(5000),
+            )
+            .await?;
+
+        let command_snippets =
+            UserCommandSnippet::count_by_user_uuid(&state.database, user.uuid).await?;
+        if command_snippets >= state.settings.get().await?.user.max_command_snippet_count as i64 {
+            return ApiResponse::error("maximum number of command snippets reached")
+                .with_status(StatusCode::EXPECTATION_FAILED)
+                .ok();
+        }
+
         let options = DuplicateUserCommandSnippetOptions {
             user_uuid: user.uuid,
             name: data.name,
@@ -79,6 +97,8 @@ mod post {
             }
             Err(err) => return ApiResponse::from(err).ok(),
         };
+
+        drop(command_snippets_lock);
 
         activity_logger
             .log(

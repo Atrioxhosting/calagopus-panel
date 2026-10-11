@@ -1,18 +1,15 @@
-import { useMantineColorScheme } from '@mantine/core';
 import classNames from 'classnames';
 import { ReactNode, Suspense } from 'react';
-import { ClipLoader } from 'react-spinners';
 import { makeComponentHookable } from 'shared';
+import '@/elements/feedback/spinner.css';
 
 function Spinner({ size }: { size?: number }) {
-  const { colorScheme } = useMantineColorScheme();
-
   return (
-    <ClipLoader
-      size={size}
+    <span
+      className='spinner'
+      style={size !== undefined ? { width: size, height: size } : undefined}
       aria-label='Loading Spinner'
       data-testid='loader'
-      color={colorScheme === 'dark' ? '#fff' : '#000'}
     />
   );
 }

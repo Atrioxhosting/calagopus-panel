@@ -2,6 +2,7 @@ use super::State;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 mod _oauth_provider_;
+mod discover;
 
 mod get {
     use axum::{extract::Query, http::StatusCode};
@@ -125,6 +126,7 @@ mod post {
                     "link_viewable": oauth_provider.link_viewable,
                     "user_manageable": oauth_provider.user_manageable,
                     "basic_auth": oauth_provider.basic_auth,
+                    "pkce": oauth_provider.pkce,
 
                     "client_id": oauth_provider.client_id,
 
@@ -155,6 +157,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
     OpenApiRouter::new()
         .routes(routes!(get::route))
         .routes(routes!(post::route))
+        .nest("/discover", discover::router(state))
         .nest("/{oauth_provider}", _oauth_provider_::router(state))
         .with_state(state.clone())
 }

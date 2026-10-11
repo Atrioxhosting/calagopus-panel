@@ -13,6 +13,7 @@ import Switch from '@/elements/input/Switch.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import { serverSettingsAutokillSchema } from '@/lib/schemas/server/settings.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
@@ -30,7 +31,7 @@ export default function AutokillContainer() {
       enabled: server.autoKill.enabled,
       seconds: server.autoKill.seconds,
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(serverSettingsAutokillSchema),
   });
 

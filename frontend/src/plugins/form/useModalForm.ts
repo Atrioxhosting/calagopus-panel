@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import type { ExtendableSchema, FormId } from '@/elements/form-engine/index.ts';
 import { resolveFormValidation, schemaFormOptions, tagFormId } from '@/elements/form-engine/useFormEngine.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 
 interface UseModalFormOptions<T extends Record<string, unknown>> extends UseFormInput<T> {
@@ -24,7 +25,6 @@ export function useModalForm<T extends Record<string, unknown>>({
   onError,
   opened,
   hydrate,
-  validateInputOnBlur = true,
   ...formInput
 }: UseModalFormOptions<T>) {
   const { addToast } = useToast();
@@ -35,13 +35,13 @@ export function useModalForm<T extends Record<string, unknown>>({
   );
 
   const form = useForm<T>({
+    ...liveValidation,
     ...formInput,
     initialValues: formInput.initialValues
       ? (deepmerge(formInput.initialValues, resolved.initialValues) as T)
       : undefined,
     validate: resolved.validate ?? formInput.validate,
     transformValues: resolved.transformValues ?? formInput.transformValues,
-    validateInputOnBlur,
   });
   if (formId) tagFormId(form, formId);
   const [loading, setLoading] = useState(false);

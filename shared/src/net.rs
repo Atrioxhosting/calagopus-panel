@@ -151,8 +151,9 @@ pub async fn resolve_allowed_addresses(
 
 static OUTBOUND_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
-/// A [`reqwest::Client`] for requests to user-provided urls, refusing to connect to any address
-/// covered by `APP_BLOCKED_CIDRS`, both on the initial request and on every redirect.
+/// A [`reqwest::Client`] for requests to user-provided urls, refusing to connect to any resolved
+/// address or redirect covered by `APP_BLOCKED_CIDRS`. IP-literal urls skip resolution, so start
+/// requests with [`outbound_request`] to refuse those as well.
 pub fn outbound_client(env: &Arc<crate::env::Env>) -> &'static reqwest::Client {
     OUTBOUND_CLIENT.get_or_init(|| {
         let redirect_env = Arc::clone(env);
@@ -185,4 +186,23 @@ pub fn outbound_client(env: &Arc<crate::env::Env>) -> &'static reqwest::Client {
             .build()
             .expect("Failed to create HTTP client")
     })
+}
+
+/// Starts a request on [`outbound_client`], refusing a url whose host is an IP address covered by
+/// `APP_BLOCKED_CIDRS` before anything is connected.
+pub fn outbound_request(
+    env: &Arc<crate::env::Env>,
+    method: reqwest::Method,
+    url: reqwest::Url,
+) -> Result<reqwest::RequestBuilder, anyhow::Error> {
+    if let Some(host) = url.host_str()
+        && let Some(ip) = host_to_ip(host)
+        && is_blocked_ip(&env.app_blocked_cidrs, &ip)
+    {
+        tracing::warn!("blocking internal IP address in outbound request: {}", ip);
+
+        return Err(anyhow::anyhow!("IP address {ip} is blocked"));
+    }
+
+    Ok(outbound_client(env).request(method, url))
 }

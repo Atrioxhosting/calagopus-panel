@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import ChartBlock from '@/elements/charts/ChartBlock.tsx';
 import ChartLegend from '@/elements/charts/ChartLegend.tsx';
+import ChartSyncGroup from '@/elements/charts/ChartSyncGroup.tsx';
 import StreamChart from '@/elements/charts/StreamChart.tsx';
 import Card from '@/elements/data-display/Card.tsx';
 import TitleCard from '@/elements/data-display/TitleCard.tsx';
@@ -55,6 +56,7 @@ export default function SystemStatistics({ wsPath, labels }: { wsPath: string; l
     format: formatBytes,
     scale: 'binary',
     min: mbToBytes(64),
+    limit: stats?.memory.total ?? null,
   });
   const disk = useStreamChart({
     series: useMemo(() => [labels.diskRead, labels.diskWrite], [labels.diskRead, labels.diskWrite]),
@@ -100,11 +102,12 @@ export default function SystemStatistics({ wsPath, labels }: { wsPath: string; l
     <>
       <div className='mt-4'>
         <TitleCard title={labels.resourcesCard} icon={<FontAwesomeIcon icon={faUserLarge} />}>
-          <div className='grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4'>
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
             <Card>
               <div className='flex flex-col md:flex-row gap-4 md:items-center'>
                 <div className='flex justify-center md:flex-1'>
                   <SemiCircleProgress
+                    transitionDuration={900}
                     value={stats.cpu.used}
                     label={<>{stats.cpu.used.toFixed(1)}%</>}
                     filledSegmentColor={usagePercentColor(stats.cpu.used)}
@@ -120,6 +123,7 @@ export default function SystemStatistics({ wsPath, labels }: { wsPath: string; l
               <div className='flex flex-col md:flex-row gap-4 md:items-center'>
                 <div className='flex justify-center md:flex-1'>
                   <SemiCircleProgress
+                    transitionDuration={900}
                     value={memoryPercent}
                     label={<>{memoryPercent.toFixed(1)}%</>}
                     filledSegmentColor={usagePercentColor(memoryPercent)}
@@ -138,6 +142,7 @@ export default function SystemStatistics({ wsPath, labels }: { wsPath: string; l
               <div className='flex flex-col md:flex-row gap-4 md:items-center'>
                 <div className='flex justify-center md:flex-1'>
                   <SemiCircleProgress
+                    transitionDuration={900}
                     value={diskPercent}
                     label={<>{diskPercent.toFixed(1)}%</>}
                     filledSegmentColor={usagePercentColor(diskPercent)}
@@ -154,15 +159,19 @@ export default function SystemStatistics({ wsPath, labels }: { wsPath: string; l
             <Card>
               <div className='flex flex-col md:flex-row gap-4 md:items-center'>
                 <div className='flex justify-center md:flex-1'>
-                  <SemiCircleProgress value={100} label='--' filledSegmentColor='gray' />
+                  <div className='h-25 w-full max-w-60'>
+                    <StreamChart {...network.props} compact />
+                  </div>
                 </div>
-                <div className='flex flex-col text-center md:text-right flex-1'>
+                <div className='flex flex-col items-center md:items-end flex-1 gap-1'>
                   <Title order={2}>{labels.network}</Title>
-                  <h2>
-                    {labels.networkIn(bytesToString(stats.network.received))}
-                    <br />
-                    {labels.networkOut(bytesToString(stats.network.sent))}
-                  </h2>
+                  <div className='flex flex-col items-center md:items-end gap-1 text-sm'>
+                    <ChartLegend series={network.series} />
+                  </div>
+                  <p className='flex gap-3 text-xs'>
+                    <span>{labels.networkIn(bytesToString(stats.network.received))}</span>
+                    <span>{labels.networkOut(bytesToString(stats.network.sent))}</span>
+                  </p>
                 </div>
               </div>
             </Card>
@@ -171,28 +180,30 @@ export default function SystemStatistics({ wsPath, labels }: { wsPath: string; l
       </div>
       <div className='mt-4'>
         <TitleCard title={labels.graphsCard} icon={<FontAwesomeIcon icon={faChartBar} />}>
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-            <ChartBlock icon={<FontAwesomeIcon icon={faMicrochip} />} title={labels.cpuLoad} value={cpu.value}>
-              <StreamChart {...cpu.props} />
-            </ChartBlock>
-            <ChartBlock icon={<FontAwesomeIcon icon={faMemory} />} title={labels.memoryUsage} value={memory.value}>
-              <StreamChart {...memory.props} />
-            </ChartBlock>
-            <ChartBlock
-              icon={<FontAwesomeIcon icon={faDatabase} />}
-              title={labels.diskIo}
-              legend={<ChartLegend {...disk.legend} />}
-            >
-              <StreamChart {...disk.props} />
-            </ChartBlock>
-            <ChartBlock
-              icon={<FontAwesomeIcon icon={faCloudDownload} />}
-              title={labels.networkTraffic}
-              legend={<ChartLegend {...network.legend} />}
-            >
-              <StreamChart {...network.props} />
-            </ChartBlock>
-          </div>
+          <ChartSyncGroup>
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+              <ChartBlock icon={<FontAwesomeIcon icon={faMicrochip} />} title={labels.cpuLoad} value={cpu.value}>
+                <StreamChart {...cpu.props} />
+              </ChartBlock>
+              <ChartBlock icon={<FontAwesomeIcon icon={faMemory} />} title={labels.memoryUsage} value={memory.value}>
+                <StreamChart {...memory.props} />
+              </ChartBlock>
+              <ChartBlock
+                icon={<FontAwesomeIcon icon={faDatabase} />}
+                title={labels.diskIo}
+                legend={<ChartLegend {...disk.legend} />}
+              >
+                <StreamChart {...disk.props} />
+              </ChartBlock>
+              <ChartBlock
+                icon={<FontAwesomeIcon icon={faCloudDownload} />}
+                title={labels.networkTraffic}
+                legend={<ChartLegend {...network.legend} />}
+              >
+                <StreamChart {...network.props} />
+              </ChartBlock>
+            </div>
+          </ChartSyncGroup>
         </TitleCard>
       </div>
     </>

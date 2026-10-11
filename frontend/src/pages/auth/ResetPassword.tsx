@@ -15,6 +15,7 @@ import Stack from '@/elements/layout/Stack.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import Title from '@/elements/typography/Title.tsx';
 import { authResetPasswordSchema } from '@/lib/schemas/auth.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import AuthWrapper from './AuthWrapper.tsx';
@@ -34,7 +35,7 @@ export default function ResetPassword() {
       password: '',
       confirmPassword: '',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(authResetPasswordSchema),
   });
 
@@ -80,29 +81,37 @@ export default function ResetPassword() {
           <Text className='text-neutral-400!'>{t('pages.auth.resetPassword.subtitle', {})}</Text>
         </div>
         <Card>
-          <Stack>
-            <PasswordInput
-              label={t('common.form.password', {})}
-              placeholder={t('pages.auth.resetPassword.form.passwordPlaceholder', {})}
-              autoComplete='new-password'
-              leftSection={<FontAwesomeIcon icon={faLock} />}
-              size='md'
-              autoFocus
-              {...form.getInputProps('password')}
-            />
-            <PasswordInput
-              label={t('common.form.confirmPassword', {})}
-              placeholder={t('pages.auth.resetPassword.form.confirmPasswordPlaceholder', {})}
-              autoComplete='new-password'
-              leftSection={<FontAwesomeIcon icon={faLock} />}
-              size='md'
-              {...form.getInputProps('confirmPassword')}
-            />
+          <form
+            onSubmit={form.onSubmit(() => {
+              if (token) {
+                submit();
+              }
+            })}
+          >
+            <Stack>
+              <PasswordInput
+                label={t('common.form.password', {})}
+                placeholder={t('pages.auth.resetPassword.form.passwordPlaceholder', {})}
+                autoComplete='new-password'
+                leftSection={<FontAwesomeIcon icon={faLock} />}
+                size='md'
+                autoFocus
+                {...form.getInputProps('password')}
+              />
+              <PasswordInput
+                label={t('common.form.confirmPassword', {})}
+                placeholder={t('pages.auth.resetPassword.form.confirmPasswordPlaceholder', {})}
+                autoComplete='new-password'
+                leftSection={<FontAwesomeIcon icon={faLock} />}
+                size='md'
+                {...form.getInputProps('confirmPassword')}
+              />
 
-            <Button onClick={submit} loading={loading} disabled={!token || !form.isValid()} size='md' fullWidth>
-              {t('pages.auth.resetPassword.button.reset', {})}
-            </Button>
-          </Stack>
+              <Button type='submit' loading={loading} disabled={!token || !form.isValid()} size='md' fullWidth>
+                {t('pages.auth.resetPassword.button.reset', {})}
+              </Button>
+            </Stack>
+          </form>
         </Card>
       </Stack>
     </AuthWrapper>

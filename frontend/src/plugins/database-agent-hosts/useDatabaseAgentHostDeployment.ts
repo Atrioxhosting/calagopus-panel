@@ -12,21 +12,24 @@ import { useResource } from '@/plugins/resource/useResource.ts';
 interface UseDatabaseAgentHostDeploymentResult {
   state: DatabaseAgentHostDeploymentState;
   usage: ReturnType<typeof getDatabaseAgentHostDeploymentUsage> | null;
+  loading: boolean;
 }
 
 export function useDatabaseAgentHostDeployment(
   databaseAgentHost: z.infer<typeof adminDatabaseAgentHostSchema>,
 ): UseDatabaseAgentHostDeploymentResult {
-  const { data } = useResource({
+  const { data, loading } = useResource({
     queryKey: queryKeys.admin.databaseAgentHosts.capacities(),
     queryFn: getDatabaseAgentHostCapacities,
     silent: true,
   });
 
   const allocated = data?.[databaseAgentHost.uuid];
+  const state = getDatabaseAgentHostDeploymentState(databaseAgentHost, allocated);
 
   return {
-    state: getDatabaseAgentHostDeploymentState(databaseAgentHost, allocated),
+    state,
     usage: allocated ? getDatabaseAgentHostDeploymentUsage(databaseAgentHost, allocated) : null,
+    loading: loading && data === undefined && state === 'available',
   };
 }

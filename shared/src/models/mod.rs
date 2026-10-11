@@ -771,7 +771,7 @@ type DuplicateHandler<M> = dyn for<'a> Fn(
     + Sync;
 type DuplicateAfterHandler<M> = dyn for<'a> Fn(
         &'a M,
-        &'a mut M,
+        &'a mut <M as DuplicableModel>::DuplicateResult,
         &'a <M as DuplicableModel>::DuplicateOptions<'_>,
         &'a crate::State,
         &'a mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -784,6 +784,7 @@ pub type DuplicateHandlerList<M> =
 #[async_trait::async_trait]
 pub trait DuplicableModel: BaseModel + Send + Sync + 'static {
     type DuplicateOptions<'a>: Send + Sync + Validate;
+    type DuplicateResult: Send;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>>;
 
@@ -809,7 +810,7 @@ pub trait DuplicableModel: BaseModel + Send + Sync + 'static {
     fn register_after_duplicate_handler<
         F: for<'a> Fn(
                 &'a Self,
-                &'a mut Self,
+                &'a mut Self::DuplicateResult,
                 &'a Self::DuplicateOptions<'_>,
                 &'a crate::State,
                 &'a mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -848,7 +849,7 @@ pub trait DuplicableModel: BaseModel + Send + Sync + 'static {
 
     async fn run_after_duplicate_handlers(
         &self,
-        duplicated: &mut Self,
+        duplicated: &mut Self::DuplicateResult,
         options: &Self::DuplicateOptions<'_>,
         state: &crate::State,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -872,13 +873,13 @@ pub trait DuplicableModel: BaseModel + Send + Sync + 'static {
         state: &crate::State,
         options: Self::DuplicateOptions<'_>,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    ) -> Result<Self, crate::database::DatabaseError>;
+    ) -> Result<Self::DuplicateResult, crate::database::DatabaseError>;
 
     async fn duplicate(
         &self,
         state: &crate::State,
         options: Self::DuplicateOptions<'_>,
-    ) -> Result<Self, crate::database::DatabaseError> {
+    ) -> Result<Self::DuplicateResult, crate::database::DatabaseError> {
         let mut transaction = state.database.write().begin().await?;
 
         let duplicated = match self

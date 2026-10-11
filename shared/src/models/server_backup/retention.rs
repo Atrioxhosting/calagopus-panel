@@ -408,6 +408,13 @@ pub enum EvictionMode {
     Any,
 }
 
+#[derive(Debug, Default, Clone, Copy)]
+pub struct EvictionOutcome {
+    pub evicted: u64,
+    pub failed: u64,
+    pub maintenance: u64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum EvictionTier {
     ExpiredFailed,
@@ -840,7 +847,7 @@ impl ServerBackup {
         server_uuid: uuid::Uuid,
         kind: ServerBackupKind,
         mode: EvictionMode,
-    ) -> Result<u64, anyhow::Error> {
+    ) -> Result<EvictionOutcome, anyhow::Error> {
         let mut transaction = state.database.write().begin().await?;
 
         let group_rows = sqlx::query(
@@ -901,6 +908,7 @@ impl ServerBackup {
 
         let options = DeleteServerBackupOptions::default();
 
+        let mut outcome = EvictionOutcome::default();
         let mut claimed = Vec::new();
         for (tier, backup) in ranked {
             if !tier.is_expendable() && (mode == EvictionMode::Expendable || !claimed.is_empty()) {
@@ -908,6 +916,7 @@ impl ServerBackup {
             }
 
             if backup.backup_configuration_in_maintenance(state).await? {
+                outcome.maintenance += 1;
                 continue;
             }
 
@@ -930,16 +939,16 @@ impl ServerBackup {
             tracing::warn!(
                 server = %server_uuid,
                 kind = ?kind,
-                "no backup could be evicted to satisfy backup_limit; every candidate is locked or belongs to another kind"
+                "no backup could be evicted to satisfy backup_limit; every candidate is locked, in maintenance or belongs to another kind"
             );
         }
 
         transaction.commit().await?;
 
-        let mut evicted = 0;
         for (tier, backup) in claimed {
             if let Err(err) = backup.dispatch_claimed_deletion(state, &options).await {
                 tracing::error!(backup = %backup.uuid, "failed to evict backup: {err:#?}");
+                outcome.failed += 1;
                 continue;
             }
 
@@ -958,10 +967,10 @@ impl ServerBackup {
             )
             .await;
 
-            evicted += 1;
+            outcome.evicted += 1;
         }
 
-        Ok(evicted)
+        Ok(outcome)
     }
 
     /// Prunes several groups in one go, logging and carrying on past a group that fails, so one bad

@@ -134,7 +134,7 @@ export default function OobeFinished() {
                 </Text>
               )}
             </div>
-            {eggRepositories.items.length < 1 && (
+            {!eggRepositories.loading && eggRepositories.items.length < 1 && (
               <Badge color='orange' size='sm'>
                 {t('pages.oobe.finished.badge.skipped', {})}
               </Badge>
@@ -157,7 +157,7 @@ export default function OobeFinished() {
                 </Text>
               )}
             </div>
-            {locations.items.length < 1 && (
+            {!locations.loading && locations.items.length < 1 && (
               <Badge color='orange' size='sm'>
                 {t('pages.oobe.finished.badge.skipped', {})}
               </Badge>
@@ -180,7 +180,7 @@ export default function OobeFinished() {
                 </Text>
               )}
             </div>
-            {nodes.items.length < 1 && (
+            {!nodes.loading && nodes.items.length < 1 && (
               <Badge color='orange' size='sm'>
                 {t('pages.oobe.finished.badge.skipped', {})}
               </Badge>
@@ -203,7 +203,7 @@ export default function OobeFinished() {
                 </Text>
               )}
             </div>
-            {servers.items.length < 1 && (
+            {!servers.loading && servers.items.length < 1 && (
               <Badge color='orange' size='sm'>
                 {t('pages.oobe.finished.badge.skipped', {})}
               </Badge>

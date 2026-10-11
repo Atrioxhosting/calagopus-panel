@@ -104,6 +104,19 @@ impl CredentialScope {
     fn allows_server(&self, permission: &str) -> bool {
         Self::allows(self.server_permissions(), permission)
     }
+
+    /// Whether this credential is scoped to every given permission, so it cannot hand out more
+    /// than it holds itself (e.g. when an api key creates another api key).
+    pub fn covers(
+        &self,
+        user: &[compact_str::CompactString],
+        admin: &[compact_str::CompactString],
+        server: &[compact_str::CompactString],
+    ) -> bool {
+        user.iter().all(|p| self.allows_user(p))
+            && admin.iter().all(|p| self.allows_admin(p))
+            && server.iter().all(|p| self.allows_server(p))
+    }
 }
 
 #[derive(Clone)]

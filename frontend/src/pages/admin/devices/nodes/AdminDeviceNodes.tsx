@@ -20,6 +20,7 @@ import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePag
 import { useAdminCan } from '@/plugins/usePermissions.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import NodeAllowedSourceBadge from '../../nodes/NodeAllowedSourceBadge.tsx';
 import NodeRow from '../../nodes/NodeRow.tsx';
 import DeviceAddNodeModal from './modals/DeviceAddNodeModal.tsx';
 
@@ -74,7 +75,13 @@ function DeviceNodeRow({
         registry={window.extensionContext.extensionRegistry.pages.admin.devices.view.nodes.contextMenu}
         registryProps={{ device, node }}
       >
-        {(props) => <NodeRow node={node} contextMenuProps={props} />}
+        {(props) => (
+          <NodeRow
+            node={node}
+            contextMenuProps={props}
+            nameSection={<NodeAllowedSourceBadge nodeUuid={node.uuid} kind='device' uuid={device.uuid} />}
+          />
+        )}
       </ContextMenu>
     </>
   );

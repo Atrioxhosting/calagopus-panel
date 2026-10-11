@@ -71,8 +71,12 @@ export function useSettingsSection<T extends Record<string, unknown>>({
 
   const persist = (values: T) => {
     setLoading(true);
+
+    const submittedValues = form.getValues();
+
     update(values)
       .then(() => {
+        form.resetDirty(submittedValues);
         addToast(successMessage, 'success');
         updateAdminSettings({ [storeKey]: values } as Partial<AdminSettings>);
         if (syncGlobalKey) {

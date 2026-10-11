@@ -143,6 +143,8 @@ export interface FileManagerStore {
   setEditorEngine: (engine: 'monaco' | 'pierre') => void;
   editorPreviewTabs: boolean;
   setEditorPreviewTabs: (state: boolean) => void;
+  alwaysOverwrite: boolean;
+  setAlwaysOverwrite: (state: boolean) => void;
   vscodeUriScheme: string;
   setVscodeUriScheme: (scheme: string) => void;
   imageViewerSmoothing: boolean;
@@ -204,6 +206,7 @@ export type FileManagerSettingField =
   | 'editorFontSize'
   | 'editorEngine'
   | 'editorPreviewTabs'
+  | 'alwaysOverwrite'
   | 'vscodeUriScheme'
   | 'imageViewerSmoothing'
   | 'audioPlayerVolume';
@@ -231,6 +234,7 @@ const userSettingFields: {
     fallback: () => (window.matchMedia('(pointer: coarse)').matches ? 'pierre' : 'monaco'),
   },
   editorPreviewTabs: { key: 'file_manager::editor_preview_tabs', schema: booleanSchema, fallback: () => true },
+  alwaysOverwrite: { key: 'file_manager::always_overwrite', schema: booleanSchema, fallback: () => false },
   vscodeUriScheme: {
     key: 'file_manager::vscode_uri_scheme',
     schema: z.string(),
@@ -248,7 +252,7 @@ export function fileManagerSettingKey(field: FileManagerSettingField): string {
   return userSettingFields[field].key;
 }
 
-function readUserSettingField<K extends FileManagerSettingField>(field: K): FileManagerStore[K] {
+export function readUserSettingField<K extends FileManagerSettingField>(field: K): FileManagerStore[K] {
   const { key, schema, fallback } = userSettingFields[field];
   return getUserSetting(key, schema, fallback());
 }
@@ -474,6 +478,11 @@ export const createFileManagerStore = (
       setEditorPreviewTabs: (state) => {
         writeUserSettingField('editorPreviewTabs', state);
         set({ editorPreviewTabs: state });
+      },
+      alwaysOverwrite: readUserSettingField('alwaysOverwrite'),
+      setAlwaysOverwrite: (state) => {
+        writeUserSettingField('alwaysOverwrite', state);
+        set({ alwaysOverwrite: state });
       },
       vscodeUriScheme: readUserSettingField('vscodeUriScheme'),
       setVscodeUriScheme: (scheme) => {

@@ -11,6 +11,7 @@ import TextInput from '@/elements/input/TextInput.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import { Modal, ModalFooter } from '@/elements/modals/Modal.tsx';
 import Text from '@/elements/typography/Text.tsx';
+import { databaseAgentTypeDumpExtensionMapping } from '@/lib/enums.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import {
   serverDatabaseInstanceDatabaseSchema,
@@ -85,6 +86,7 @@ export default function DatabaseInstanceDatabaseImportModal({ instance, database
         <FileInput
           withAsterisk
           label={t('pages.server.databases.instance.databases.modal.importDatabase.form.file', {})}
+          accept={databaseAgentTypeDumpExtensionMapping[instance.type]}
           value={file}
           onChange={setFile}
           clearable

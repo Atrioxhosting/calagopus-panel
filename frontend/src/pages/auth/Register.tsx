@@ -18,6 +18,7 @@ import Stack from '@/elements/layout/Stack.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import Title from '@/elements/typography/Title.tsx';
 import { authRegisterSchema } from '@/lib/schemas/auth.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useGlobalStore } from '@/stores/global.ts';
@@ -41,7 +42,7 @@ export default function Register() {
       nameLast: '',
       password: '',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(authRegisterSchema),
   });
 
@@ -92,66 +93,74 @@ export default function Register() {
         </div>
 
         <Card>
-          <Stack>
-            <TextInput
-              label={t('common.form.username', {})}
-              placeholder={t('pages.auth.register.form.usernamePlaceholder', {})}
-              autoComplete='username'
-              leftSection={<FontAwesomeIcon icon={faUser} />}
-              size='md'
-              autoFocus
-              {...form.getInputProps('username')}
-            />
-            <TextInput
-              label={t('common.form.email', {})}
-              placeholder={t('pages.auth.register.form.emailPlaceholder', {})}
-              autoComplete='email'
-              leftSection={<FontAwesomeIcon icon={faEnvelope} />}
-              size='md'
-              {...form.getInputProps('email')}
-            />
-            <TextInput
-              label={t('common.form.firstName', {})}
-              placeholder={t('pages.auth.register.form.firstNamePlaceholder', {})}
-              autoComplete='given-name'
-              leftSection={<FontAwesomeIcon icon={faUser} />}
-              size='md'
-              {...form.getInputProps('nameFirst')}
-            />
-            <TextInput
-              label={t('common.form.lastName', {})}
-              placeholder={t('pages.auth.register.form.lastNamePlaceholder', {})}
-              autoComplete='family-name'
-              leftSection={<FontAwesomeIcon icon={faUser} />}
-              size='md'
-              {...form.getInputProps('nameLast')}
-            />
-            <PasswordInput
-              label={t('common.form.password', {})}
-              placeholder={t('pages.auth.register.form.passwordPlaceholder', {})}
-              autoComplete='new-password'
-              onKeyDown={(e) => e.key === 'Enter' && form.isValid() && captcha.isValid && submit()}
-              leftSection={<FontAwesomeIcon icon={faLock} />}
-              size='md'
-              {...form.getInputProps('password')}
-            />
+          <form
+            onSubmit={form.onSubmit(() => {
+              if (captcha.isValid) {
+                submit();
+              }
+            })}
+          >
+            <Stack>
+              <TextInput
+                label={t('common.form.username', {})}
+                placeholder={t('pages.auth.register.form.usernamePlaceholder', {})}
+                autoComplete='username'
+                leftSection={<FontAwesomeIcon icon={faUser} />}
+                size='md'
+                autoFocus
+                description={t('common.form.rule.username', {})}
+                {...form.getInputProps('username')}
+              />
+              <TextInput
+                label={t('common.form.email', {})}
+                placeholder={t('pages.auth.register.form.emailPlaceholder', {})}
+                autoComplete='email'
+                leftSection={<FontAwesomeIcon icon={faEnvelope} />}
+                size='md'
+                {...form.getInputProps('email')}
+              />
+              <TextInput
+                label={t('common.form.firstName', {})}
+                placeholder={t('pages.auth.register.form.firstNamePlaceholder', {})}
+                autoComplete='given-name'
+                leftSection={<FontAwesomeIcon icon={faUser} />}
+                size='md'
+                {...form.getInputProps('nameFirst')}
+              />
+              <TextInput
+                label={t('common.form.lastName', {})}
+                placeholder={t('pages.auth.register.form.lastNamePlaceholder', {})}
+                autoComplete='family-name'
+                leftSection={<FontAwesomeIcon icon={faUser} />}
+                size='md'
+                {...form.getInputProps('nameLast')}
+              />
+              <PasswordInput
+                label={t('common.form.password', {})}
+                placeholder={t('pages.auth.register.form.passwordPlaceholder', {})}
+                autoComplete='new-password'
+                leftSection={<FontAwesomeIcon icon={faLock} />}
+                size='md'
+                {...form.getInputProps('password')}
+              />
 
-            <Button
-              onClick={submit}
-              loading={loading}
-              disabled={!form.isValid() || !captcha.isValid}
-              size='md'
-              fullWidth
-            >
-              {t('pages.auth.register.button.register', {})}
-            </Button>
+              <Button
+                type='submit'
+                loading={loading}
+                disabled={!form.isValid() || !captcha.isValid}
+                size='md'
+                fullWidth
+              >
+                {t('pages.auth.register.button.register', {})}
+              </Button>
 
-            <Divider label={t('common.divider.or', {})} labelPosition='center' />
+              <Divider label={t('common.divider.or', {})} labelPosition='center' />
 
-            <Button variant='light' onClick={() => navigate('/auth/login')} size='md' fullWidth>
-              {t('pages.auth.button.login', {})}
-            </Button>
-          </Stack>
+              <Button variant='light' onClick={() => navigate('/auth/login')} size='md' fullWidth>
+                {t('pages.auth.button.login', {})}
+              </Button>
+            </Stack>
+          </form>
         </Card>
         <Captcha {...captcha.props} />
       </Stack>

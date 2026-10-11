@@ -10,7 +10,7 @@ import AdminContentContainer from '@/elements/containers/AdminContentContainer.t
 import Table from '@/elements/data-display/Table.tsx';
 import ImportOverlay from '@/elements/ImportOverlay.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
-import { adminOAuthProviderUpdateSchema, oauthProviderSecretFields } from '@/lib/schemas/admin/oauthProviders.ts';
+import { adminOAuthProviderUpdateSchema } from '@/lib/schemas/admin/oauthProviders.ts';
 import { oauthProviderTableColumns } from '@/lib/tableColumns.ts';
 import { useResourceImport } from '@/plugins/import/useResourceImport.tsx';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
@@ -44,7 +44,10 @@ function OAuthProvidersContainer() {
       ...raw,
       // Exports and presets from before the login_bypass_two_factor rename only carry the old key.
       login_bypass_two_factor: raw.login_bypass_two_factor ?? raw.login_bypass_2fa,
-      ...Object.fromEntries(oauthProviderSecretFields.map((field) => [field, 'example'])),
+      client_id: 'example',
+      client_secret: raw.client_secret ?? null,
+      avatar_url_template: raw.avatar_url_template ?? null,
+      avatar_overwrite: raw.avatar_overwrite ?? false,
     }),
     [],
   );

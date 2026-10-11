@@ -475,6 +475,7 @@ pub struct DuplicateRoleOptions {
 #[async_trait::async_trait]
 impl DuplicableModel for Role {
     type DuplicateOptions<'a> = DuplicateRoleOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<Role>> =

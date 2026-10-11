@@ -36,7 +36,6 @@ export default function EggRepositoryCreateOrUpdate({
   const form = useFormEngine<EggRepositoryFormValues>('admin.eggRepositories.createOrUpdate', {
     schema: adminEggRepositoryUpdateSchema.unwrap(),
     initialValues: eggRepositoryEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const { loading, setLoading, doCreateOrUpdate, doDelete } = useResourceForm<

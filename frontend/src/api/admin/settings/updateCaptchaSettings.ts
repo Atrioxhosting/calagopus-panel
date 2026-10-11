@@ -10,6 +10,7 @@ export default async (data: z.infer<typeof adminSettingsCaptchaProviderSchema>):
       ...formExtensionSchemas('admin.settings.captcha.recaptcha'),
       ...formExtensionSchemas('admin.settings.captcha.turnstile'),
       ...formExtensionSchemas('admin.settings.captcha.friendlyCaptcha'),
+      ...formExtensionSchemas('admin.settings.captcha.cap'),
     ]),
   });
 };

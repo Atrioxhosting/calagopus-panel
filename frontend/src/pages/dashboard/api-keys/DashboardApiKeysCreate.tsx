@@ -21,6 +21,7 @@ import Text from '@/elements/typography/Text.tsx';
 import { userApiKeySchema } from '@/lib/schemas/user/apiKeys.ts';
 import RequestedPermissions from '@/pages/dashboard/api-keys/RequestedPermissions.tsx';
 import { parseCallbackUrl, parseRequestedPermissions } from '@/pages/dashboard/api-keys/redirectParams.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -43,7 +44,7 @@ export default function DashboardApiKeysCreate() {
     initialValues: {
       name: searchParams.get('name') ?? '',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(userApiKeySchema.pick({ name: true })),
   });
 

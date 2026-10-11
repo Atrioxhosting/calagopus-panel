@@ -33,6 +33,7 @@ import { resolvePorts } from '@/lib/network/ip.ts';
 import { getUrlConnectPort, urlIsMissingPort, withUrlPort } from '@/lib/network/url.ts';
 import { adminNodeAllocationsSchema } from '@/lib/schemas/admin/nodes.ts';
 import { oobeNodeSchema } from '@/lib/schemas/oobe.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { OobeComponentProps } from '@/routers/OobeRouter.tsx';
 
@@ -56,7 +57,7 @@ export default function OobeNode({ onNext, onBack, canGoBack, skipFrom, data }: 
       memory: existingNode?.memory ?? 8192,
       disk: existingNode?.disk ?? 16384,
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     ...schemaFormOptions<z.infer<typeof oobeNodeSchema>>(oobeNodeSchema),
   });
 
@@ -66,7 +67,7 @@ export default function OobeNode({ onNext, onBack, canGoBack, skipFrom, data }: 
       ipAlias: null,
       ports: [],
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(adminNodeAllocationsSchema),
   });
 

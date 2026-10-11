@@ -481,6 +481,7 @@ pub struct DuplicateLocationOptions {
 #[async_trait::async_trait]
 impl DuplicableModel for Location {
     type DuplicateOptions<'a> = DuplicateLocationOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<Location>> =

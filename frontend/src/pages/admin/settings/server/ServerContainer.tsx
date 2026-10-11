@@ -4,6 +4,7 @@ import AdminSubContentContainer from '@/elements/containers/AdminSubContentConta
 import { FormEngine, useFormEngine } from '@/elements/form-engine/index.ts';
 import Group from '@/elements/layout/Group.tsx';
 import { adminSettingsServerSchema } from '@/lib/schemas/admin/settings.ts';
+import { useFormDraft } from '@/plugins/form/useFormDraft.ts';
 import { useHydrateForm } from '@/plugins/form/useHydrateForm.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useAdminStore } from '@/stores/admin.tsx';
@@ -24,10 +25,10 @@ export default function ServerContainer() {
   const form = useFormEngine<ServerFormValues>('admin.settings.server', {
     schema: adminSettingsServerSchema,
     initialValues: serverSettingsEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   useHydrateForm(form, server, serverSettingsToFormValues);
+  useFormDraft(form, 'server');
 
   const { loading, submit } = useSettingsSection({
     form,

@@ -44,6 +44,44 @@ impl Captcha {
 
         match &settings.captcha_provider {
             super::settings::CaptchaProvider::None => Ok(()),
+            super::settings::CaptchaProvider::Cap {
+                api_url,
+                site_key,
+                secret_key,
+            } => {
+                let response = CLIENT
+                    .post(format!(
+                        "{}/{site_key}/siteverify",
+                        api_url.trim_end_matches('/')
+                    ))
+                    .json(&serde_json::json!({
+                        "secret": secret_key,
+                        "response": captcha,
+                    }))
+                    .send()
+                    .await
+                    .map_err(|err| {
+                        tracing::error!("captcha: cap verification request failed: {:?}", err);
+                        err.to_compact_string()
+                    })?;
+
+                if response.status().is_success() {
+                    let body: serde_json::Value = response.json().await.map_err(|err| {
+                        tracing::error!(
+                            "captcha: cap verification response parsing failed: {:?}",
+                            err
+                        );
+                        err.to_compact_string()
+                    })?;
+                    if let Some(success) = body.get("success")
+                        && success.as_bool().unwrap_or(false)
+                    {
+                        return Ok(());
+                    }
+                }
+
+                Err("captcha: verification failed".into())
+            }
             super::settings::CaptchaProvider::Turnstile { secret_key, .. } => {
                 let response = CLIENT
                     .post("https://challenges.cloudflare.com/turnstile/v0/siteverify")
@@ -79,7 +117,12 @@ impl Captcha {
 
                 Err("captcha: verification failed".into())
             }
-            super::settings::CaptchaProvider::Recaptcha { v3, secret_key, .. } => {
+            super::settings::CaptchaProvider::Recaptcha {
+                v3,
+                threshold,
+                secret_key,
+                ..
+            } => {
                 let response = CLIENT
                     .post("https://www.google.com/recaptcha/api/siteverify")
                     .form(&[
@@ -109,8 +152,9 @@ impl Captcha {
                         && success.as_bool().unwrap_or(false)
                     {
                         if *v3 {
-                            if let Some(score) = body.get("score")
-                                && score.as_f64().unwrap_or(0.0) >= 0.5
+                            if let Some(score) =
+                                body.get("score").and_then(serde_json::Value::as_f64)
+                                && score >= *threshold
                             {
                                 return Ok(());
                             }

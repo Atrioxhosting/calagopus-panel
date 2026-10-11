@@ -783,6 +783,7 @@ pub struct DuplicateDatabaseAgentTemplateOptions {
 #[async_trait::async_trait]
 impl DuplicableModel for DatabaseAgentTemplate {
     type DuplicateOptions<'a> = DuplicateDatabaseAgentTemplateOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<DatabaseAgentTemplate>> =

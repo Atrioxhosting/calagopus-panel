@@ -235,6 +235,7 @@ mod patch {
                     "link_viewable": oauth_provider.link_viewable,
                     "user_manageable": oauth_provider.user_manageable,
                     "basic_auth": oauth_provider.basic_auth,
+                    "pkce": oauth_provider.pkce,
 
                     "client_id": oauth_provider.client_id,
 

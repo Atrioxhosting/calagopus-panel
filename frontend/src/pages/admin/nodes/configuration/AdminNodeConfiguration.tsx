@@ -15,6 +15,7 @@ import Alert from '@/elements/feedback/Alert.tsx';
 import Divider from '@/elements/layout/Divider.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
+import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import {
   getNodeConfiguration,
   getNodeConfigurationCommand,
@@ -26,6 +27,7 @@ import { findChangedLockedPaths } from '@/lib/lockedConfigPaths.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminNodeSchema } from '@/lib/schemas/admin/nodes.ts';
 import { useResource } from '@/plugins/resource/useResource.ts';
+import { useBlocker } from '@/plugins/useBlocker.ts';
 import { useAdminCan } from '@/plugins/usePermissions.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -99,6 +101,7 @@ export default function AdminNodeConfiguration({ node }: { node: z.infer<typeof 
 
   const [revealed, setRevealed] = useState(false);
   const [yaml, setYaml] = useState<string | null>(null);
+  const [savedYaml, setSavedYaml] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const { data: liveConfig, error: liveConfigErrorRaw } = useResource({
@@ -110,9 +113,13 @@ export default function AdminNodeConfiguration({ node }: { node: z.infer<typeof 
 
   useEffect(() => {
     if (liveConfig) {
-      setYaml(dump(liveConfig.config, { lineWidth: -1 }));
+      const dumped = dump(liveConfig.config, { lineWidth: -1 });
+      setYaml(dumped);
+      setSavedYaml(dumped);
     }
   }, [liveConfig]);
+
+  const blocker = useBlocker(yaml !== savedYaml);
 
   const doSave = () => {
     if (!canUpdate || !liveConfig || yaml === null || liveConfigError !== null) return;
@@ -133,6 +140,8 @@ export default function AdminNodeConfiguration({ node }: { node: z.infer<typeof 
     setSaving(true);
     updateNodeConfig(node.uuid, parsed)
       .then((applied) => {
+        setSavedYaml(yaml);
+
         if (!applied) {
           addToast(t('pages.admin.nodes.tabs.configuration.page.toast.submittedNotApplied', {}), 'warning');
         } else if (ignoredPaths.length > 0) {
@@ -154,6 +163,16 @@ export default function AdminNodeConfiguration({ node }: { node: z.infer<typeof 
       registry={window.extensionContext.extensionRegistry.pages.admin.nodes.view.configuration.subContainer}
       registryProps={{ node }}
     >
+      <ConfirmationModal
+        title={t('common.modal.unsavedChanges.title', {})}
+        opened={blocker.state === 'blocked'}
+        onClose={() => blocker.reset()}
+        onConfirmed={() => blocker.proceed()}
+        confirm={t('common.button.leavePage', {})}
+      >
+        {t('common.modal.unsavedChanges.content', {}).md()}
+      </ConfirmationModal>
+
       {showPairing && (
         <div className='mb-6'>
           <NodePairingSection node={node} />

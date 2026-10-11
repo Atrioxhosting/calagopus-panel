@@ -406,6 +406,7 @@ pub struct DuplicateUserCommandSnippetOptions {
 #[async_trait::async_trait]
 impl DuplicableModel for UserCommandSnippet {
     type DuplicateOptions<'a> = DuplicateUserCommandSnippetOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<UserCommandSnippet>> =

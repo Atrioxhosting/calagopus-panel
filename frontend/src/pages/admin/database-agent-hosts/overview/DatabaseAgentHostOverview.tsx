@@ -168,13 +168,11 @@ export default function DatabaseAgentHostOverview({ databaseAgentHost }: { datab
           title={t('pages.admin.databaseAgentHosts.tabs.overview.page.card.resources', {})}
           icon={<FontAwesomeIcon icon={faChartPie} />}
           rightSection={
-            capacity ? (
-              <Badge color='gray' variant='light' ml='auto'>
-                <FontAwesomeIcon icon={faServer} className='mr-1.5' />
-                {t('pages.admin.databaseAgentHosts.tabs.overview.page.label.instances', {})}:{' '}
-                {capacity.allocated.instances}
-              </Badge>
-            ) : null
+            <Badge color='gray' variant='light' ml='auto' loading={!capacity}>
+              <FontAwesomeIcon icon={faServer} className='mr-1.5' />
+              {t('pages.admin.databaseAgentHosts.tabs.overview.page.label.instances', {})}:{' '}
+              {capacity?.allocated.instances}
+            </Badge>
           }
         >
           {!capacity ? (

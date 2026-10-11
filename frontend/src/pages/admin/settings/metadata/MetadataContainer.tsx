@@ -8,6 +8,7 @@ import Group from '@/elements/layout/Group.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { storageAssetSchema } from '@/lib/schemas/admin/assets.ts';
 import { adminSettingsMetadataSchema } from '@/lib/schemas/admin/settings.ts';
+import { useFormDraft } from '@/plugins/form/useFormDraft.ts';
 import { useHydrateForm } from '@/plugins/form/useHydrateForm.ts';
 import { useSearchableResource } from '@/plugins/resource/useSearchableResource.ts';
 import { useAdminCan } from '@/plugins/usePermissions.ts';
@@ -28,7 +29,6 @@ export default function MetadataContainer() {
   const form = useFormEngine<MetadataFormValues>('admin.settings.metadata', {
     schema: adminSettingsMetadataSchema,
     initialValues: metadataEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const assets = useSearchableResource<z.infer<typeof storageAssetSchema>>({
@@ -38,6 +38,7 @@ export default function MetadataContainer() {
   });
 
   useHydrateForm(form, metadata, metadataToFormValues);
+  useFormDraft(form, 'metadata');
 
   const { loading, submit } = useSettingsSection({
     form,

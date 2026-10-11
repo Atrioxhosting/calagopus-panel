@@ -111,6 +111,7 @@ export const captchaProviderTypeLabelMapping: Record<
   recaptcha: 'reCAPTCHA',
   hcaptcha: 'hCaptcha',
   friendly_captcha: 'Friendly Captcha',
+  cap: 'Cap',
 };
 
 export const compressionLevelLabelMapping: Record<z.infer<typeof compressionLevel>, () => string> = {
@@ -160,6 +161,13 @@ export const databaseAgentTypeDefaultPortMapping: Record<z.infer<typeof database
   mariadb: 3306,
   mongodb: 27017,
   redis: 6379,
+};
+
+export const databaseAgentTypeDumpExtensionMapping: Record<z.infer<typeof databaseAgentType>, string> = {
+  postgres: '.sql',
+  mariadb: '.sql',
+  mongodb: '.archive',
+  redis: '.rdb',
 };
 
 export const announcementTypeLabelMapping: Record<z.infer<typeof announcementType>, () => string> = {
@@ -454,12 +462,12 @@ export const serverBackupStatusLabelMapping: Record<z.infer<typeof serverBackupS
 };
 
 export const backupRetentionRuleLabelMapping: Record<z.infer<typeof backupRetentionRule>, () => string> = {
-  count: () => getTranslations().t('common.elements.backupRetention.status.rule.count', {}),
-  days: () => getTranslations().t('common.elements.backupRetention.status.rule.days', {}),
-  daily: () => getTranslations().t('common.elements.backupRetention.status.rule.daily', {}),
-  weekly: () => getTranslations().t('common.elements.backupRetention.status.rule.weekly', {}),
-  monthly: () => getTranslations().t('common.elements.backupRetention.status.rule.monthly', {}),
-  yearly: () => getTranslations().t('common.elements.backupRetention.status.rule.yearly', {}),
+  count: () => getTranslations().t('common.enum.backupRetentionRule.count', {}),
+  days: () => getTranslations().t('common.enum.backupRetentionRule.days', {}),
+  daily: () => getTranslations().t('common.enum.backupRetentionRule.daily', {}),
+  weekly: () => getTranslations().t('common.enum.backupRetentionRule.weekly', {}),
+  monthly: () => getTranslations().t('common.enum.backupRetentionRule.monthly', {}),
+  yearly: () => getTranslations().t('common.enum.backupRetentionRule.yearly', {}),
 };
 
 export const serverBackupKindLabelMapping: Record<z.infer<typeof serverBackupKind>, () => string> = {

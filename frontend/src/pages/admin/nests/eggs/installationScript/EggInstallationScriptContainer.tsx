@@ -13,6 +13,7 @@ import Stack from '@/elements/layout/Stack.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminEggConfigScriptSchema, adminEggSchema } from '@/lib/schemas/admin/eggs.ts';
 import { adminNestSchema } from '@/lib/schemas/admin/nests.ts';
+import { useFormDraft } from '@/plugins/form/useFormDraft.ts';
 import { useHydrateForm } from '@/plugins/form/useHydrateForm.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -36,16 +37,19 @@ export default function EggInstallationScriptContainer({
   const form = useFormEngine<ScriptFormValues>('admin.nests.eggs.installationScript', {
     schema: adminEggConfigScriptSchema,
     initialValues: eggScriptEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   useHydrateForm(form, contextEgg, eggToScriptFormValues);
+  useFormDraft(form, 'installationScript');
 
   const doUpdate = () => {
     setLoading(true);
 
+    const submittedValues = form.getValues();
+
     updateEggScript(contextNest.uuid, contextEgg.uuid, form.getTransformedValues())
       .then(() => {
+        form.resetDirty(submittedValues);
         addToast(t('pages.admin.nests.tabs.eggs.page.tabs.installationScript.page.toast.updated', {}), 'success');
         queryClient.invalidateQueries({ queryKey: queryKeys.admin.eggs.detail(contextEgg.uuid) });
       })

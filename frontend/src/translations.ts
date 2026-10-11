@@ -85,6 +85,7 @@ const baseTranslations = defineTranslations({
         details: 'Details',
         loadLogs: 'Load Logs',
         sendTestEmail: 'Send Test Email',
+        test: 'Test',
         setPrimary: 'Set Primary',
         unsetPrimary: 'Unset Primary',
         leavePage: 'Leave Page',
@@ -174,14 +175,6 @@ const baseTranslations = defineTranslations({
           yearly: 'Keep yearly',
           ruleSummary: '{rule}: {count}',
           status: {
-            rule: {
-              count: 'Latest',
-              days: 'Recent',
-              daily: 'Daily',
-              weekly: 'Weekly',
-              monthly: 'Monthly',
-              yearly: 'Yearly',
-            },
             locked: 'Locked',
             indefinite: 'Kept indefinitely',
             expired: 'Pending removal',
@@ -200,6 +193,11 @@ const baseTranslations = defineTranslations({
       modal: {
         duplicate: {
           title: 'Duplicate {resource}',
+        },
+        unsavedChanges: {
+          title: 'Unsaved Changes',
+          content:
+            'You have unsaved changes. Are you sure you want to leave this page? If you leave, your changes will be lost.',
         },
         delete: {
           content: 'Are you sure you want to delete **{name}**?',
@@ -342,6 +340,16 @@ const baseTranslations = defineTranslations({
         caseInsensitive: 'Case Insensitive',
         truncateDirectory:
           'Do you want to delete all files of this server before performing this action? This cannot be undone.',
+        rule: {
+          invalidCharacters: 'Contains characters that are not allowed here.',
+          username: '3 to 15 characters, letters, digits and underscores only.',
+          databaseName: 'Up to 31 characters, letters, digits and underscores only.',
+          databaseInstanceIdentifier: '2 to 23 characters, letters and digits only.',
+          captchaSiteKey: 'Letters, digits, dashes and underscores only.',
+          variableName: 'Starts with a lowercase letter, then up to 63 lowercase letters, digits or underscores.',
+          hexColor: 'A hex color such as #1c7ed6.',
+          devicePermissions: 'Any combination of r (read), w (write) and m (mknod).',
+        },
       },
       table: {
         selectRow: 'Select row',
@@ -423,6 +431,7 @@ const baseTranslations = defineTranslations({
         outbound: 'Outbound',
         uptime: 'Uptime',
         resources: 'Resources',
+        limit: 'Limit {limit}',
       },
       badge: {
         active: 'Active',
@@ -468,6 +477,14 @@ const baseTranslations = defineTranslations({
           diskUsage: 'Disk: {used} / {limit}',
           diskUsageUnlimited: 'Disk: {used} used, no node limit',
         },
+        allowedSources: {
+          checking: 'Checking Node',
+          notAllowed: 'Not Allowed on Node',
+          mountNotAllowed:
+            "The node's `allowed_mounts` does not cover this mount's source, so wings skips it when starting the server.",
+          deviceNotAllowed:
+            "The node's `allowed_devices` does not cover this device's source (or its permissions are invalid), so wings skips it when starting the server.",
+        },
       },
       server: {
         noAllocation: 'No Allocation',
@@ -507,6 +524,14 @@ const baseTranslations = defineTranslations({
           starting: 'Starting',
           finished: 'Finished',
           failed: 'Failed',
+        },
+        backupRetentionRule: {
+          count: 'Latest',
+          days: 'Recent',
+          daily: 'Daily',
+          weekly: 'Weekly',
+          monthly: 'Monthly',
+          yearly: 'Yearly',
         },
         serverBackupKind: {
           server: 'Server',
@@ -1439,10 +1464,12 @@ const baseTranslations = defineTranslations({
               none: 'No second factor is set up on your account yet.',
               requirementMet: 'Your account meets the two-factor requirement.',
               requirementUnmet: 'Your account does not meet the two-factor requirement yet.',
-              method: {
-                totp: 'Authenticator App',
-                securityKey: 'Security Key',
-                email: 'Email',
+              enum: {
+                twoFactorMethod: {
+                  totp: 'Authenticator App',
+                  securityKey: 'Security Key',
+                  email: 'Email',
+                },
               },
             },
             emailTwoFactor: {
@@ -1771,6 +1798,7 @@ const baseTranslations = defineTranslations({
           },
           tooltip: {
             limitReached: 'You are limited to {max} api keys.',
+            keyStartOnly: 'Only the start of the key is shown, the full key is only visible once after (re)creation.',
           },
           table: {
             columns: {
@@ -1794,6 +1822,12 @@ const baseTranslations = defineTranslations({
               title: 'Update API Key',
               toast: {
                 updated: 'API key updated.',
+              },
+            },
+            duplicateApiKey: {
+              title: 'Duplicate API Key',
+              toast: {
+                duplicated: 'API key duplicated.',
               },
             },
             recreateApiKey: {
@@ -1913,11 +1947,14 @@ const baseTranslations = defineTranslations({
                     misses: 'Computed',
                   },
                 },
-                containerType: {
-                  none: 'None detected',
-                  official: 'Official',
-                  officialAio: 'Official AIO',
-                  officialHeavy: 'Official Heavy',
+                enum: {
+                  containerType: {
+                    none: 'None detected',
+                    official: 'Official',
+                    officialAio: 'Official AIO',
+                    officialHeavy: 'Official Heavy',
+                    officialHeavyAio: 'Official Heavy AIO',
+                  },
                 },
                 stats: {
                   users: 'Users',
@@ -2176,6 +2213,9 @@ const baseTranslations = defineTranslations({
                 toast: {
                   updated: 'Email settings updated.',
                 },
+                tooltip: {
+                  noProvider: 'Save an email provider before sending a test email.',
+                },
                 modal: {
                   sendTestEmail: {
                     title: 'Send Test Email',
@@ -2277,9 +2317,18 @@ const baseTranslations = defineTranslations({
                 toast: {
                   updated: 'Captcha settings updated.',
                 },
+                cap: {
+                  form: {
+                    apiUrl: 'Instance URL',
+                    apiUrlDescription: 'Public URL of your Cap Standalone instance, without the site key.',
+                  },
+                },
                 recaptcha: {
                   form: {
                     v3: 'V3',
+                    threshold: 'Score threshold',
+                    thresholdDescription:
+                      'Minimum score required to pass verification, from 0 to 1. Higher values are stricter. Default: 0.5.',
                   },
                 },
               },
@@ -2521,6 +2570,7 @@ const baseTranslations = defineTranslations({
           unknownExtension: 'Unknown Extension',
           alert: {
             noExtensions: 'No extensions installed.',
+            managementDisabled: 'Extension management has been disabled on this panel.',
             heavyImageMissing:
               "You don't seem to be using the heavy image required to install extensions, see [here]({docsUrl}) on how to switch to it.",
             supervisorUnreachable: {
@@ -4592,12 +4642,16 @@ const baseTranslations = defineTranslations({
                 form: {
                   clientId: 'Client Id',
                   clientSecret: 'Client Secret',
+                  clientSecretDescription: 'Leave empty for public clients that authenticate with PKCE only.',
                   authUrl: 'Auth URL',
                   tokenUrl: 'Token URL',
                   infoUrl: 'Info URL',
                   basicAuth: 'Basic Auth',
                   basicAuthDescription:
                     'Uses HTTP Basic Authentication to transmit the client id and secret, not common anymore.',
+                  pkce: 'PKCE',
+                  pkceDescription:
+                    'Sends a Proof Key for Code Exchange (S256) with every login, supported by most modern providers.',
                   scopes: 'Scopes',
                   scopesDescription:
                     'The OAuth2 scopes to request, make sure to include scopes for email and profile info when needed.',
@@ -4632,12 +4686,22 @@ const baseTranslations = defineTranslations({
                   userManageable: 'Link Manageable by User',
                   userManageableDescription: 'Allows the user to connect and disconnect with this provider.',
                 },
+                button: {
+                  discover: 'Import from OpenID Discovery',
+                },
                 toast: {
                   exported: 'OAuth Provider exported.',
+                  discovered: 'Provider settings imported. Enter the client id and secret to finish.',
                 },
                 modal: {
                   delete: {
                     title: 'Confirm OAuth Provider Deletion',
+                  },
+                  discover: {
+                    title: 'Import from OpenID Discovery',
+                    url: 'Issuer URL',
+                    urlDescription:
+                      'The issuer URL or its full /.well-known/openid-configuration URL. Providers on a private network are blocked unless APP_BLOCKED_CIDRS allows them.',
                   },
                 },
               },
@@ -4785,6 +4849,14 @@ const baseTranslations = defineTranslations({
                     title: 'Confirm Provider Settings Removal',
                     content:
                       'This will remove the **{provider}** settings when saving. Any existing backups relying on these configuration options will stop working.',
+                  },
+                  test: {
+                    title: 'Test Backup Configuration',
+                    content:
+                      'Checks the current form values from the selected node without saving them. For Btrfs and ZFS only the tooling and filesystem are checked, server volumes are verified once a backup runs.',
+                    run: 'Run Test',
+                    successful: 'The node can use this backup configuration, the test took {duration}.',
+                    failed: 'The test failed after {duration}.',
                   },
                 },
                 s3: {
@@ -5237,6 +5309,7 @@ const baseTranslations = defineTranslations({
           input: {
             placeholder: 'Type a command...',
             ariaLabel: 'Console command input.',
+            prefixPlaceholder: 'Prefix, e.g. "say "',
           },
           toast: {
             installCancelled: 'Server install cancelled.',
@@ -5281,6 +5354,7 @@ const baseTranslations = defineTranslations({
             increaseFontSize: 'Increase Font Size',
             copySelection: 'Copy Selection',
             popout: 'Open in Separate Window',
+            commandPrefix: 'Command Prefix',
           },
           quickAction: {
             search: 'Search Console',
@@ -5531,6 +5605,8 @@ const baseTranslations = defineTranslations({
             editorEngine: 'Editor Engine',
             editorPreviewTabs: 'Preview files in tree tabs',
             editorPreviewTabsDescription: 'Edit or double-click a tab to keep it open.',
+            alwaysOverwrite: 'Always overwrite existing files',
+            alwaysOverwriteDescription: 'Skip the conflict prompt when uploading, copying or pasting.',
             vscodeUriScheme: 'VS Code URI Scheme',
             imageViewerSmoothing: 'Smoothen Image (Anti-Aliasing)',
           },
@@ -5782,6 +5858,11 @@ const baseTranslations = defineTranslations({
             largestDirectories: {
               title: 'Largest Directories',
               empty: 'No directories found.',
+              files: 'Files in this folder',
+              smallerFolders: '{count} smaller folders',
+              inaccessible: 'Inaccessible',
+              openFolder: 'Open folder',
+              noSubdirectories: 'This folder uses {size} and has no large subdirectories of its own.',
             },
             searchFiles: {
               title: 'Search Files',
@@ -6648,6 +6729,9 @@ const baseTranslations = defineTranslations({
             },
           },
           steps: {
+            tooltip: {
+              limitReached: 'This schedule is limited to {max} steps.',
+            },
             empty: {
               title: 'No Steps Configured',
               description: "This schedule doesn't have any steps yet. Add some actions to get started.",

@@ -1,3 +1,4 @@
+import { InputWrapper, mergeThemeOverrides, Tooltip } from '@mantine/core';
 import { createRoot } from 'react-dom/client';
 import { Extension, ExtensionContext } from 'shared';
 import App from '@/App.tsx';
@@ -24,21 +25,39 @@ for (const [path, module] of Object.entries({ ...extensionModulesTs, ...extensio
   }
 }
 
-window.addEventListener('vite:preloadError', (event) => {
-  event.preventDefault();
+const baseTheme = {
+  components: {
+    InputWrapper: InputWrapper.extend({
+      styles: (_theme, props) =>
+        props.description && props.description === props.error ? { description: { display: 'none' } } : {},
+    }),
+    Tooltip: Tooltip.extend({
+      styles: { tooltip: { '--code-bg': 'color-mix(in srgb, currentColor 15%, transparent)' } },
+    }),
+  },
+};
 
-  const lastReload = localStorage.getItem('lastReload') || '0';
-  const now = Date.now();
+const CHUNK_RELOAD_ATTEMPTS_KEY = 'chunkReloadAttempts';
+const MAX_CHUNK_RELOAD_ATTEMPTS = 3;
+let chunkReloadScheduled = false;
 
-  if (now - parseInt(lastReload) < 5000) {
-    document.body.innerHTML =
-      'Failed to load application: Preload error occurred multiple times. Please check the console for more details.';
-    throw new Error('Preload error occurred multiple times');
-  }
+window.addEventListener('vite:preloadError', () => {
+  const attempts = parseInt(sessionStorage.getItem(CHUNK_RELOAD_ATTEMPTS_KEY) || '0');
+  if (chunkReloadScheduled || attempts >= MAX_CHUNK_RELOAD_ATTEMPTS) return;
 
-  localStorage.setItem('lastReload', now.toString());
-  window.location.reload();
+  chunkReloadScheduled = true;
+  sessionStorage.setItem(CHUNK_RELOAD_ATTEMPTS_KEY, (attempts + 1).toString());
+
+  const reload = () => window.location.reload();
+  setTimeout(
+    () => (navigator.onLine ? reload() : window.addEventListener('online', reload, { once: true })),
+    1000 * 2 ** attempts,
+  );
 });
+
+setTimeout(() => {
+  if (!chunkReloadScheduled) sessionStorage.removeItem(CHUNK_RELOAD_ATTEMPTS_KEY);
+}, 30_000);
 
 const root = document.getElementById('root');
 
@@ -92,7 +111,7 @@ setExtensionStylesEnabled(() => false);
 
   createRoot(root!).render(
     <App
-      theme={window.extensionContext.getMantineTheme()}
+      theme={mergeThemeOverrides(baseTheme, window.extensionContext.getMantineTheme())}
       cssVariablesResolver={window.extensionContext.getMantineCssResolver()}
     />,
   );

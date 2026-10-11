@@ -996,6 +996,18 @@ pub(crate) static BASE_SERVER_PERMISSIONS: LazyLock<IndexMap<&'static str, Permi
 pub(crate) static SERVER_PERMISSIONS: LazyLock<parking_lot::RwLock<PermissionMap>> =
     LazyLock::new(|| parking_lot::RwLock::new(PermissionMap::new()));
 
+pub fn base_server_permission_keys() -> HashSet<String> {
+    BASE_SERVER_PERMISSIONS
+        .iter()
+        .flat_map(|(group, permissions)| {
+            permissions
+                .permissions
+                .keys()
+                .map(move |permission| format!("{group}.{permission}"))
+        })
+        .collect()
+}
+
 #[inline]
 pub fn get_server_permissions() -> parking_lot::RwLockReadGuard<'static, PermissionMap> {
     SERVER_PERMISSIONS.read()

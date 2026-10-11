@@ -14,20 +14,24 @@ export default function FileSettings() {
     preferPhysicalSize,
     vscodeUriScheme,
     editorPreviewTabs,
+    alwaysOverwrite,
     setClickOnce,
     setPreferPhysicalSize,
     setVscodeUriScheme,
     setEditorPreviewTabs,
+    setAlwaysOverwrite,
   } = useFileManager(
     useShallow((state) => ({
       clickOnce: state.clickOnce,
       preferPhysicalSize: state.preferPhysicalSize,
       vscodeUriScheme: state.vscodeUriScheme,
       editorPreviewTabs: state.editorPreviewTabs,
+      alwaysOverwrite: state.alwaysOverwrite,
       setClickOnce: state.setClickOnce,
       setPreferPhysicalSize: state.setPreferPhysicalSize,
       setVscodeUriScheme: state.setVscodeUriScheme,
       setEditorPreviewTabs: state.setEditorPreviewTabs,
+      setAlwaysOverwrite: state.setAlwaysOverwrite,
     })),
   );
 
@@ -79,6 +83,21 @@ export default function FileSettings() {
         description={t('pages.server.files.settings.editorPreviewTabsDescription', {})}
         checked={editorPreviewTabs}
         onChange={(e) => setEditorPreviewTabs(e.target.checked)}
+      />
+      <Checkbox
+        label={
+          <span className='inline-flex items-center gap-1'>
+            {t('pages.server.files.settings.alwaysOverwrite', {})}
+            <UserSettingScopeMenu
+              settingKey={fileManagerSettingKey('alwaysOverwrite')}
+              value={alwaysOverwrite}
+              withinPortal={false}
+            />
+          </span>
+        }
+        description={t('pages.server.files.settings.alwaysOverwriteDescription', {})}
+        checked={alwaysOverwrite}
+        onChange={(e) => setAlwaysOverwrite(e.target.checked)}
       />
       <TextInput
         label={t('pages.server.files.settings.vscodeUriScheme', {})}

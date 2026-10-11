@@ -22,13 +22,7 @@ mod post {
         permissions: GetPermissionManager,
         activity_logger: GetAdminActivityLogger,
     ) -> ApiResponseResult {
-        if !state.container_type.is_heavy() {
-            return ApiResponse::error(
-                "restarting the panel is only available in the official heavy container",
-            )
-            .with_status(StatusCode::NOT_IMPLEMENTED)
-            .ok();
-        }
+        state.ensure_extension_management()?;
 
         permissions.has_admin_permission("extensions.manage")?;
 

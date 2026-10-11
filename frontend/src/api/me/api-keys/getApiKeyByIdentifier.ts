@@ -4,6 +4,6 @@ import { userApiKeySchema } from '@/lib/schemas/user/apiKeys.ts';
 import { parseFromApi } from '@/lib/serialization/api-transform.ts';
 
 export default async (identifier: string): Promise<z.infer<typeof userApiKeySchema>> => {
-  const { data } = await axiosInstance.get(`/api/client/account/api-keys/identifier/${identifier}`);
+  const { data } = await axiosInstance.get(`/api/client/account/api-keys/identifier/${encodeURIComponent(identifier)}`);
   return parseFromApi(userApiKeySchema, data.api_key);
 };

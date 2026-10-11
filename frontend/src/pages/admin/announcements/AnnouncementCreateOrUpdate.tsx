@@ -51,7 +51,6 @@ export default function AnnouncementCreateOrUpdate({
   const form = useFormEngine<AnnouncementFormValues>('admin.announcements.createOrUpdate', {
     schema: contextAnnouncement ? adminAnnouncementUpdateSchema : adminAnnouncementCreateSchema,
     initialValues: announcementEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const { loading, doCreateOrUpdate, doDelete } = useResourceForm<

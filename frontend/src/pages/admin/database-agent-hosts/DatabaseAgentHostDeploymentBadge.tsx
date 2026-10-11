@@ -13,7 +13,7 @@ export default function DatabaseAgentHostDeploymentBadge({
   databaseAgentHost: z.infer<typeof adminDatabaseAgentHostSchema>;
 }) {
   const { t } = useTranslations();
-  const { state, usage } = useDatabaseAgentHostDeployment(databaseAgentHost);
+  const { state, usage, loading } = useDatabaseAgentHostDeployment(databaseAgentHost);
 
   return (
     <Tooltip
@@ -46,7 +46,7 @@ export default function DatabaseAgentHostDeploymentBadge({
         )
       }
     >
-      <Badge color={databaseAgentHostDeploymentStateInfo[state].badgeColor} variant='light'>
+      <Badge color={databaseAgentHostDeploymentStateInfo[state].badgeColor} variant='light' loading={loading}>
         {databaseAgentHostDeploymentStateInfo[state].label()}
       </Badge>
     </Tooltip>

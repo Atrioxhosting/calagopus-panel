@@ -1,18 +1,22 @@
+import { faFolderOpen } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Treemap } from '@mantine/charts';
-import { ModalProps } from '@mantine/core';
+import { Anchor, ModalProps } from '@mantine/core';
 import { join } from 'pathe';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
-import getLargestDirectories from '@/api/server/files/getLargestDirectories.ts';
+import getDirectorySizes from '@/api/server/files/getDirectorySizes.ts';
 import Button from '@/elements/buttons/Button.tsx';
+import Breadcrumbs from '@/elements/data-display/Breadcrumbs.tsx';
+import EmptyState from '@/elements/feedback/EmptyState.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import { Modal, ModalFooter } from '@/elements/modals/Modal.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import { bytesToString } from '@/lib/format/size.ts';
-import { serverDirectoryEntrySchema } from '@/lib/schemas/server/files.ts';
+import { serverDirectorySizesSchema } from '@/lib/schemas/server/files.ts';
 import { useFileManager } from '@/providers/contexts/fileManagerContext.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -44,7 +48,9 @@ function TreemapCell({
   name,
   color,
   depth,
-  index,
+  size,
+  share,
+  folder,
   onCellClick,
 }: {
   x?: number;
@@ -54,45 +60,48 @@ function TreemapCell({
   name?: string;
   color?: string;
   depth?: number;
-  index?: number;
+  size?: string;
+  share?: string;
+  folder?: boolean;
   onCellClick?: () => void;
 }) {
   if (depth === 0 || x === undefined || y === undefined || width === undefined || height === undefined) return null;
 
-  const clipId = `ld-clip-${index}`;
+  const showLabel = width > 48 && height > 22;
+  const showDetails = width > 72 && height > 44;
 
   return (
-    <g onClick={onCellClick} style={{ cursor: 'pointer' }}>
-      <defs>
-        <clipPath id={clipId}>
-          <rect x={x + 4} y={y + 4} width={Math.max(0, width - 8)} height={Math.max(0, height - 8)} />
-        </clipPath>
-      </defs>
+    <g onClick={onCellClick} className={folder ? 'cursor-pointer [&:hover>rect]:brightness-125' : undefined}>
+      <title>{`${name} · ${size} · ${share}`}</title>
       <rect
         x={x}
         y={y}
         width={width}
         height={height}
-        style={{ fill: mantineColorToCss(color ?? 'blue.8') }}
-        stroke='var(--mantine-color-dark-7)'
+        style={{ fill: mantineColorToCss(color ?? 'blue.8'), transition: 'filter 100ms' }}
+        stroke='var(--mantine-color-body)'
         strokeWidth={2}
       />
-      <text
-        x={x + width / 2}
-        y={y + height / 2}
-        textAnchor='middle'
-        dominantBaseline='middle'
-        clipPath={`url(#${clipId})`}
-        fill='var(--mantine-color-white)'
-        fontSize={12}
-        fontWeight={500}
-        style={{ pointerEvents: 'none', userSelect: 'none' }}
-      >
-        {name}
-      </text>
+      {showLabel && (
+        <foreignObject x={x} y={y} width={width} height={height} style={{ pointerEvents: 'none' }}>
+          <div className='flex h-full w-full flex-col justify-between overflow-hidden p-2 text-white select-none'>
+            <span className='truncate text-xs font-medium'>
+              {name}
+              {folder && '/'}
+            </span>
+            {showDetails && (
+              <span className='truncate text-xs tabular-nums opacity-80'>
+                {size} · {share}
+              </span>
+            )}
+          </div>
+        </foreignObject>
+      )}
     </g>
   );
 }
+
+type DirectorySizes = z.infer<typeof serverDirectorySizesSchema>;
 
 export default function LargestDirectoriesModal({ onClose, ...props }: ModalProps) {
   const { t } = useTranslations();
@@ -102,52 +111,152 @@ export default function LargestDirectoriesModal({ onClose, ...props }: ModalProp
   const [, setSearchParams] = useSearchParams();
 
   const [loading, setLoading] = useState(false);
-  const [entries, setEntries] = useState<z.infer<typeof serverDirectoryEntrySchema>[]>([]);
+  const [trail, setTrail] = useState<DirectorySizes[]>([]);
 
-  useEffect(() => {
-    if (!props.opened) {
-      setEntries([]);
-      return;
-    }
-
+  const load = (path: string[], node?: DirectorySizes) => {
     setLoading(true);
-    getLargestDirectories(server.uuid, browsingDirectory)
-      .then(setEntries)
+    getDirectorySizes(server.uuid, join(browsingDirectory, ...path))
+      .then((sizes) =>
+        setTrail((current) => [...current.slice(0, path.length), { ...sizes, name: node?.name ?? sizes.name }]),
+      )
       .catch((err) => addToast(httpErrorToHuman(err), 'error'))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    setTrail([]);
+    if (props.opened) {
+      load([]);
+    }
   }, [props.opened, server.uuid, browsingDirectory]);
 
-  const handleNavigate = useCallback(
-    (name: string) => {
-      onClose();
-      setSearchParams({ directory: join(browsingDirectory, name) });
-    },
-    [onClose, browsingDirectory, setSearchParams],
-  );
+  const path = trail.slice(1).map((node) => node.name);
+  const current = trail.at(-1);
 
-  const treemapData = entries.map((entry, i) => ({
-    name: entry.name,
-    value: entry.size,
-    color: TREEMAP_COLORS[i % TREEMAP_COLORS.length],
-    onCellClick: () => handleNavigate(entry.name),
-  }));
+  const handleNavigate = () => {
+    onClose();
+    setSearchParams({ directory: join(browsingDirectory, ...path) });
+  };
+
+  const zoom = (node: DirectorySizes) => {
+    if (node.truncated) {
+      load([...path, node.name], node);
+    } else {
+      setTrail([...trail, node]);
+    }
+  };
+
+  const total = current?.size ?? 0;
+  const share = (size: number) => `${total > 0 ? ((size / total) * 100).toFixed(1) : '0'}%`;
+  const bucket = (name: string, value: number, color: string) => ({
+    name,
+    value,
+    color,
+    size: bytesToString(value),
+    share: share(value),
+    folder: false,
+  });
+
+  const treemapData = current
+    ? [
+        ...current.children.map((node, i) => ({
+          name: node.name,
+          value: node.size,
+          color: TREEMAP_COLORS[i % TREEMAP_COLORS.length],
+          size: bytesToString(node.size),
+          share: share(node.size),
+          folder: true,
+          onCellClick: () => zoom(node),
+        })),
+        ...(current.filesSize > 0
+          ? [bucket(t('pages.server.files.modal.largestDirectories.files', {}), current.filesSize, 'gray.7')]
+          : []),
+        ...(current.otherSize > 0
+          ? [
+              bucket(
+                t('pages.server.files.modal.largestDirectories.smallerFolders', { count: current.otherCount }),
+                current.otherSize,
+                'gray.8',
+              ),
+            ]
+          : []),
+        ...(current.inaccessibleSize > 0
+          ? [
+              bucket(
+                t('pages.server.files.modal.largestDirectories.inaccessible', {}),
+                current.inaccessibleSize,
+                'dark.6',
+              ),
+            ]
+          : []),
+      ]
+    : [];
 
   return (
     <Modal title={t('pages.server.files.modal.largestDirectories.title', {})} size='xl' onClose={onClose} {...props}>
       <Stack gap='md'>
-        {loading ? (
-          <Spinner.Centered />
-        ) : treemapData.length === 0 ? (
-          <Text c='dimmed' ta='center' py='xl'>
-            {t('pages.server.files.modal.largestDirectories.empty', {})}
-          </Text>
+        {!current ? (
+          loading ? (
+            <Spinner.Centered />
+          ) : (
+            <Text c='dimmed' ta='center' py='xl'>
+              {t('pages.server.files.modal.largestDirectories.empty', {})}
+            </Text>
+          )
         ) : (
-          <Treemap
-            data={treemapData}
-            height={600}
-            valueFormatter={(value) => bytesToString(value)}
-            treemapProps={{ content: <TreemapCell /> }}
-          />
+          <>
+            <div className='flex items-center justify-between gap-2'>
+              <Breadcrumbs separatorMargin='xs' className='min-w-0 flex-wrap'>
+                {trail.map((node, i) =>
+                  i === trail.length - 1 ? (
+                    <span key={i} className='text-sm'>
+                      {i === 0 && browsingDirectory === '/' ? <FontAwesomeIcon icon={faFolderOpen} /> : node.name}
+                    </span>
+                  ) : (
+                    <Anchor
+                      component='button'
+                      type='button'
+                      key={i}
+                      size='sm'
+                      onClick={() => setTrail(trail.slice(0, i + 1))}
+                    >
+                      {i === 0 && browsingDirectory === '/' ? <FontAwesomeIcon icon={faFolderOpen} /> : node.name}
+                    </Anchor>
+                  ),
+                )}
+              </Breadcrumbs>
+              <div className='flex items-center gap-2'>
+                {loading && <Spinner size={16} />}
+                {trail.length > 1 && current.children.length > 0 && (
+                  <Button variant='default' size='xs' onClick={handleNavigate}>
+                    {t('pages.server.files.modal.largestDirectories.openFolder', {})}
+                  </Button>
+                )}
+              </div>
+            </div>
+            {trail.length > 1 && current.children.length === 0 ? (
+              <div className='flex h-130 flex-col justify-center'>
+                <EmptyState
+                  icon={faFolderOpen}
+                  title={current.name}
+                  description={t('pages.server.files.modal.largestDirectories.noSubdirectories', {
+                    size: bytesToString(current.size),
+                  })}
+                >
+                  <Button onClick={handleNavigate}>
+                    {t('pages.server.files.modal.largestDirectories.openFolder', {})}
+                  </Button>
+                </EmptyState>
+              </div>
+            ) : (
+              <Treemap
+                data={treemapData}
+                height={520}
+                withTooltip={false}
+                treemapProps={{ content: <TreemapCell />, isAnimationActive: false }}
+              />
+            )}
+          </>
         )}
       </Stack>
 

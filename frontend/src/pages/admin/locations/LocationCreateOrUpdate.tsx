@@ -32,7 +32,6 @@ export default ({ contextLocation }: { contextLocation?: z.infer<typeof adminLoc
   const form = useFormEngine<LocationFormValues>('admin.locations.createOrUpdate', {
     schema: adminLocationUpdateSchema.unwrap(),
     initialValues: locationEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const { loading, doCreateOrUpdate, doDelete } = useResourceForm<

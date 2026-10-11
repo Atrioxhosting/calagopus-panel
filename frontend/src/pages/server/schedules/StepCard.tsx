@@ -76,7 +76,7 @@ export function StepCardBody({ step, label, isActive, editable, dragHandleProps,
             </ActionIcon>
           )}
 
-          <ThemeIcon size='lg' color={isActive ? 'blue' : 'gray'} className='shrink-0'>
+          <ThemeIcon size='lg' color={isActive ? 'blue' : 'gray'} className='shrink-0 max-sm:hidden!'>
             {isActive ? (
               <AnimatedHourglass />
             ) : (
@@ -165,6 +165,7 @@ interface Props {
   onStepDuplicate?: (step: z.infer<typeof serverScheduleStepSchema>) => void;
   onStepAddBranch?: (step: z.infer<typeof serverScheduleStepSchema>, type: 'else_if' | 'else') => void;
   canAddElse?: boolean;
+  remainingSteps?: number;
   onStepToggle?: (open: boolean) => void;
 }
 
@@ -179,6 +180,7 @@ export default function StepCard({
   onStepDuplicate,
   onStepAddBranch,
   canAddElse,
+  remainingSteps = Infinity,
   onStepToggle,
 }: Props) {
   const { t } = useTranslations();
@@ -263,6 +265,7 @@ export default function StepCard({
             icon: faCodeBranch,
             label: t('pages.server.schedules.button.addElseIf', {}),
             hidden: !onStepAddBranch || !isBranchStart,
+            disabled: remainingSteps < 1,
             onClick: () => onStepAddBranch?.(step, 'else_if'),
             color: 'gray',
           },
@@ -271,6 +274,7 @@ export default function StepCard({
             icon: faCodeBranch,
             label: t('pages.server.schedules.button.addElse', {}),
             hidden: !onStepAddBranch || !isBranchStart || !canAddElse,
+            disabled: remainingSteps < 1,
             onClick: () => onStepAddBranch?.(step, 'else'),
             color: 'gray',
           },
@@ -278,6 +282,7 @@ export default function StepCard({
             type: 'action',
             icon: faClone,
             label: t('common.button.duplicate', {}),
+            disabled: remainingSteps < (step.action.type === 'if' ? 2 : 1),
             onClick: doDuplicate,
             color: 'gray',
           },

@@ -8,6 +8,7 @@ import disableEmailTwoFactor from '@/api/me/account/disableEmailTwoFactor.ts';
 import enableEmailTwoFactor from '@/api/me/account/enableEmailTwoFactor.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import CopyOnClick from '@/elements/CopyOnClick.tsx';
+import HiddenUsernameInput from '@/elements/input/HiddenUsernameInput.tsx';
 import PasswordInput from '@/elements/input/PasswordInput.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import FormModal from '@/elements/modals/FormModal.tsx';
@@ -16,6 +17,7 @@ import Code from '@/elements/typography/Code.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import { withTwoFactorMethod } from '@/lib/auth/twoFactor.ts';
 import { dashboardEmailTwoFactorToggleSchema } from '@/lib/schemas/dashboard.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -38,7 +40,7 @@ export default function EmailTwoFactorToggleButton() {
     initialValues: {
       password: '',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(
       dashboardEmailTwoFactorToggleSchema.extend({
         password: user?.hasPassword
@@ -113,6 +115,7 @@ export default function EmailTwoFactorToggleButton() {
           onSubmit={enabled ? doDisable : doEnable}
         >
           <Stack>
+            <HiddenUsernameInput username={user?.username ?? ''} />
             <Text>
               {enabled
                 ? t('pages.account.account.containers.emailTwoFactor.modal.disable.description', {}).md()

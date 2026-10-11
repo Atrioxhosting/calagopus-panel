@@ -3,6 +3,7 @@ import { useComputedColorScheme } from '@mantine/core';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import ReCAPTCHA from 'react-google-recaptcha';
+import Cap, { type CapRef } from '@/elements/captcha/Cap.tsx';
 import FriendlyCaptcha, { type FriendlyCaptchaRef } from '@/elements/captcha/FriendlyCaptcha.tsx';
 import { useGlobalStore } from '@/stores/global.ts';
 
@@ -35,6 +36,7 @@ const Captcha = ({ onValidChange, ref }: CaptchaProps) => {
   const recaptchaRef = useRef<ReCAPTCHA>(null);
   const hcaptchaRef = useRef<HCaptcha>(null);
   const friendlyCaptchaRef = useRef<FriendlyCaptchaRef>(null);
+  const capRef = useRef<CapRef>(null);
 
   const setValid = useCallback(() => onValidChange?.(true), [onValidChange]);
   const setInvalid = useCallback(() => onValidChange?.(false), [onValidChange]);
@@ -53,6 +55,9 @@ const Captcha = ({ onValidChange, ref }: CaptchaProps) => {
 
   const resetWidget = useCallback(() => {
     switch (captchaProvider.type) {
+      case 'cap':
+        capRef.current?.reset();
+        break;
       case 'turnstile':
         turnstileRef.current?.reset();
         break;
@@ -76,6 +81,9 @@ const Captcha = ({ onValidChange, ref }: CaptchaProps) => {
           let token: string | null = null;
 
           switch (captchaProvider.type) {
+            case 'cap':
+              token = capRef.current?.getResponse() || null;
+              break;
             case 'turnstile':
               token = turnstileRef.current?.getResponse() || null;
               break;
@@ -127,6 +135,18 @@ const Captcha = ({ onValidChange, ref }: CaptchaProps) => {
 
   return (
     <div key={`${captchaProvider.type}-${colorScheme}`} className='flex w-full items-center justify-center'>
+      {captchaProvider.type === 'cap' && (
+        <Cap
+          ref={capRef}
+          apiUrl={captchaProvider.apiUrl}
+          siteKey={captchaProvider.siteKey}
+          theme={colorScheme}
+          onComplete={setValid}
+          onExpire={setInvalid}
+          onError={setInvalid}
+        />
+      )}
+
       {captchaProvider.type === 'turnstile' && (
         <Turnstile
           ref={turnstileRef}

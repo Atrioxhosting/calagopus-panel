@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { databaseType } from '@/lib/schemas/generic.ts';
+import { ruleMessage } from '@/lib/schemas/rules.ts';
 
 export const serverDatabaseSchema = z.looseObject({
   uuid: z.string(),
@@ -13,12 +14,14 @@ export const serverDatabaseSchema = z.looseObject({
   created: z.coerce.date(),
 });
 
+const databaseNameRule = ruleMessage((t) => t('common.form.rule.databaseName', {}));
+
 export const serverDatabaseCreateSchema = z.object({
   name: z
     .string()
-    .min(1)
-    .max(31)
-    .regex(/^[a-zA-Z0-9_]+$/),
+    .min(1, databaseNameRule)
+    .max(31, databaseNameRule)
+    .regex(/^[a-zA-Z0-9_]+$/, databaseNameRule),
   databaseHostUuid: z.uuid(),
 });
 

@@ -109,6 +109,7 @@ pub struct Env {
     app_debug: AtomicBool,
     pub app_enable_wings_proxy: bool,
     pub app_disable_frontend: bool,
+    pub app_disable_extension_management: bool,
     pub app_use_decryption_cache: bool,
     pub app_use_internal_cache: bool,
     pub app_trusted_proxies: Vec<cidr::IpCidr>,
@@ -295,6 +296,11 @@ impl Env {
                 .trim_matches('"')
                 .parse()
                 .context("Invalid APP_DISABLE_FRONTEND value")?,
+            app_disable_extension_management: std::env::var("APP_DISABLE_EXTENSION_MANAGEMENT")
+                .unwrap_or("false".to_string())
+                .trim_matches('"')
+                .parse()
+                .context("Invalid APP_DISABLE_EXTENSION_MANAGEMENT value")?,
             app_use_decryption_cache: std::env::var("APP_USE_DECRYPTION_CACHE")
                 .unwrap_or("false".to_string())
                 .trim_matches('"')

@@ -22,6 +22,36 @@ pub enum ServerSelector {
     All,
 }
 
+#[derive(Debug, ToSchema, Deserialize, Serialize, Clone)]
+#[serde(tag = "adapter")]
+#[non_exhaustive]
+pub enum BackupTestTarget {
+    #[serde(rename = "wings")]
+    Wings,
+    #[serde(rename = "s3")]
+    S3 {
+        configuration: super::S3TestConfiguration,
+    },
+    #[serde(rename = "ddup-bak")]
+    DdupBak,
+    #[serde(rename = "btrfs")]
+    Btrfs,
+    #[serde(rename = "zfs")]
+    Zfs,
+    #[serde(rename = "restic")]
+    Restic {
+        configuration: Option<super::ResticBackupConfiguration>,
+    },
+    #[serde(rename = "proxmox-backup-server")]
+    ProxmoxBackupServer {
+        configuration: super::PbsRepositoryConfiguration,
+    },
+    #[serde(rename = "kopia")]
+    Kopia {
+        configuration: super::KopiaBackupConfiguration,
+    },
+}
+
 impl std::fmt::Display for super::StreamableArchiveFormat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(

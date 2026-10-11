@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { adminServerFeatureLimitsSchema, adminServerLimitsSchema } from '@/lib/schemas/admin/servers.ts';
+import { usernameSchema } from '@/lib/schemas/rules.ts';
 import { nullableString } from '@/lib/serialization/transformers.ts';
 import { hostnameSchema } from './generic.ts';
 
@@ -49,11 +50,7 @@ export const oobeNodeSchema = z.object({
 
 export const oobeRegister = z
   .object({
-    username: z
-      .string()
-      .min(3)
-      .max(15)
-      .regex(/^[a-zA-Z0-9_]+$/),
+    username: usernameSchema,
     email: z.email(),
     nameFirst: z.preprocess(nullableString, z.string().min(1).max(255).nullable()),
     nameLast: z.preprocess(nullableString, z.string().min(1).max(255).nullable()),

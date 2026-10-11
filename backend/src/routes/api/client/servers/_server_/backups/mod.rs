@@ -323,46 +323,6 @@ mod post {
             None => None,
         };
 
-        let backups_lock = state
-            .cache
-            .lock(
-                format!("servers::{}::backups", server.uuid),
-                Some(30),
-                Some(5),
-            )
-            .await?;
-
-        let kind = if database_instance.is_some() {
-            ServerBackupKind::DatabaseInstance
-        } else {
-            ServerBackupKind::Server
-        };
-
-        let backups = ServerBackup::count_by_server_uuid(&state.database, server.uuid).await?;
-        if backups >= server.backup_limit as i64 {
-            let evicted = match ServerBackup::evict_for_create(
-                &state,
-                server.uuid,
-                kind,
-                EvictionMode::Expendable,
-            )
-            .await
-            {
-                Ok(evicted) => evicted as i64,
-                Err(err) => {
-                    tracing::error!(server = %server.uuid, "failed to evict old backups: {err:#?}");
-
-                    0
-                }
-            };
-
-            if backups - evicted >= server.backup_limit as i64 {
-                return ApiResponse::error("maximum number of backups reached")
-                    .with_status(StatusCode::EXPECTATION_FAILED)
-                    .ok();
-            }
-        }
-
         let ratelimit = state
             .settings
             .get_as(|s| s.ratelimits.client_servers_backups_create)
@@ -376,6 +336,60 @@ mod post {
                 server.uuid.to_string(),
             )
             .await?;
+
+        let backups_lock = state
+            .cache
+            .lock(
+                format!("servers::{}::backups", server.uuid),
+                Some(30),
+                Some(5000),
+            )
+            .await?;
+
+        let kind = if database_instance.is_some() {
+            ServerBackupKind::DatabaseInstance
+        } else {
+            ServerBackupKind::Server
+        };
+
+        let backups = ServerBackup::count_by_server_uuid(&state.database, server.uuid).await?;
+        if backups >= server.backup_limit as i64 {
+            let outcome = match ServerBackup::evict_for_create(
+                &state,
+                server.uuid,
+                kind,
+                EvictionMode::Expendable,
+            )
+            .await
+            {
+                Ok(outcome) => outcome,
+                Err(err) => {
+                    tracing::error!(server = %server.uuid, "failed to evict old backups: {err:#?}");
+
+                    return ApiResponse::error(
+                        "failed to delete old backups to make room for a new one",
+                    )
+                    .with_status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .ok();
+                }
+            };
+
+            if backups - outcome.evicted as i64 >= server.backup_limit as i64 {
+                return if outcome.failed > 0 {
+                    ApiResponse::error("failed to delete old backups to make room for a new one")
+                        .with_status(StatusCode::INTERNAL_SERVER_ERROR)
+                } else if outcome.maintenance > 0 {
+                    ApiResponse::error(
+                        "cannot delete old backups while their backup configuration is in maintenance mode",
+                    )
+                    .with_status(StatusCode::EXPECTATION_FAILED)
+                } else {
+                    ApiResponse::error("maximum number of backups reached")
+                        .with_status(StatusCode::EXPECTATION_FAILED)
+                }
+                .ok();
+            }
+        }
 
         let (ignored_files, metadata) = match &database_instance {
             Some(database_instance) => (

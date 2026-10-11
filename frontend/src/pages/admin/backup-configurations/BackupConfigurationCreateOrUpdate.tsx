@@ -27,6 +27,7 @@ import BackupPBS from '@/pages/admin/backup-configurations/forms/BackupPBS.tsx';
 import BackupRestic from '@/pages/admin/backup-configurations/forms/BackupRestic.tsx';
 import BackupS3 from '@/pages/admin/backup-configurations/forms/BackupS3.tsx';
 import BackupConfigurationDuplicateModal from '@/pages/admin/backup-configurations/modals/BackupConfigurationDuplicateModal.tsx';
+import BackupConfigurationTestModal from '@/pages/admin/backup-configurations/modals/BackupConfigurationTestModal.tsx';
 import { useResourceForm } from '@/plugins/resource/useResourceForm.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import {
@@ -84,7 +85,7 @@ export default function BackupConfigurationCreateOrUpdate({
   contextBackupConfiguration?: z.infer<typeof adminBackupConfigurationSchema>;
 }) {
   const { t } = useTranslations();
-  const [openModal, setOpenModal] = useState<'delete' | 'duplicate' | null>(null);
+  const [openModal, setOpenModal] = useState<'delete' | 'duplicate' | 'test' | null>(null);
   const [removeProvider, setRemoveProvider] = useState<typeof backupDisk | null>(null);
 
   const form = useFormEngine<BackupConfigFormValues, z.infer<typeof adminBackupConfigurationUpdateSchema>>(
@@ -92,14 +93,12 @@ export default function BackupConfigurationCreateOrUpdate({
     {
       schema: adminBackupConfigurationUpdateSchema.unwrap(),
       initialValues: backupConfigurationEmptyFormValues,
-      validateInputOnBlur: true,
     },
   );
 
   const s3Form = useFormEngine<z.infer<typeof adminBackupConfigurationS3Schema>>('admin.backupConfigurations.s3', {
     schema: adminBackupConfigurationS3Schema,
     initialValues: backupConfigurationS3EmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const resticForm = useFormEngine<z.infer<typeof adminBackupConfigurationResticSchema>>(
@@ -107,14 +106,12 @@ export default function BackupConfigurationCreateOrUpdate({
     {
       schema: adminBackupConfigurationResticSchema,
       initialValues: backupConfigurationResticEmptyFormValues,
-      validateInputOnBlur: true,
     },
   );
 
   const pbsForm = useFormEngine<z.infer<typeof adminBackupConfigurationPbsSchema>>('admin.backupConfigurations.pbs', {
     schema: adminBackupConfigurationPbsSchema,
     initialValues: backupConfigurationPbsEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const kopiaForm = useFormEngine<z.infer<typeof adminBackupConfigurationKopiaSchema>>(
@@ -122,7 +119,6 @@ export default function BackupConfigurationCreateOrUpdate({
     {
       schema: adminBackupConfigurationKopiaSchema,
       initialValues: backupConfigurationKopiaEmptyFormValues,
-      validateInputOnBlur: true,
     },
   );
 
@@ -253,6 +249,14 @@ export default function BackupConfigurationCreateOrUpdate({
         }).md()}
       </ConfirmationModal>
 
+      {backupDisk && (
+        <BackupConfigurationTestModal
+          opened={openModal === 'test'}
+          onClose={() => setOpenModal(null)}
+          buildTest={() => ({ backupDisk, backupConfigs: buildBackupConfigs() })}
+        />
+      )}
+
       {contextBackupConfiguration && (
         <BackupConfigurationDuplicateModal
           backupConfiguration={contextBackupConfiguration}
@@ -283,6 +287,9 @@ export default function BackupConfigurationCreateOrUpdate({
                 {t('common.button.saveAndStay', {})}
               </Button>
             )}
+            <Button variant='default' onClick={() => setOpenModal('test')} disabled={submitDisabled}>
+              {t('common.button.test', {})}
+            </Button>
           </AdminCan>
           {contextBackupConfiguration && (
             <AdminCan action='backup-configurations.create'>

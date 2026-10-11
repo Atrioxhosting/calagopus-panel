@@ -1,6 +1,6 @@
 import { faHeart, faHeartBroken } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { forwardRef } from 'react';
+import { forwardRef, ReactNode } from 'react';
 import Badge from '@/elements/data-display/Badge.tsx';
 import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import TableLink from '@/elements/data-display/TableLink.tsx';
@@ -22,15 +22,16 @@ interface NodeRowProps {
   isSelected?: boolean;
   onSelectionChange?: (selected: boolean) => void;
   contextMenuProps?: ContextMenuChildrenProps;
+  nameSection?: ReactNode;
 }
 
 const NodeRow = forwardRef<HTMLTableRowElement, NodeRowProps>(function NodeRow(
-  { node, desync, isSelected = false, onSelectionChange, contextMenuProps },
+  { node, desync, isSelected = false, onSelectionChange, contextMenuProps, nameSection },
   ref,
 ) {
   const { t } = useTranslations();
   const { version, unavailable, loading, updateAvailable } = useNodeVersion(node);
-  const { state: deploymentState, usage: deploymentUsage } = useNodeDeployment(node);
+  const { state: deploymentState, usage: deploymentUsage, loading: deploymentLoading } = useNodeDeployment(node);
 
   return (
     <TableRow
@@ -113,7 +114,11 @@ const NodeRow = forwardRef<HTMLTableRowElement, NodeRowProps>(function NodeRow(
               )
             }
           >
-            <Badge color={nodeDeploymentStateInfo[deploymentState].badgeColor} variant='light'>
+            <Badge
+              color={nodeDeploymentStateInfo[deploymentState].badgeColor}
+              variant='light'
+              loading={deploymentLoading}
+            >
               {nodeDeploymentStateInfo[deploymentState].label()}
             </Badge>
           </Tooltip>
@@ -122,6 +127,7 @@ const NodeRow = forwardRef<HTMLTableRowElement, NodeRowProps>(function NodeRow(
               <FontAwesomeIcon icon={faHeart} className='text-purple-500' />
             </Tooltip>
           )}
+          {nameSection}
         </span>
       </TableData>
 

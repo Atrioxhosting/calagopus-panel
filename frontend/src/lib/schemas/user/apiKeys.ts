@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const userApiKeySchema = z.looseObject({
-  uuid: z.string(),
+  uuid: z.uuid(),
   name: z.string().min(3).max(31),
   keyStart: z.string(),
   allowedIps: z.array(z.ipv4().or(z.ipv6()).or(z.cidrv4()).or(z.cidrv6())),

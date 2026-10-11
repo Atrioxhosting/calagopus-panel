@@ -12,6 +12,7 @@ import Select from '@/elements/input/Select.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import { serverSettingsAutostartSchema } from '@/lib/schemas/server/settings.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
@@ -28,7 +29,7 @@ export default function AutostartContainer() {
     initialValues: {
       behavior: server.autoStartBehavior,
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(serverSettingsAutostartSchema),
   });
 

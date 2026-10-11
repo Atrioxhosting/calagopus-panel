@@ -8,8 +8,11 @@ import { AdminCan } from '@/elements/Can.tsx';
 import AdminSubContentContainer from '@/elements/containers/AdminSubContentContainer.tsx';
 import Select from '@/elements/input/Select.tsx';
 import Group from '@/elements/layout/Group.tsx';
+import ConditionalTooltip from '@/elements/overlays/ConditionalTooltip.tsx';
 import { mailModeTypeLabelMapping, mappingToSelectData } from '@/lib/enums.ts';
 import { adminSettingsEmailSchema } from '@/lib/schemas/admin/settings.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
+import { useFormDraft } from '@/plugins/form/useFormDraft.ts';
 import { useHydrateForm } from '@/plugins/form/useHydrateForm.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useAdminStore } from '@/stores/admin.tsx';
@@ -29,11 +32,12 @@ export default function EmailContainer() {
 
   const form = useForm<EmailValues>({
     initialValues: emailEmptyFormValues,
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(adminSettingsEmailSchema),
   });
 
   useHydrateForm(form, mailMode, emailToFormValues);
+  useFormDraft(form, 'mail');
 
   const { loading, submit } = useSettingsSection({
     form,
@@ -62,9 +66,19 @@ export default function EmailContainer() {
         <Group mt='md'>
           <SettingsSaveButton loading={loading} disabled={!form.isValid()} />
           <AdminCan action='settings.read'>
-            <Button variant='outline' loading={loading} onClick={() => setTestModalOpen(true)}>
-              {t('common.button.sendTestEmail', {})}
-            </Button>
+            <ConditionalTooltip
+              enabled={mailMode.type === 'none'}
+              label={t('pages.admin.settings.tabs.mail.page.tooltip.noProvider', {})}
+            >
+              <Button
+                variant='outline'
+                loading={loading}
+                disabled={mailMode.type === 'none'}
+                onClick={() => setTestModalOpen(true)}
+              >
+                {t('common.button.sendTestEmail', {})}
+              </Button>
+            </ConditionalTooltip>
           </AdminCan>
         </Group>
       </form>

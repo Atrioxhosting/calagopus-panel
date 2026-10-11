@@ -26,10 +26,10 @@ export default function TwoFactorContainer() {
 
   const methodLabel = (method: (typeof methods)[number]) =>
     method === 'totp'
-      ? t('pages.account.account.containers.twoFactor.method.totp', {})
+      ? t('pages.account.account.containers.twoFactor.enum.twoFactorMethod.totp', {})
       : method === 'security_key'
-        ? t('pages.account.account.containers.twoFactor.method.securityKey', {})
-        : t('pages.account.account.containers.twoFactor.method.email', {});
+        ? t('pages.account.account.containers.twoFactor.enum.twoFactorMethod.securityKey', {})
+        : t('pages.account.account.containers.twoFactor.enum.twoFactorMethod.email', {});
 
   return (
     <TitleCard

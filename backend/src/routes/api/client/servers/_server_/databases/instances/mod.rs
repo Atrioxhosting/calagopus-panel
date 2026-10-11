@@ -181,7 +181,7 @@ mod post {
         tokio::spawn(async move {
             let deployment_lock = state
                 .cache
-                .lock("database_agent_hosts::deployment", Some(30), Some(5))
+                .lock("database_agent_hosts::deployment", Some(30), Some(5000))
                 .await?;
 
             let used = shared::models::server_database::ServerDatabase::count_by_server_uuid(

@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import debounce from 'debounce';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -39,6 +39,7 @@ export function useSearchablePaginatedTable<T>({
   refetchInterval = false,
 }: UseSearchablePaginatedTableOptions<T>) {
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [search, setSearch] = useState(modifyParams ? searchParams.get('search') || '' : '');
@@ -139,5 +140,6 @@ export function useSearchablePaginatedTable<T>({
     page,
     setPage,
     refetch: () => refetch(),
+    invalidate: () => queryClient.invalidateQueries({ queryKey: [...queryKey, ...deps] }),
   };
 }

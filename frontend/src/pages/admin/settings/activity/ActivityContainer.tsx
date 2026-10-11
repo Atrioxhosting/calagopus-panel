@@ -6,6 +6,8 @@ import AdminSubContentContainer from '@/elements/containers/AdminSubContentConta
 import { FormEngine } from '@/elements/form-engine/index.ts';
 import Group from '@/elements/layout/Group.tsx';
 import { adminSettingsActivitySchema } from '@/lib/schemas/admin/settings.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
+import { useFormDraft } from '@/plugins/form/useFormDraft.ts';
 import { useHydrateForm } from '@/plugins/form/useHydrateForm.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useAdminStore } from '@/stores/admin.tsx';
@@ -21,11 +23,12 @@ export default function ActivityContainer() {
 
   const form = useForm<ActivityValues>({
     initialValues: activityEmptyFormValues,
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(adminSettingsActivitySchema),
   });
 
   useHydrateForm(form, activity, activityToFormValues);
+  useFormDraft(form, 'activity');
 
   const { loading, submit } = useSettingsSection({
     form,

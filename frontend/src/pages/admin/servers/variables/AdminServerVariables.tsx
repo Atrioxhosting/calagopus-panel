@@ -5,12 +5,14 @@ import updateServerVariables from '@/api/admin/servers/variables/updateServerVar
 import { httpErrorToHuman } from '@/api/axios.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import AdminSubContentContainer from '@/elements/containers/AdminSubContentContainer.tsx';
+import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import VariableContainer from '@/elements/VariableContainer.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { AdminServer } from '@/lib/schemas/admin/servers.ts';
 import { serverVariableSchema } from '@/lib/schemas/server/startup.ts';
 import { useKeyboardShortcut } from '@/plugins/quick-actions/useKeyboardShortcuts.ts';
 import { useResource } from '@/plugins/resource/useResource.ts';
+import { useBlocker } from '@/plugins/useBlocker.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -19,6 +21,7 @@ export default function AdminServerVariables({ server }: { server: AdminServer }
   const { addToast } = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const blocker = useBlocker(Object.keys(values).length > 0);
 
   const { data: serverVariables = [], invalidate } = useResource<z.infer<typeof serverVariableSchema>[]>({
     queryKey: queryKeys.admin.servers.variables(server.uuid),
@@ -68,6 +71,16 @@ export default function AdminServerVariables({ server }: { server: AdminServer }
       registry={window.extensionContext.extensionRegistry.pages.admin.servers.view.variables.subContainer}
       registryProps={{ server }}
     >
+      <ConfirmationModal
+        title={t('common.modal.unsavedChanges.title', {})}
+        opened={blocker.state === 'blocked'}
+        onClose={() => blocker.reset()}
+        onConfirmed={() => blocker.proceed()}
+        confirm={t('common.button.leavePage', {})}
+      >
+        {t('common.modal.unsavedChanges.content', {}).md()}
+      </ConfirmationModal>
+
       <div className='grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4'>
         {serverVariables.map((variable) => (
           <VariableContainer

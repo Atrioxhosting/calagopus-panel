@@ -37,7 +37,6 @@ export default function BackupGroupEditModal({ group, ...props }: Props) {
       name: group.name,
       retention: group.retention,
     },
-    validateInputOnBlur: true,
     schema: serverBackupGroupUpdateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {

@@ -17,6 +17,7 @@ import Stack from '@/elements/layout/Stack.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import Title from '@/elements/typography/Title.tsx';
 import { authForgotPasswordSchema } from '@/lib/schemas/auth.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useGlobalStore } from '@/stores/global.ts';
 import AuthWrapper from './AuthWrapper.tsx';
@@ -36,7 +37,7 @@ export default function ForgotPassword() {
     initialValues: {
       email: '',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(authForgotPasswordSchema),
   });
 
@@ -99,34 +100,41 @@ export default function ForgotPassword() {
         </div>
 
         <Card>
-          <Stack>
-            <TextInput
-              label={t('common.form.email', {})}
-              placeholder={t('pages.auth.forgotPassword.form.emailPlaceholder', {})}
-              autoComplete='email'
-              onKeyDown={(e) => e.key === 'Enter' && form.isValid() && captcha.isValid && !requested && submit()}
-              leftSection={<FontAwesomeIcon icon={faEnvelope} />}
-              size='md'
-              autoFocus
-              {...form.getInputProps('email')}
-            />
+          <form
+            onSubmit={form.onSubmit(() => {
+              if (captcha.isValid && !requested) {
+                submit();
+              }
+            })}
+          >
+            <Stack>
+              <TextInput
+                label={t('common.form.email', {})}
+                placeholder={t('pages.auth.forgotPassword.form.emailPlaceholder', {})}
+                autoComplete='email'
+                leftSection={<FontAwesomeIcon icon={faEnvelope} />}
+                size='md'
+                autoFocus
+                {...form.getInputProps('email')}
+              />
 
-            <Button
-              onClick={submit}
-              loading={loading}
-              disabled={requested || !form.isValid() || !captcha.isValid}
-              size='md'
-              fullWidth
-            >
-              {t('pages.auth.forgotPassword.button.request', {})}
-            </Button>
+              <Button
+                type='submit'
+                loading={loading}
+                disabled={requested || !form.isValid() || !captcha.isValid}
+                size='md'
+                fullWidth
+              >
+                {t('pages.auth.forgotPassword.button.request', {})}
+              </Button>
 
-            <Divider label={t('common.divider.or', {})} labelPosition='center' />
+              <Divider label={t('common.divider.or', {})} labelPosition='center' />
 
-            <Button variant='light' onClick={() => navigate('/auth/login')} size='md' fullWidth>
-              {t('pages.auth.button.login', {})}
-            </Button>
-          </Stack>
+              <Button variant='light' onClick={() => navigate('/auth/login')} size='md' fullWidth>
+                {t('pages.auth.button.login', {})}
+              </Button>
+            </Stack>
+          </form>
         </Card>
         <Captcha {...captcha.props} />
       </Stack>

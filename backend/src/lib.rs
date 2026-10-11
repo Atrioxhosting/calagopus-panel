@@ -198,6 +198,18 @@ fn handle_panic(err: Box<dyn std::any::Any + Send + 'static>) -> Response<Body> 
         .into_response()
 }
 
+fn etag_matches(if_none_match: &str, etag: &str) -> bool {
+    fn opaque(tag: &str) -> &str {
+        tag.trim().trim_start_matches("W/").trim_matches('"')
+    }
+
+    let etag = opaque(etag);
+
+    if_none_match
+        .split(',')
+        .any(|candidate| candidate.trim() == "*" || opaque(candidate) == etag)
+}
+
 pub async fn handle_postprocessing(
     state: GetState,
     req: Request,
@@ -284,10 +296,11 @@ pub async fn handle_postprocessing(
         hash.update(&body_bytes);
         let hash = hex::encode(hash.finalize());
 
-        parts.headers.insert("ETag", hash.parse().unwrap());
+        let etag = format!("\"{hash}\"");
+        parts.headers.insert("ETag", etag.parse().unwrap());
 
         (
-            Some(hash),
+            Some(etag),
             Response::from_parts(parts, Body::from(body_bytes)),
         )
     } else {
@@ -296,7 +309,7 @@ pub async fn handle_postprocessing(
 
     // we cant directly compare because if both are None, It'd return NOT_MODIFIED
     if let Some(etag) = etag
-        && if_none_match == Some(etag)
+        && if_none_match.is_some_and(|if_none_match| etag_matches(&if_none_match, &etag))
     {
         let mut cached_response = Response::builder()
             .status(StatusCode::NOT_MODIFIED)
@@ -1007,6 +1020,39 @@ pub async fn handle_startup() -> Result<
                     }
 
                     let is_index = asset.is_none();
+                    let mut script_nonce = None;
+                    let content_security_policy = if is_index {
+                        let settings = state.settings.get().await?;
+                        let script_csp = settings.captcha_provider.to_csp_script_src();
+                        let style_csp = settings.captcha_provider.to_csp_style_src();
+                        if matches!(
+                            settings.captcha_provider,
+                            shared::settings::CaptchaProvider::Cap { .. }
+                        ) {
+                            script_nonce = Some(uuid::Uuid::new_v4().simple().to_string());
+                        }
+                        let nonce_csp = script_nonce
+                            .as_ref()
+                            .map(|nonce| format!(" 'nonce-{nonce}'"))
+                            .unwrap_or_default();
+
+                        Some(format!(
+                            "default-src 'self'; \
+                                script-src 'self' blob: {script_csp}{nonce_csp}; \
+                                frame-src *; \
+                                style-src 'self' 'unsafe-inline' {style_csp}; \
+                                connect-src * blob:; \
+                                font-src 'self' blob: data:; \
+                                img-src * blob: data:; \
+                                media-src 'self' blob: data:; \
+                                object-src blob: data:; \
+                                base-uri 'self'; \
+                                form-action 'self'; \
+                                frame-ancestors 'self';"
+                        ))
+                    } else {
+                        None
+                    };
 
                     let accepts_gzip = parts
                         .headers
@@ -1023,14 +1069,31 @@ pub async fn handle_startup() -> Result<
                             })
                         });
 
+                    let cache_control = if asset
+                        .as_ref()
+                        .is_some_and(|asset| asset.path.starts_with("assets/"))
+                    {
+                        "public, max-age=31536000, immutable"
+                    } else {
+                        "no-cache"
+                    };
+
                     let (body, content_type, content_encoding) = match asset {
-                        None => (
-                            Body::from(axum::body::Bytes::from_owner(
-                                state.settings.get_rendered_index_html(),
-                            )),
-                            "text/html",
-                            None,
-                        ),
+                        None => {
+                            let html = state.settings.get_rendered_index_html();
+                            let body = if let Some(nonce) = script_nonce {
+                                let html: &str = html.as_ref();
+                                Body::from(html.replacen(
+                                    "</head>",
+                                    &format!("<meta name=\"cap-script-nonce\" content=\"{nonce}\"></head>"),
+                                    1,
+                                ))
+                            } else {
+                                Body::from(axum::body::Bytes::from_owner(html))
+                            };
+
+                            (body, "text/html", None)
+                        }
                         Some(asset) => {
                             let content_type = frontend_asset_content_type(&asset);
 
@@ -1051,38 +1114,14 @@ pub async fn handle_startup() -> Result<
                     };
 
                     return ApiResponse::new(body)
-                    .with_header("Content-Type", content_type)
-                    .with_optional_header("Content-Encoding", content_encoding)
-                    .with_header("Vary", "Accept-Encoding")
-                    .with_optional_header(
-                        "Content-Security-Policy",
-                        if is_index {
-                            let settings = state.settings.get().await?;
-                            let script_csp = settings.captcha_provider.to_csp_script_src();
-                            let style_csp = settings.captcha_provider.to_csp_style_src();
-                            drop(settings);
-
-                            Some(format!(
-                                "default-src 'self'; \
-                                    script-src 'self' blob: {script_csp}; \
-                                    frame-src *; \
-                                    style-src 'self' 'unsafe-inline' {style_csp}; \
-                                    connect-src * blob:; \
-                                    font-src 'self' blob: data:; \
-                                    img-src * blob: data:; \
-                                    media-src 'self' blob: data:; \
-                                    object-src blob: data:; \
-                                    base-uri 'self'; \
-                                    form-action 'self'; \
-                                    frame-ancestors 'self';"
-                            ))
-                        } else {
-                            None
-                        },
-                    )
-                    .with_header("X-Content-Type-Options", "nosniff")
-                    .with_header("X-Frame-Options", "SAMEORIGIN")
-                    .ok();
+                        .with_header("Content-Type", content_type)
+                        .with_optional_header("Content-Encoding", content_encoding)
+                        .with_header("Vary", "Accept-Encoding")
+                        .with_header("Cache-Control", cache_control)
+                        .with_optional_header("Content-Security-Policy", content_security_policy)
+                        .with_header("X-Content-Type-Options", "nosniff")
+                        .with_header("X-Frame-Options", "SAMEORIGIN")
+                        .ok();
                 }
 
                 ApiResponse::error("route not found")

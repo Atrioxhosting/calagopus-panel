@@ -14,6 +14,7 @@ import FormModal from '@/elements/modals/FormModal.tsx';
 import { ModalFooter } from '@/elements/modals/Modal.tsx';
 import { resolvePorts } from '@/lib/network/ip.ts';
 import { adminNodeAllocationsSchema, adminNodeSchema } from '@/lib/schemas/admin/nodes.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -34,7 +35,7 @@ export default function NodeAllocationsCreateModal({
       ipAlias: null,
       ports: [],
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(adminNodeAllocationsSchema),
   });
 

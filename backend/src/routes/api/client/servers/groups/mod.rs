@@ -95,7 +95,7 @@ mod post {
             .lock(
                 format!("users::{}::server_groups", user.uuid),
                 Some(30),
-                Some(5),
+                Some(5000),
             )
             .await?;
 

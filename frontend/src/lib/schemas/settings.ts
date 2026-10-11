@@ -28,12 +28,19 @@ export const publicSettingsCaptchaProviderFriendlyCaptchaSchema = z.object({
   siteKey: z.string(),
 });
 
+export const publicSettingsCaptchaProviderCapSchema = z.object({
+  type: z.literal('cap'),
+  apiUrl: z.string(),
+  siteKey: z.string(),
+});
+
 export const publicSettingsCaptchaProviderSchema = z.discriminatedUnion('type', [
   publicSettingsCaptchaProviderNoneSchema,
   publicSettingsCaptchaProviderTurnstileSchema,
   publicSettingsCaptchaProviderRecaptchaSchema,
   publicSettingsCaptchaProviderHcaptchaSchema,
   publicSettingsCaptchaProviderFriendlyCaptchaSchema,
+  publicSettingsCaptchaProviderCapSchema,
 ]);
 
 export const publicSettingsSchema = z.object({

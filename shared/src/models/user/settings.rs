@@ -75,7 +75,11 @@ impl super::User {
     ) -> Result<UserSettingsMut, anyhow::Error> {
         let lock = database
             .cache
-            .lock(format!("users::{}::settings", self.uuid), Some(30), Some(5))
+            .lock(
+                format!("users::{}::settings", self.uuid),
+                Some(30),
+                Some(5000),
+            )
             .await?;
 
         Ok(UserSettingsMut {

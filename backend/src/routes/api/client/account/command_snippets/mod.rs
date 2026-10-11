@@ -120,7 +120,7 @@ mod post {
             .lock(
                 format!("users::{}::command_snippets", user.uuid),
                 Some(30),
-                Some(5),
+                Some(5000),
             )
             .await?;
 

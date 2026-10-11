@@ -121,8 +121,10 @@ impl ApiError {
 #[serde(rename_all = "snake_case")]
 pub enum AppContainerType {
     Official,
+    #[serde(rename = "official_aio")]
     OfficialAIO,
     OfficialHeavy,
+    #[serde(rename = "official_heavy_aio")]
     OfficialHeavyAIO,
     Unknown,
     None,
@@ -181,6 +183,24 @@ pub struct AppState {
 }
 
 impl AppState {
+    pub fn ensure_extension_management(&self) -> Result<(), response::ApiResponse> {
+        if !self.container_type.is_heavy() {
+            return Err(response::ApiResponse::error(
+                "extension management is only available in the official heavy container",
+            )
+            .with_status(axum::http::StatusCode::NOT_IMPLEMENTED));
+        }
+
+        if self.env.app_disable_extension_management {
+            return Err(response::ApiResponse::error(
+                "extension management has been disabled by an administrator",
+            )
+            .with_status(axum::http::StatusCode::FORBIDDEN));
+        }
+
+        Ok(())
+    }
+
     pub async fn new_cli(env: Option<Arc<env::Env>>) -> Result<State, anyhow::Error> {
         let env = match env {
             Some(env) => env,

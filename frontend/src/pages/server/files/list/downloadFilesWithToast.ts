@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import { ContextMenuItem } from '@/elements/overlays/ContextMenu.tsx';
 import { streamingArchiveFormatLabelMapping } from '@/lib/enums.ts';
+import { downloadUrl } from '@/lib/network/url.ts';
 import { streamingArchiveFormat } from '@/lib/schemas/generic.ts';
 import { AddToast } from '@/providers/contexts/toastContext.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -16,7 +17,7 @@ export function downloadFilesWithToast(
   return request
     .then(({ url }) => {
       addToast(t('pages.server.files.toast.downloadStarted', {}), 'success');
-      window.location.href = url;
+      downloadUrl(url);
     })
     .catch((msg) => {
       const message = httpErrorToHuman(msg);

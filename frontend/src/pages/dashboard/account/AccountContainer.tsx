@@ -14,6 +14,7 @@ import TextInput from '@/elements/input/TextInput.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import { dashboardAccountSchema } from '@/lib/schemas/dashboard.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -36,7 +37,7 @@ export default function AccountContainer({ requireTwoFactorActivation }: Account
       nameLast: '',
       language: '',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(dashboardAccountSchema),
   });
 

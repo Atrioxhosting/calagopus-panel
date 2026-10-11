@@ -627,6 +627,7 @@ pub struct DuplicateNestEggVariableOptions {
 #[async_trait::async_trait]
 impl DuplicableModel for NestEggVariable {
     type DuplicateOptions<'a> = DuplicateNestEggVariableOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<NestEggVariable>> =

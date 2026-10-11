@@ -31,6 +31,7 @@ import { adminEggSchema } from '@/lib/schemas/admin/eggs.ts';
 import { adminNestSchema } from '@/lib/schemas/admin/nests.ts';
 import { adminNodeAllocationSchema } from '@/lib/schemas/admin/nodes.ts';
 import { oobeServerSchema } from '@/lib/schemas/oobe.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useSearchableResource } from '@/plugins/resource/useSearchableResource.ts';
 import { useAuth } from '@/providers/contexts/authContext.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -86,7 +87,7 @@ export default function OobeServer({ onNext, onBack, canGoBack, skipFrom, data }
       allocationUuid: null,
       allocationUuids: [],
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(oobeServerSchema),
   });
 

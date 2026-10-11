@@ -9,6 +9,7 @@ import Switch from '@/elements/input/Switch.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import { Modal, ModalFooter } from '@/elements/modals/Modal.tsx';
 import Text from '@/elements/typography/Text.tsx';
+import { databaseAgentTypeDumpExtensionMapping } from '@/lib/enums.ts';
 import { serverDatabaseInstanceSchema } from '@/lib/schemas/server/databaseInstances.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -65,6 +66,7 @@ export default function DatabaseInstanceImportModal({ instance, ...props }: Prop
         <FileInput
           withAsterisk
           label={t('pages.server.databases.instance.databases.modal.importDatabase.form.file', {})}
+          accept={databaseAgentTypeDumpExtensionMapping[instance.type]}
           value={file}
           onChange={setFile}
           clearable

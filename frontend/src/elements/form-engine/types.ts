@@ -230,6 +230,7 @@ export interface RegisteredFormIds {
   'admin.settings.captcha.recaptcha': true;
   'admin.settings.captcha.turnstile': true;
   'admin.settings.captcha.friendlyCaptcha': true;
+  'admin.settings.captcha.cap': true;
   'admin.settings.email.sendmail': true;
   'admin.settings.email.smtp': true;
   'admin.settings.email.file': true;

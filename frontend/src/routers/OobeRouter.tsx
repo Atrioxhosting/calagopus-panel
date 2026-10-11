@@ -185,7 +185,12 @@ export default function OobeRouter() {
             <Sidebar.Divider />
           </>
         }
-        footer={<OobeSidebarFooter complete={currentStepIndex} total={filteredSteps.length} />}
+        footer={
+          <OobeSidebarFooter
+            complete={activeStep?.stepKey === 'finished' ? filteredSteps.length : currentStepIndex}
+            total={filteredSteps.length}
+          />
+        }
       >
         <Stepper
           active={currentStepIndex}

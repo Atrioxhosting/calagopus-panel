@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { type FieldDef } from '@/elements/form-engine/index.ts';
+import { ignorePasswordManagerProps } from '@/lib/passwordManager.ts';
 import { adminOAuthProviderSchema, adminOAuthProviderUpdateSchema } from '@/lib/schemas/admin/oauthProviders.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -9,7 +10,7 @@ export const oauthProviderEmptyFormValues: OAuthFormValues = {
   name: '',
   description: null,
   clientId: '',
-  clientSecret: '',
+  clientSecret: null,
   authUrl: '',
   tokenUrl: '',
   infoUrl: '',
@@ -27,6 +28,7 @@ export const oauthProviderEmptyFormValues: OAuthFormValues = {
   linkViewable: true,
   userManageable: true,
   basicAuth: false,
+  pkce: false,
 };
 
 export const oauthProviderToFormValues = (
@@ -53,9 +55,10 @@ export const oauthProviderToFormValues = (
   linkViewable: provider.linkViewable,
   userManageable: provider.userManageable,
   basicAuth: provider.basicAuth,
+  pkce: provider.pkce,
 });
 
-export function useOAuthProviderFormFields(isUpdate: boolean): {
+export function useOAuthProviderFormFields(): {
   fieldsTop: FieldDef<OAuthFormValues>[];
   fieldsMain: FieldDef<OAuthFormValues>[];
 } {
@@ -72,12 +75,13 @@ export function useOAuthProviderFormFields(isUpdate: boolean): {
       name: 'clientId',
       label: t('pages.admin.oAuthProviders.tabs.general.page.form.clientId', {}),
       required: true,
+      props: ignorePasswordManagerProps,
     },
     {
       type: 'password',
       name: 'clientSecret',
       label: t('pages.admin.oAuthProviders.tabs.general.page.form.clientSecret', {}),
-      props: { withAsterisk: !isUpdate },
+      description: t('pages.admin.oAuthProviders.tabs.general.page.form.clientSecretDescription', {}),
     },
     {
       type: 'text',
@@ -102,6 +106,12 @@ export function useOAuthProviderFormFields(isUpdate: boolean): {
       name: 'basicAuth',
       label: t('pages.admin.oAuthProviders.tabs.general.page.form.basicAuth', {}),
       description: t('pages.admin.oAuthProviders.tabs.general.page.form.basicAuthDescription', {}),
+    },
+    {
+      type: 'switch',
+      name: 'pkce',
+      label: t('pages.admin.oAuthProviders.tabs.general.page.form.pkce', {}),
+      description: t('pages.admin.oAuthProviders.tabs.general.page.form.pkceDescription', {}),
     },
     {
       type: 'tags',

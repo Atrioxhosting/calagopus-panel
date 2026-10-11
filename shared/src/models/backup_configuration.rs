@@ -898,6 +898,7 @@ pub struct DuplicateBackupConfigurationOptions {
 #[async_trait::async_trait]
 impl DuplicableModel for BackupConfiguration {
     type DuplicateOptions<'a> = DuplicateBackupConfigurationOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<BackupConfiguration>> =

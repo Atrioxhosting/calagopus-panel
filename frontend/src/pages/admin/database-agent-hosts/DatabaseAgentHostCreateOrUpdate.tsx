@@ -47,7 +47,6 @@ export default function DatabaseAgentHostCreateOrUpdate({
       : adminDatabaseAgentHostCreateSchema
     ).unwrap(),
     initialValues: databaseAgentHostEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const { loading, setLoading, doCreateOrUpdate, doDelete } = useResourceForm<

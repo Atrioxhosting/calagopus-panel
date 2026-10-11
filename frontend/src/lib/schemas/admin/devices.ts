@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ruleMessage } from '@/lib/schemas/rules.ts';
 import { nullableString } from '@/lib/serialization/transformers.ts';
 
 export const adminDeviceSchema = z.looseObject({
@@ -11,7 +12,10 @@ export const adminDeviceSchema = z.looseObject({
     .string()
     .min(1)
     .max(255)
-    .regex(/^[rwm]+$/),
+    .regex(
+      /^[rwm]+$/,
+      ruleMessage((t) => t('common.form.rule.devicePermissions', {})),
+    ),
   userAttachable: z.boolean(),
   created: z.coerce.date(),
 });

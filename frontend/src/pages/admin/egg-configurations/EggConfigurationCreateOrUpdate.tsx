@@ -57,7 +57,6 @@ export default function EggConfigurationCreateOrUpdate({
   const form = useFormEngine<EggConfigFormValues>('admin.eggConfigurations.createOrUpdate', {
     schema: adminEggConfigurationUpdateSchema.unwrap(),
     initialValues: eggConfigurationEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const { loading, doCreateOrUpdate, doDelete } = useResourceForm<

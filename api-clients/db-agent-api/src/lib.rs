@@ -80,6 +80,12 @@ nestify::nest! {
 pub enum AppContainerType {
     #[serde(rename = "official")]
     Official,
+    #[serde(rename = "official_aio")]
+    OfficialAio,
+    #[serde(rename = "official_heavy")]
+    OfficialHeavy,
+    #[serde(rename = "official_heavy_aio")]
+    OfficialHeavyAio,
     #[serde(rename = "unknown")]
     Unknown,
     #[serde(rename = "none")]

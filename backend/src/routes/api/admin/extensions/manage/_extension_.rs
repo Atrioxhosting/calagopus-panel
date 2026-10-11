@@ -30,13 +30,7 @@ mod delete {
         Path(package_name): Path<String>,
         shared::Payload(data): shared::Payload<Payload>,
     ) -> ApiResponseResult {
-        if !state.container_type.is_heavy() {
-            return ApiResponse::error(
-                "extension management is only available in the official heavy container",
-            )
-            .with_status(StatusCode::NOT_IMPLEMENTED)
-            .ok();
-        }
+        state.ensure_extension_management()?;
 
         permissions.has_admin_permission("extensions.manage")?;
 

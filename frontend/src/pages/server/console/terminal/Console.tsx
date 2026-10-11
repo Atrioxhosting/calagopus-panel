@@ -56,6 +56,7 @@ export default function Terminal({ popout = false }: { popout?: boolean }) {
   const computedColorScheme = useComputedColorScheme('dark');
 
   const [inputValue, setInputValue] = useState('');
+  const [commandPrefix, setCommandPrefix] = useState('');
   const [searchText, setSearchText] = useState('');
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [websocketPing, setWebsocketPing] = useState(0);
@@ -261,13 +262,13 @@ export default function Terminal({ popout = false }: { popout?: boolean }) {
           if (!command) return;
 
           commandHistory.recordCommand(command);
-          socketInstance?.send(SocketRequest.SEND_COMMAND, command);
+          socketInstance?.send(SocketRequest.SEND_COMMAND, commandPrefix + command);
           setInputValue('');
           inputValueRef.current = '';
         }
       });
     },
-    [commandHistory, socketInstance],
+    [commandHistory, socketInstance, commandPrefix],
   );
 
   useKeyboardShortcut(
@@ -434,6 +435,8 @@ export default function Terminal({ popout = false }: { popout?: boolean }) {
           inputValueRef={inputValueRef}
           inputValueUpdatedRef={inputValueUpdatedRef}
           inputValueCompletedRef={inputValueCompletedRef}
+          commandPrefix={commandPrefix}
+          setCommandPrefix={setCommandPrefix}
           onKeyDown={handleKeyDown}
         />
       </Card>

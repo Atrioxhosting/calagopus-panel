@@ -55,7 +55,6 @@ export default function EggVariableContainer({
   const form = useFormEngine<VariableFormValues>('admin.nests.eggs.variables', {
     schema: adminEggVariableUpdateSchema.unwrap(),
     initialValues: eggVariableEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   useHydrateForm(form, contextVariable, eggVariableToFormValues);

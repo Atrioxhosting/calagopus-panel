@@ -93,3 +93,15 @@ export const adminBackupConfigurationUpdateSchema = z.lazy(() =>
       backupConfigs: adminBackupConfigurationSchema.shape.backupConfigs.optional(),
     }),
 );
+
+export const adminBackupConfigurationTestSchema = z.object({
+  nodeUuid: z.string(),
+  backupDisk: adminBackupConfigurationSchema.shape.backupDisk,
+  backupConfigs: adminBackupConfigurationSchema.shape.backupConfigs,
+});
+
+export const adminBackupConfigurationTestResultSchema = z.object({
+  successful: z.boolean(),
+  durationMs: z.number(),
+  error: z.string().nullable(),
+});

@@ -279,6 +279,7 @@
         "details": "Details",
         "loadLogs": "Logs laden",
         "sendTestEmail": "Test-E-Mail senden",
+        "test": "Testen",
         "setPrimary": "Als primär festlegen",
         "unsetPrimary": "Als primär entfernen",
         "leavePage": "Seite verlassen",
@@ -363,14 +364,6 @@
           "yearly": "Jährliche Backups behalten",
           "ruleSummary": "{rule}: {count}",
           "status": {
-            "rule": {
-              "count": "Neueste",
-              "days": "Kürzlich",
-              "daily": "Täglich",
-              "weekly": "Wöchentlich",
-              "monthly": "Monatlich",
-              "yearly": "Jährlich"
-            },
             "locked": "Gesperrt",
             "indefinite": "Unbegrenzt behalten",
             "expired": "Wird entfernt",
@@ -389,6 +382,10 @@
       "modal": {
         "duplicate": {
           "title": "{resource} duplizieren"
+        },
+        "unsavedChanges": {
+          "title": "Ungespeicherte Änderungen",
+          "content": "Du hast ungespeicherte Änderungen. Bist du sicher, dass du diese Seite verlassen möchtest? Wenn du die Seite verlässt, gehen deine Änderungen verloren."
         },
         "delete": {
           "content": "Bist du sicher, dass du **{name}** löschen möchtest?"
@@ -525,7 +522,17 @@
         "target": "Ziel",
         "replaceWith": "Ersetzen durch",
         "caseInsensitive": "Groß-/Kleinschreibung ignorieren",
-        "truncateDirectory": "Möchtest du alle Dateien dieses Servers löschen, bevor diese Aktion ausgeführt wird? Dies kann nicht rückgängig gemacht werden."
+        "truncateDirectory": "Möchtest du alle Dateien dieses Servers löschen, bevor diese Aktion ausgeführt wird? Dies kann nicht rückgängig gemacht werden.",
+        "rule": {
+          "invalidCharacters": "Enthält Zeichen, die hier nicht erlaubt sind.",
+          "username": "3 bis 15 Zeichen, nur Buchstaben, Ziffern und Unterstriche.",
+          "databaseName": "Bis zu 31 Zeichen, nur Buchstaben, Ziffern und Unterstriche.",
+          "databaseInstanceIdentifier": "2 bis 23 Zeichen, nur Buchstaben und Ziffern.",
+          "captchaSiteKey": "Nur Buchstaben, Ziffern, Bindestriche und Unterstriche.",
+          "variableName": "Beginnt mit einem Kleinbuchstaben, gefolgt von bis zu 63 Kleinbuchstaben, Ziffern oder Unterstrichen.",
+          "hexColor": "Eine Hex-Farbe wie #1c7ed6.",
+          "devicePermissions": "Beliebige Kombination aus r (lesen), w (schreiben) und m (mknod)."
+        }
       },
       "table": {
         "selectRow": "Zeile auswählen",
@@ -606,7 +613,8 @@
         "inbound": "Eingehend",
         "outbound": "Ausgehend",
         "uptime": "Laufzeit",
-        "resources": "Ressourcen"
+        "resources": "Ressourcen",
+        "limit": "Limit {limit}"
       },
       "badge": {
         "active": "Aktiv",
@@ -650,6 +658,12 @@
           "memoryUsageUnlimited": "Arbeitsspeicher: {used} belegt, kein Node-Limit",
           "diskUsage": "Speicherplatz: {used} / {limit}",
           "diskUsageUnlimited": "Speicherplatz: {used} belegt, kein Node-Limit"
+        },
+        "allowedSources": {
+          "checking": "Prüfe Node",
+          "notAllowed": "Auf Node nicht erlaubt",
+          "mountNotAllowed": "Die Quelle dieses Mounts ist nicht durch `allowed_mounts` des Nodes abgedeckt, deshalb überspringt Wings ihn beim Starten des Servers.",
+          "deviceNotAllowed": "Die Quelle dieses Geräts ist nicht durch `allowed_devices` des Nodes abgedeckt (oder seine Berechtigungen sind ungültig), deshalb überspringt Wings es beim Starten des Servers."
         }
       },
       "server": {
@@ -690,6 +704,14 @@
           "starting": "Startet",
           "finished": "Abgeschlossen",
           "failed": "Fehlgeschlagen"
+        },
+        "backupRetentionRule": {
+          "count": "Neueste",
+          "days": "Kürzlich",
+          "daily": "Täglich",
+          "weekly": "Wöchentlich",
+          "monthly": "Monatlich",
+          "yearly": "Jährlich"
         },
         "serverBackupKind": {
           "server": "Server",
@@ -1588,10 +1610,12 @@
               "none": "Für dein Konto ist noch kein zweiter Faktor eingerichtet.",
               "requirementMet": "Dein Konto erfüllt die Zwei-Faktor-Anforderung.",
               "requirementUnmet": "Dein Konto erfüllt die Zwei-Faktor-Anforderung noch nicht.",
-              "method": {
-                "totp": "Authenticator-App",
-                "securityKey": "Sicherheitsschlüssel",
-                "email": "E-Mail"
+              "enum": {
+                "twoFactorMethod": {
+                  "totp": "Authenticator-App",
+                  "securityKey": "Sicherheitsschlüssel",
+                  "email": "E-Mail"
+                }
               }
             },
             "emailTwoFactor": {
@@ -1914,7 +1938,8 @@
             "copyUuid": "UUID kopieren"
           },
           "tooltip": {
-            "limitReached": "Du bist auf {max} API-Schlüssel limitiert."
+            "limitReached": "Du bist auf {max} API-Schlüssel limitiert.",
+            "keyStartOnly": "Nur der Anfang des Schlüssels wird angezeigt, der vollständige Schlüssel ist nur einmal nach der (Neu-)Erstellung sichtbar."
           },
           "table": {
             "columns": {
@@ -1938,6 +1963,12 @@
               "title": "API-Schlüssel aktualisieren",
               "toast": {
                 "updated": "API-Schlüssel aktualisiert."
+              }
+            },
+            "duplicateApiKey": {
+              "title": "API-Schlüssel duplizieren",
+              "toast": {
+                "duplicated": "API-Schlüssel dupliziert."
               }
             },
             "recreateApiKey": {
@@ -2038,23 +2069,26 @@
                   "cacheCalls": "Cache-Aufrufe",
                   "cacheHits": "Cache-Treffer ({percent}%)",
                   "cacheMisses": "Cache-Fehlversuche ({percent}%)",
-                  "cacheAverageLatency": "\u00d8 {latency}",
+                  "cacheAverageLatency": "Ø {latency}",
                   "slowestCachedCall": "Langsamster Cache-Aufruf",
                   "cacheBreakdown": {
-                    "title": "Aufrufaufschl\u00fcsselung",
+                    "title": "Aufrufaufschlüsselung",
                     "calls": "Aufrufe",
-                    "averageLatency": "\u00d8 Latenz",
+                    "averageLatency": "Ø Latenz",
                     "localHits": "Treffer im Arbeitsspeicher",
                     "remoteHits": "Treffer in Redis",
                     "coalescedWaits": "Auf anderen Aufruf gewartet",
                     "misses": "Berechnet"
                   }
                 },
-                "containerType": {
-                  "none": "Keine erkannt",
-                  "official": "Offiziell",
-                  "officialAio": "Offiziell (AIO)",
-                  "officialHeavy": "Offiziell (Heavy)"
+                "enum": {
+                  "containerType": {
+                    "none": "Keine erkannt",
+                    "official": "Offiziell",
+                    "officialAio": "Offiziell (AIO)",
+                    "officialHeavy": "Offiziell (Heavy)",
+                    "officialHeavyAio": "Offiziell (Heavy AIO)"
+                  }
                 },
                 "stats": {
                   "users": "Benutzer",
@@ -2299,6 +2333,9 @@
                 "toast": {
                   "updated": "E-Mail-Einstellungen aktualisiert."
                 },
+                "tooltip": {
+                  "noProvider": "Speichere einen E-Mail-Anbieter, bevor du eine Test-E-Mail sendest."
+                },
                 "modal": {
                   "sendTestEmail": {
                     "title": "Test-E-Mail senden",
@@ -2394,9 +2431,17 @@
                 "toast": {
                   "updated": "Captcha-Einstellungen aktualisiert."
                 },
+                "cap": {
+                  "form": {
+                    "apiUrl": "Instanz-URL",
+                    "apiUrlDescription": "Öffentliche URL deiner Cap-Standalone-Instanz, ohne den Website-Schlüssel."
+                  }
+                },
                 "recaptcha": {
                   "form": {
-                    "v3": "V3"
+                    "v3": "V3",
+                    "threshold": "Score-Schwellenwert",
+                    "thresholdDescription": "Erforderlicher Mindestwert für die Verifizierung, von 0 bis 1. Höhere Werte sind strenger. Standard: 0,5."
                   }
                 }
               }
@@ -2624,6 +2669,7 @@
           "unknownExtension": "Unbekannte Erweiterung",
           "alert": {
             "noExtensions": "Keine Erweiterungen installiert.",
+            "managementDisabled": "Die Erweiterungsverwaltung wurde auf diesem Panel deaktiviert.",
             "heavyImageMissing": "Du scheinst nicht das Heavy-Image zu verwenden, das zum Installieren von Erweiterungen benötigt wird. Siehe [hier]({docsUrl}), wie du dazu wechselst.",
             "supervisorUnreachable": {
               "title": "Der Erweiterungs-Supervisor antwortet nicht",
@@ -4607,11 +4653,14 @@
                 "form": {
                   "clientId": "Client-ID",
                   "clientSecret": "Client-Secret",
+                  "clientSecretDescription": "Leer lassen für öffentliche Clients, die sich nur per PKCE authentifizieren.",
                   "authUrl": "Auth-URL",
                   "tokenUrl": "Token-URL",
                   "infoUrl": "Info-URL",
                   "basicAuth": "Basic Auth",
                   "basicAuthDescription": "Verwendet HTTP Basic Authentication, um Client-ID und Secret zu übertragen, heute nicht mehr verbreitet.",
+                  "pkce": "PKCE",
+                  "pkceDescription": "Sendet bei jeder Anmeldung einen Proof Key for Code Exchange (S256), wird von den meisten modernen Anbietern unterstützt.",
                   "scopes": "Scopes",
                   "scopesDescription": "Die anzufordernden OAuth2-Scopes; achte darauf, bei Bedarf Scopes für E-Mail- und Profilinformationen einzuschließen.",
                   "identifierPath": "Identifier-Pfad",
@@ -4637,12 +4686,21 @@
                   "userManageable": "Verknüpfung vom Benutzer verwaltbar",
                   "userManageableDescription": "Erlaubt dem Benutzer, sich mit diesem Anbieter zu verbinden und die Verbindung zu trennen."
                 },
+                "button": {
+                  "discover": "Aus OpenID Discovery importieren"
+                },
                 "toast": {
-                  "exported": "OAuth-Anbieter exportiert."
+                  "exported": "OAuth-Anbieter exportiert.",
+                  "discovered": "Anbieter-Einstellungen importiert. Gib Client-ID und Secret ein, um abzuschließen."
                 },
                 "modal": {
                   "delete": {
                     "title": "OAuth-Anbieter-Löschung bestätigen"
+                  },
+                  "discover": {
+                    "title": "Aus OpenID Discovery importieren",
+                    "url": "Issuer-URL",
+                    "urlDescription": "Die Issuer-URL oder ihre vollständige /.well-known/openid-configuration-URL. Anbieter in einem privaten Netzwerk werden blockiert, sofern APP_BLOCKED_CIDRS sie nicht erlaubt."
                   }
                 }
               }
@@ -4783,6 +4841,13 @@
                   "removeProvider": {
                     "title": "Entfernen der Provider-Einstellungen bestätigen",
                     "content": "Beim Speichern werden die **{provider}**-Einstellungen entfernt. Bereits vorhandene Backups, die auf diesen Konfigurations-Optionen basieren, werden nicht mehr funktionieren."
+                  },
+                  "test": {
+                    "title": "Backup-Konfiguration testen",
+                    "content": "Prüft die aktuellen Formularwerte von der ausgewählten Node aus, ohne sie zu speichern. Bei Btrfs und ZFS werden nur die Werkzeuge und das Dateisystem geprüft, die Server-Volumes werden erst beim Erstellen eines Backups überprüft.",
+                    "run": "Test ausführen",
+                    "successful": "Die Node kann diese Backup-Konfiguration verwenden, der Test dauerte {duration}.",
+                    "failed": "Der Test ist nach {duration} fehlgeschlagen."
                   }
                 },
                 "s3": {
@@ -5224,7 +5289,8 @@
           "title": "Konsole",
           "input": {
             "placeholder": "Gib einen Befehl ein...",
-            "ariaLabel": "Konsolenbefehl Eingabe."
+            "ariaLabel": "Konsolenbefehl Eingabe.",
+            "prefixPlaceholder": "Präfix, z. B. \"say \""
           },
           "toast": {
             "installCancelled": "Server-Installation abgebrochen.",
@@ -5265,7 +5331,8 @@
             "decreaseFontSize": "Schriftgröße verringern",
             "increaseFontSize": "Schriftgröße erhöhen",
             "copySelection": "Auswahl kopieren",
-            "popout": "In separatem Fenster öffnen"
+            "popout": "In separatem Fenster öffnen",
+            "commandPrefix": "Befehlspräfix"
           },
           "quickAction": {
             "search": "Konsole durchsuchen",
@@ -5513,6 +5580,8 @@
             "editorEngine": "Editor-Engine",
             "editorPreviewTabs": "Dateivorschau in Baum-Tabs",
             "editorPreviewTabsDescription": "Bearbeiten oder doppelklicken, um einen Tab offen zu halten.",
+            "alwaysOverwrite": "Vorhandene Dateien immer überschreiben",
+            "alwaysOverwriteDescription": "Keine Konfliktabfrage beim Hochladen, Kopieren oder Einfügen.",
             "vscodeUriScheme": "VS Code URI-Schema",
             "imageViewerSmoothing": "Bildglättung (Anti-Aliasing)"
           },
@@ -5759,7 +5828,12 @@
             },
             "largestDirectories": {
               "title": "Größte Verzeichnisse",
-              "empty": "Keine Verzeichnisse gefunden."
+              "empty": "Keine Verzeichnisse gefunden.",
+              "files": "Dateien in diesem Ordner",
+              "smallerFolders": "{count} kleinere Ordner",
+              "inaccessible": "Nicht zugänglich",
+              "openFolder": "Ordner öffnen",
+              "noSubdirectories": "Dieser Ordner belegt {size} und hat keine eigenen großen Unterverzeichnisse."
             },
             "searchFiles": {
               "title": "Dateien suchen",
@@ -6599,6 +6673,9 @@
             }
           },
           "steps": {
+            "tooltip": {
+              "limitReached": "Dieser Zeitplan ist auf {max} Schritte limitiert."
+            },
             "empty": {
               "title": "Keine Schritte konfiguriert",
               "description": "Dieser Zeitplan hat noch keine Schritte. Füge einige Aktionen hinzu, um loszulegen."

@@ -5,6 +5,7 @@ import getAvailableServerDevices from '@/api/admin/servers/devices/getAvailableS
 import ResourceSelectModal from '@/elements/modals/ResourceSelectModal.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { AdminServer, adminServerDeviceSchema } from '@/lib/schemas/admin/servers.ts';
+import NodeAllowedSourceAlert from '@/pages/admin/nodes/NodeAllowedSourceAlert.tsx';
 import { useSearchableResource } from '@/plugins/resource/useSearchableResource.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -25,6 +26,7 @@ export default function ServerDeviceAddModal({ server, ...props }: ModalProps & 
       loading={devices.loading}
       searchValue={devices.search}
       onSearchChange={devices.setSearch}
+      renderBelowSelect={(value) => <NodeAllowedSourceAlert nodeUuid={server.node.uuid} kind='device' uuid={value} />}
       addedToast={t('pages.admin.servers.tabs.devices.page.toast.added', {})}
       invalidateKeys={[queryKeys.admin.deviceAssignments.all()]}
       onConfirm={(deviceUuid) => createServerDevice(server.uuid, { deviceUuid })}

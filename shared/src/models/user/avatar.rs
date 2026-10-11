@@ -159,10 +159,13 @@ impl super::User {
             return Ok(());
         }
 
-        let response = crate::net::outbound_client(&state.env)
-            .get(source_url)
-            .send()
-            .await?;
+        let response = crate::net::outbound_request(
+            &state.env,
+            reqwest::Method::GET,
+            reqwest::Url::parse(source_url)?,
+        )?
+        .send()
+        .await?;
 
         if !response.status().is_success() {
             return Err(DisplayError::new(format!(

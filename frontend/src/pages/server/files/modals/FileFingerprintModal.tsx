@@ -13,6 +13,7 @@ import TextInput from '@/elements/input/TextInput.tsx';
 import { Modal, ModalFooter } from '@/elements/modals/Modal.tsx';
 import { fingerprintAlgorithmLabelMapping } from '@/lib/enums.ts';
 import { serverDirectoryEntrySchema, serverFilesFingerprintSchema } from '@/lib/schemas/server/files.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useFileManager } from '@/providers/contexts/fileManagerContext.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -35,7 +36,7 @@ export default function FileFingerprintsModal({ file, ...props }: Props) {
     initialValues: {
       algorithm: 'sha256',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(serverFilesFingerprintSchema),
   });
 

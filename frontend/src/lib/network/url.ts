@@ -8,6 +8,15 @@ export const openUrl = (url: string, target = '_blank') => {
   document.body.removeChild(anchor);
 };
 
+export const downloadUrl = (url: string) => {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = '';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
 export const openPopup = (url: string) => {
   const popup = window.open(
     url,

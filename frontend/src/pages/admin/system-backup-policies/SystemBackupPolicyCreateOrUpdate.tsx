@@ -73,7 +73,6 @@ export default function SystemBackupPolicyCreateOrUpdate({
   const form = useFormEngine<SystemBackupPolicyFormValues>('admin.systemBackupPolicies.createOrUpdate', {
     schema: adminSystemBackupPolicyUpdateSchema.unwrap(),
     initialValues: systemBackupPolicyEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const { loading, doCreateOrUpdate, doDelete } = useResourceForm<

@@ -77,7 +77,6 @@ export default function NodeCreateOrUpdate({ contextNode }: { contextNode?: z.in
       setIsValid(form.isValid());
       setUrlValue(values.url ?? '');
     },
-    validateInputOnBlur: true,
   });
 
   const { loading, setLoading, doCreateOrUpdate, doDelete } = useResourceForm<

@@ -5,12 +5,14 @@ import deleteServerDevice from '@/api/admin/servers/devices/deleteServerDevice.t
 import { httpErrorToHuman } from '@/api/axios.ts';
 import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
 import TableLink from '@/elements/data-display/TableLink.tsx';
+import Group from '@/elements/layout/Group.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { AdminServer, AdminServerDevice } from '@/lib/schemas/admin/servers.ts';
+import NodeAllowedSourceBadge from '@/pages/admin/nodes/NodeAllowedSourceBadge.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -73,7 +75,12 @@ export default function ServerDeviceRow({ server, device }: { server: AdminServe
                 <Code>{device.device.uuid}</Code>
               </TableLink>
             </TableData>
-            <TableData>{device.device.name}</TableData>
+            <TableData>
+              <Group gap='xs' wrap='nowrap'>
+                {device.device.name}
+                <NodeAllowedSourceBadge nodeUuid={server.node.uuid} kind='device' uuid={device.device.uuid} />
+              </Group>
+            </TableData>
             <TableData>
               <Code>{device.device.source}</Code>
             </TableData>

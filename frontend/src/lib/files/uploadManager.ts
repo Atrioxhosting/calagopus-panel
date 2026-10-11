@@ -23,6 +23,7 @@ import { queryKeys } from '@/lib/queryKeys.ts';
 import { serverFileOperationSchema } from '@/lib/schemas/server/files.ts';
 import { ToastAction, ToastType } from '@/providers/contexts/toastContext.ts';
 import { getTranslations } from '@/providers/contexts/translationContext.ts';
+import { readUserSettingField } from '@/stores/fileManager.ts';
 import {
   loadPersistedUploads,
   PersistedResumableUpload,
@@ -63,7 +64,7 @@ export function setUploadConflictResolver(resolver: UploadConflictResolver | nul
 }
 
 async function resolveUploadConflicts(destination: UploadDestination, files: File[]): Promise<File[]> {
-  if (destination.type !== 'server' || !conflictResolver) return files;
+  if (destination.type !== 'server' || !conflictResolver || readUserSettingField('alwaysOverwrite')) return files;
 
   let conflicts: UploadConflict[];
   try {

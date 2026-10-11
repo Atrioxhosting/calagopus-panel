@@ -43,7 +43,6 @@ export default function DatabaseHostCreateOrUpdate({
   const form = useFormEngine<DatabaseHostFormValues>('admin.databaseHosts.createOrUpdate', {
     schema: (contextDatabaseHost ? adminDatabaseHostUpdateSchema : adminDatabaseHostCreateSchema).unwrap(),
     initialValues: databaseHostEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const { loading, setLoading, doCreateOrUpdate, doDelete } = useResourceForm<

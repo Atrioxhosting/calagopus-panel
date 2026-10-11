@@ -32,7 +32,6 @@ export default function BackupGroupCreateModal({ ...props }: ModalProps) {
       name: '',
       retention: { ...emptyBackupRetention },
     },
-    validateInputOnBlur: true,
     schema: serverBackupGroupCreateSchema,
     onClose: props.onClose,
     onSubmit: async (values) => {

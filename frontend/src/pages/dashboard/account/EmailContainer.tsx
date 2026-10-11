@@ -10,11 +10,13 @@ import updateEmail from '@/api/me/account/updateEmail.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import TitleCard from '@/elements/data-display/TitleCard.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
+import HiddenUsernameInput from '@/elements/input/HiddenUsernameInput.tsx';
 import PasswordInput from '@/elements/input/PasswordInput.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import { dashboardEmailSchema } from '@/lib/schemas/dashboard.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -32,7 +34,7 @@ export default function EmailContainer({ requireTwoFactorActivation }: AccountCa
       email: '',
       password: '',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(
       dashboardEmailSchema.extend({
         password: user?.hasPassword
@@ -87,6 +89,7 @@ export default function EmailContainer({ requireTwoFactorActivation }: AccountCa
       className={classNames('h-full order-20', requireTwoFactorActivation && 'blur-xs pointer-events-none select-none')}
     >
       <form onSubmit={form.onSubmit(() => doUpdate())} className='h-full'>
+        <HiddenUsernameInput username={user?.username ?? ''} />
         <Stack h='100%'>
           <TextInput
             withAsterisk

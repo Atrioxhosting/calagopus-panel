@@ -1,0 +1,26 @@
+.spinner {
+  display: inline-block;
+  width: 35px;
+  height: 35px;
+  border: 2px solid #fff;
+  border-bottom-color: transparent;
+  border-radius: 100%;
+  animation: spinner-clip 0.75s 0s infinite linear both;
+}
+
+:root[data-mantine-color-scheme="light"] .spinner {
+  border-color: #000;
+  border-bottom-color: transparent;
+}
+
+@keyframes spinner-clip {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(0.8);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}

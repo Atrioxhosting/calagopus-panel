@@ -231,8 +231,7 @@ pub struct ExportedNestEgg {
 
 impl ExportedNestEgg {
     pub async fn fetch(state: &crate::State, url: &reqwest::Url) -> Result<Self, anyhow::Error> {
-        let response = crate::net::outbound_client(&state.env)
-            .get(url.clone())
+        let response = crate::net::outbound_request(&state.env, reqwest::Method::GET, url.clone())?
             .send()
             .await?;
 
@@ -1382,6 +1381,7 @@ pub struct DuplicateNestEggOptions {
 #[async_trait::async_trait]
 impl DuplicableModel for NestEgg {
     type DuplicateOptions<'a> = DuplicateNestEggOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<NestEgg>> =

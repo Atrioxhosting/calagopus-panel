@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, normalizePath } from 'vite';
 import dynamicPublicDirectory from 'vite-multiple-assets';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import { bootSpinner } from './vite-plugins/boot-spinner.ts';
 import { countryFlags } from './vite-plugins/country-flags.ts';
 import { deprecatedPaths } from './vite-plugins/deprecated-paths.ts';
 import { extensionChunkGroups } from './vite-plugins/extension-chunks.ts';
@@ -43,6 +44,7 @@ export default defineConfig({
     }),
     translationsPlugin(),
     countryFlags(),
+    bootSpinner(),
     viteStaticCopy({
       targets: [
         {
@@ -116,8 +118,9 @@ export default defineConfig({
             },
             {
               name: 'recharts',
-              test: /node_modules\/(recharts|@mantine\/charts)\//,
+              test: (id: string) => /node_modules\/(recharts|@mantine\/charts)\//.test(id) && !id.endsWith('.css'),
               priority: 15,
+              includeDependenciesRecursively: false,
             },
             {
               name: 'mantine',
@@ -158,15 +161,18 @@ export default defineConfig({
             },
             {
               name: 'vendor',
-              test: /node_modules\/(axios|zustand|history|js-yaml|qrcode|cron-parser|cronstrue|semver|uuid|classnames|object-deep-merge|deepmerge-ts|yjs|y-protocols|y-monaco)\//,
+              test: /node_modules\/(axios|zustand|history|semver|uuid|classnames|object-deep-merge|deepmerge-ts)\//,
               priority: 10,
             },
             {
-              name: 'common',
-              test: (id: string) => !/node_modules\/@shikijs\/(langs|themes)\//.test(id),
-              minShareCount: 5,
-              minSize: 10240,
-              priority: 5,
+              name: 'collab',
+              test: /node_modules\/(yjs|y-protocols|y-monaco|lib0)\//,
+              priority: 10,
+            },
+            {
+              name: 'cron',
+              test: /node_modules\/(cron-parser|cronstrue|luxon)\//,
+              priority: 10,
             },
           ],
         },

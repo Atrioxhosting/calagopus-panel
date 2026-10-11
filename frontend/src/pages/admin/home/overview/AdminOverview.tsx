@@ -65,13 +65,20 @@ export default function AdminOverview() {
       case 'unknown':
         return { label: t('common.unknown', {}), icon: faCircleQuestion };
       case 'none':
-        return { label: t('pages.admin.home.tabs.overview.page.containerType.none', {}), icon: faBan };
+        return { label: t('pages.admin.home.tabs.overview.page.enum.containerType.none', {}), icon: faBan };
       case 'official':
-        return { label: t('pages.admin.home.tabs.overview.page.containerType.official', {}), icon: faCheck };
-      case 'official-aio':
-        return { label: t('pages.admin.home.tabs.overview.page.containerType.officialAio', {}), icon: faCheck };
+        return { label: t('pages.admin.home.tabs.overview.page.enum.containerType.official', {}), icon: faCheck };
+      case 'official_aio':
+        return { label: t('pages.admin.home.tabs.overview.page.enum.containerType.officialAio', {}), icon: faCheck };
+      case 'official_heavy':
+        return { label: t('pages.admin.home.tabs.overview.page.enum.containerType.officialHeavy', {}), icon: faCheck };
+      case 'official_heavy_aio':
+        return {
+          label: t('pages.admin.home.tabs.overview.page.enum.containerType.officialHeavyAio', {}),
+          icon: faCheck,
+        };
       default:
-        return { label: t('pages.admin.home.tabs.overview.page.containerType.officialHeavy', {}), icon: faCheck };
+        return { label: t('common.unknown', {}), icon: faCircleQuestion };
     }
   };
 

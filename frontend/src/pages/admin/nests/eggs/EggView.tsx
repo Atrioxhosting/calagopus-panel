@@ -9,6 +9,7 @@ import {
 import { useParams } from 'react-router';
 import { z } from 'zod';
 import getEgg from '@/api/admin/nests/eggs/getEgg.ts';
+import FormDraftScope from '@/elements/FormDraftScope.tsx';
 import SubNavigation from '@/elements/navigation/SubNavigation.tsx';
 import ResourceView from '@/elements/ResourceView.tsx';
 import Title from '@/elements/typography/Title.tsx';
@@ -35,7 +36,7 @@ export default function EggView({ contextNest }: { contextNest: z.infer<typeof a
   return (
     <ResourceView resource={resource}>
       {(egg) => (
-        <>
+        <FormDraftScope key={egg.uuid} baseUrl={`/admin/nests/${contextNest.uuid}/eggs/${params.eggId}`}>
           <Title order={2}>{egg.name}</Title>
 
           <SubNavigation
@@ -82,7 +83,7 @@ export default function EggView({ contextNest }: { contextNest: z.infer<typeof a
               },
             ]}
           />
-        </>
+        </FormDraftScope>
       )}
     </ResourceView>
   );

@@ -17,12 +17,13 @@ import CommandSnippetEditModal from './modals/CommandSnippetEditModal.tsx';
 
 interface CommandSnippetRowProps {
   commandSnippet: z.infer<typeof userCommandSnippetSchema>;
+  atLimit?: boolean;
   isSelected?: boolean;
   onSelectionChange?: (selected: boolean) => void;
 }
 
 const CommandSnippetRow = forwardRef<HTMLTableRowElement, CommandSnippetRowProps>(function CommandSnippetRow(
-  { commandSnippet, isSelected = false, onSelectionChange },
+  { commandSnippet, atLimit = false, isSelected = false, onSelectionChange },
   ref,
 ) {
   const { t } = useTranslations();
@@ -81,6 +82,7 @@ const CommandSnippetRow = forwardRef<HTMLTableRowElement, CommandSnippetRowProps
             icon: faClone,
             label: t('common.button.duplicate', {}),
             onClick: () => setOpenModal('duplicate'),
+            disabled: atLimit,
             color: 'gray',
           },
           {

@@ -59,6 +59,7 @@ export default function DatabaseCreateModal({ ...props }: ModalProps) {
         <TextInput
           withAsterisk
           label={t('pages.server.databases.form.databaseName', {})}
+          description={t('common.form.rule.databaseName', {})}
           {...form.getInputProps('name')}
         />
 

@@ -25,6 +25,8 @@ import Anchor from '@/elements/typography/Anchor.tsx';
 import Code from '@/elements/typography/Code.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
+import { useUnsavedChanges } from '@/plugins/form/useFormDraft.ts';
 import { useResource } from '@/plugins/resource/useResource.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -47,7 +49,7 @@ export default function EmailTemplatesContainer() {
 
   const form = useForm<z.infer<typeof templateFormSchema>>({
     initialValues: { subject: '', enabled: true },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(templateFormSchema),
   });
 
@@ -103,6 +105,8 @@ export default function EmailTemplatesContainer() {
     : '';
   const isContentDirty =
     template !== undefined && editorContent !== '' && editorContent !== (template.content ?? template.defaultContent);
+
+  const blocker = useUnsavedChanges('mailTemplates', isContentDirty || form.isDirty());
 
   const doSave = () => {
     if (!selectedIdentifier || !template) return;
@@ -212,6 +216,15 @@ export default function EmailTemplatesContainer() {
   return (
     <AdminSubContentContainer title={t('pages.admin.settings.tabs.mailTemplates.page.title', {})} titleOrder={2}>
       <ConfirmationModal
+        title={t('common.modal.unsavedChanges.title', {})}
+        opened={blocker.state === 'blocked'}
+        onClose={() => blocker.reset()}
+        onConfirmed={() => blocker.proceed()}
+        confirm={t('common.button.leavePage', {})}
+      >
+        {t('common.modal.unsavedChanges.content', {}).md()}
+      </ConfirmationModal>
+      <ConfirmationModal
         title={t('pages.admin.settings.tabs.mailTemplates.page.modal.reset.title', {})}
         opened={confirmReset}
         onClose={() => setConfirmReset(false)}
@@ -240,7 +253,7 @@ export default function EmailTemplatesContainer() {
         </Text>
       </Alert>
 
-      <div className='mt-4 flex flex-col md:flex-row gap-4'>
+      <div className='mt-4 flex flex-col md:flex-row md:flex-wrap lg:flex-nowrap gap-4'>
         {sidebar}
 
         {selectedIdentifier === null ? (
@@ -327,8 +340,8 @@ export default function EmailTemplatesContainer() {
               ) : null}
             </Paper>
 
-            <div className='shrink-0 md:w-[26rem] w-full md:relative'>
-              <EmailVariablesSection templateIdentifier={selectedIdentifier} className='md:absolute md:inset-0' />
+            <div className='shrink-0 lg:w-[26rem] w-full lg:relative'>
+              <EmailVariablesSection templateIdentifier={selectedIdentifier} className='lg:absolute lg:inset-0' />
             </div>
           </>
         )}

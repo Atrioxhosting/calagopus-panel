@@ -17,8 +17,10 @@ use std::{
 };
 use utoipa::ToSchema;
 
+mod allowed_sources;
 mod enrollment;
 mod events;
+pub use allowed_sources::NodeAllowedSources;
 pub use enrollment::NodeEnrollment;
 pub use events::NodeEvent;
 
@@ -819,6 +821,23 @@ impl Node {
         )
     }
 
+    /// The node's `allowed_mounts` / `allowed_devices`, `None` when its configuration could
+    /// not be retrieved in time.
+    pub async fn fetch_allowed_sources(
+        &self,
+        database: &crate::database::Database,
+    ) -> Option<NodeAllowedSources> {
+        const ALLOWED_SOURCES_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+
+        let config =
+            tokio::time::timeout(ALLOWED_SOURCES_TIMEOUT, self.fetch_configuration(database))
+                .await
+                .ok()?
+                .ok()?;
+
+        Some(NodeAllowedSources::from_config(&config))
+    }
+
     /// What the node reports about its mesh daemon, `None` when it could not be reached in
     /// time. Not cached: the panel shows it live on the node page.
     pub async fn fetch_tunnel_status(
@@ -1384,6 +1403,7 @@ pub struct DuplicateNodeOptions {
 #[async_trait::async_trait]
 impl DuplicableModel for Node {
     type DuplicateOptions<'a> = DuplicateNodeOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<Node>> =

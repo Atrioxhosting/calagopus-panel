@@ -434,7 +434,7 @@ export default function ServerBackups({
               header={
                 <>
                   <span className='font-medium truncate'>{t('pages.server.backupGroups.ungrouped', {})}</span>
-                  <Badge variant='light' color='gray'>
+                  <Badge variant='light' color='gray' loading={loading && backups.data.length === 0}>
                     {tItem('backup', backups.total)}
                   </Badge>
                 </>

@@ -14,6 +14,7 @@ import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import { formatDateTimeAsTimezone } from '@/lib/format/time.ts';
 import { serverSettingsTimezoneSchema } from '@/lib/schemas/server/settings.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
@@ -38,7 +39,7 @@ export default function TimezoneContainer() {
     initialValues: {
       timezone: server.timezone ?? null,
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(serverSettingsTimezoneSchema),
   });
 

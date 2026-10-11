@@ -446,6 +446,7 @@ pub struct DuplicateDeviceOptions {
 #[async_trait::async_trait]
 impl DuplicableModel for Device {
     type DuplicateOptions<'a> = DuplicateDeviceOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<Device>> =

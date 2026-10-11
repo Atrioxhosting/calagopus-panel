@@ -29,6 +29,7 @@ import BackupKopia from '@/pages/admin/backup-configurations/forms/BackupKopia.t
 import BackupPBS from '@/pages/admin/backup-configurations/forms/BackupPBS.tsx';
 import BackupRestic from '@/pages/admin/backup-configurations/forms/BackupRestic.tsx';
 import BackupS3 from '@/pages/admin/backup-configurations/forms/BackupS3.tsx';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { OobeComponentProps } from '@/routers/OobeRouter.tsx';
 
@@ -48,7 +49,7 @@ export default function OobeLocation({ onNext, onBack, canGoBack, skipFrom, data
       backupName: existingBackupConfig?.name ?? '',
       backupDisk: existingBackupConfig?.backupDisk ?? 'local',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(oobeLocationSchema),
   });
 
@@ -63,7 +64,7 @@ export default function OobeLocation({ onNext, onBack, canGoBack, skipFrom, data
       compressionType: 'zstd',
       partSize: 0,
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(adminBackupConfigurationS3Schema),
   });
 
@@ -74,7 +75,7 @@ export default function OobeLocation({ onNext, onBack, canGoBack, skipFrom, data
       environment: {},
       pruneJobs: [],
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(adminBackupConfigurationResticSchema),
   });
 
@@ -95,7 +96,7 @@ export default function OobeLocation({ onNext, onBack, canGoBack, skipFrom, data
           fingerprint: '',
           backupIdPrefix: '',
         },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(adminBackupConfigurationPbsSchema),
   });
 
@@ -113,7 +114,7 @@ export default function OobeLocation({ onNext, onBack, canGoBack, skipFrom, data
           fingerprint: '',
           tags: {},
         },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(adminBackupConfigurationKopiaSchema),
   });
 

@@ -23,7 +23,8 @@ import { useTableSelection } from '@/plugins/selection/useTableSelection.ts';
 import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
-import { useServerStore } from '@/stores/server.ts';
+import { useServerStore, useServerStoreApi } from '@/stores/server.ts';
+import { applyScheduleCompletion } from '@/stores/slices/server/schedules.ts';
 import ScheduleCalendarModal from './modals/ScheduleCalendarModal.tsx';
 import ScheduleCreateOrUpdateModal from './modals/ScheduleCreateOrUpdateModal.tsx';
 import ScheduleActionBar from './ScheduleActionBar.tsx';
@@ -33,6 +34,7 @@ export default function ServerSchedules() {
   const { t } = useTranslations();
   const { addToast } = useToast();
   const { server } = useServerStore();
+  const serverStoreApi = useServerStoreApi();
 
   const canCreate = useServerCan('schedules.create');
   const canSelect = useServerCan(['schedules.update', 'schedules.delete']);
@@ -52,7 +54,13 @@ export default function ServerSchedules() {
     refetch,
   } = useSearchablePaginatedTable({
     queryKey: queryKeys.server(server.uuid).schedules.all(),
-    fetcher: (page, search) => getSchedules(server.uuid, page, search),
+    fetcher: (page, search) =>
+      getSchedules(server.uuid, page, search).then((schedules) => ({
+        ...schedules,
+        data: schedules.data.map((schedule) =>
+          applyScheduleCompletion(schedule, serverStoreApi.getState().scheduleCompletions),
+        ),
+      })),
   });
 
   const {
@@ -247,6 +255,7 @@ export default function ServerSchedules() {
               {(innerRef: Ref<HTMLElement>) => (
                 <ScheduleRow
                   schedule={schedule}
+                  atLimit={atLimit}
                   ref={innerRef as Ref<HTMLTableRowElement>}
                   isSelected={selectedSchedules.has(schedule.uuid)}
                   onSelectionChange={canSelect ? (selected) => toggleSchedule(schedule, selected) : undefined}

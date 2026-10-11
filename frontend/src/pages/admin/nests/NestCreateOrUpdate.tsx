@@ -27,7 +27,6 @@ export default function NestCreateOrUpdate({ contextNest }: { contextNest?: z.in
   const form = useFormEngine<NestFormValues>('admin.nests.createOrUpdate', {
     schema: adminNestUpdateSchema.unwrap(),
     initialValues: nestEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const { loading, doCreateOrUpdate, doDelete } = useResourceForm<NestFormValues, z.infer<typeof adminNestSchema>>({

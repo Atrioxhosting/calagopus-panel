@@ -126,7 +126,11 @@ jobs:
           cache-key: test-backend
 
       - name: Dummy Frontend Files
-        run: mkdir -p frontend/dist && echo "Dummy file" > frontend/dist/index.html
+        run: |
+          mkdir -p frontend/dist/translations
+          echo "Dummy file" > frontend/dist/index.html
+          echo "{}" > frontend/dist/translations/en.json
+          echo "{}" > frontend/dist/translations/de.json
 
       - name: Run cargo test
         run: cargo test --workspace --exclude panel-rs-aio

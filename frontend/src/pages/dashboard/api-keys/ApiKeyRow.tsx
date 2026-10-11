@@ -1,4 +1,14 @@
-import { faBan, faCheck, faCopy, faPencil, faRefresh, faTrash } from '@fortawesome/free-solid-svg-icons';
+import {
+  faBan,
+  faCheck,
+  faClone,
+  faCopy,
+  faInfoCircle,
+  faPencil,
+  faRefresh,
+  faTrash,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useQueryClient } from '@tanstack/react-query';
 import { forwardRef, useState } from 'react';
 import { z } from 'zod';
@@ -11,32 +21,36 @@ import Badge from '@/elements/data-display/Badge.tsx';
 import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
+import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
 import { handleRawCopyToClipboard } from '@/lib/clipboard/copy.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { userApiKeySchema } from '@/lib/schemas/user/apiKeys.ts';
 import ApiKeyCreateOrUpdateModal from '@/pages/dashboard/api-keys/modals/ApiKeyCreateOrUpdateModal.tsx';
+import ApiKeyDuplicateModal from '@/pages/dashboard/api-keys/modals/ApiKeyDuplicateModal.tsx';
 import ApiKeyTokenModal from '@/pages/dashboard/api-keys/modals/ApiKeyTokenModal.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
 interface ApiKeyRowProps {
   apiKey: z.infer<typeof userApiKeySchema>;
+  atLimit?: boolean;
   isSelected?: boolean;
   onSelectionChange?: (selected: boolean) => void;
 }
 
 const ApiKeyRow = forwardRef<HTMLTableRowElement, ApiKeyRowProps>(function ApiKeyRow(
-  { apiKey, isSelected = false, onSelectionChange },
+  { apiKey, atLimit = false, isSelected = false, onSelectionChange },
   ref,
 ) {
   const { t } = useTranslations();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
 
-  const [openModal, setOpenModal] = useState<'edit' | 'recreate' | 'delete' | null>(null);
+  const [openModal, setOpenModal] = useState<'edit' | 'duplicate' | 'recreate' | 'delete' | null>(null);
   const [recreatedToken, setRecreatedToken] = useState<string | null>(null);
+  const [duplicatedToken, setDuplicatedToken] = useState<string | null>(null);
 
   const doToggleEnabled = async () => {
     await updateApiKey(apiKey.uuid, { enabled: !apiKey.enabled })
@@ -84,7 +98,14 @@ const ApiKeyRow = forwardRef<HTMLTableRowElement, ApiKeyRowProps>(function ApiKe
         opened={openModal === 'edit'}
         onClose={() => setOpenModal(null)}
       />
+      <ApiKeyDuplicateModal
+        apiKey={apiKey}
+        opened={openModal === 'duplicate'}
+        onClose={() => setOpenModal(null)}
+        onDuplicated={setDuplicatedToken}
+      />
       <ApiKeyTokenModal recreated token={recreatedToken} onClose={() => setRecreatedToken(null)} />
+      <ApiKeyTokenModal token={duplicatedToken} onClose={() => setDuplicatedToken(null)} />
       <ConfirmationModal
         opened={openModal === 'recreate'}
         onClose={() => setOpenModal(null)}
@@ -122,6 +143,14 @@ const ApiKeyRow = forwardRef<HTMLTableRowElement, ApiKeyRowProps>(function ApiKe
             icon: faPencil,
             label: t('common.button.edit', {}),
             onClick: () => setOpenModal('edit'),
+            color: 'gray',
+          },
+          {
+            type: 'action',
+            icon: faClone,
+            label: t('common.button.duplicate', {}),
+            onClick: () => setOpenModal('duplicate'),
+            disabled: atLimit,
             color: 'gray',
           },
           {
@@ -165,9 +194,14 @@ const ApiKeyRow = forwardRef<HTMLTableRowElement, ApiKeyRowProps>(function ApiKe
             <TableData>{apiKey.name}</TableData>
 
             <TableData>
-              <CopyOnClick content={apiKey.keyStart}>
-                <Code>{apiKey.keyStart}</Code>
-              </CopyOnClick>
+              <div className='flex flex-row items-center gap-2'>
+                <CopyOnClick content={apiKey.keyStart}>
+                  <Code>{apiKey.keyStart}...</Code>
+                </CopyOnClick>
+                <Tooltip label={t('pages.account.apiKeys.tooltip.keyStartOnly', {})}>
+                  <FontAwesomeIcon size='sm' icon={faInfoCircle} className='shrink-0' />
+                </Tooltip>
+              </div>
             </TableData>
 
             <TableData>

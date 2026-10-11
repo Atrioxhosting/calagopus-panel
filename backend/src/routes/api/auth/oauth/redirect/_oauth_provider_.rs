@@ -3,7 +3,9 @@ use utoipa_axum::{router::OpenApiRouter, routes};
 
 mod get {
     use axum::{body::Body, extract::Path, http::StatusCode};
-    use oauth2::{AuthUrl, ClientId, CsrfToken, RedirectUrl, Scope, basic::BasicClient};
+    use oauth2::{
+        AuthUrl, ClientId, CsrfToken, PkceCodeChallenge, RedirectUrl, Scope, basic::BasicClient,
+    };
     use shared::{
         ApiError, GetState,
         models::{ByUuid, oauth_provider::OAuthProvider},
@@ -71,14 +73,23 @@ mod get {
             url = url.add_scope(Scope::new(scope.into()));
         }
 
+        let pkce_verifier = if oauth_provider.pkce {
+            let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+            url = url.set_pkce_challenge(pkce_challenge);
+
+            Some(pkce_verifier.into_secret())
+        } else {
+            None
+        };
+
         let (authorization_url, csrf_state) = url.url();
 
         state
             .cache
             .set(
-                &format!("oauth_state::{}::{}", provider_uuid, csrf_state.secret()),
+                &format!("oauth_flow::{}::{}", provider_uuid, csrf_state.secret()),
                 10 * 60,
-                &0u16,
+                &pkce_verifier,
             )
             .await?;
 

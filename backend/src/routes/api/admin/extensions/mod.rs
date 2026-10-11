@@ -20,6 +20,7 @@ mod get {
         extensions: &'a [shared::extensions::ConstructedExtension],
         disabled: Vec<compact_str::CompactString>,
         pending_disabled: Vec<compact_str::CompactString>,
+        management_disabled: bool,
     }
 
     #[utoipa::path(get, path = "/", responses(
@@ -37,6 +38,7 @@ mod get {
             extensions: &state.extensions.extensions().await,
             disabled: state.extensions.disabled(),
             pending_disabled,
+            management_disabled: state.env.app_disable_extension_management,
         })
         .ok()
     }

@@ -400,7 +400,7 @@ for (const [name, schema] of Object.entries(openapi.components?.schemas || {})) 
     if (schema.$ref || name === 'CompactString') continue
 
     // internally tagged enums the generator cannot represent, hand-written in extra.rs
-    if (name === 'QueryValue' || name === 'ServerSelector') continue
+    if (name === 'QueryValue' || name === 'ServerSelector' || name === 'BackupTestTarget' || name === 'TupleUnit') continue
 
     generateSchemaObject(output, 0, null, name, schema as oas31.SchemaObject, false, { serdeDefault: serdeDefaultProperties[name] })
 }

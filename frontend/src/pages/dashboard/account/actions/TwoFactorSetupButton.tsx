@@ -13,6 +13,7 @@ import Button from '@/elements/buttons/Button.tsx';
 import CopyOnClick from '@/elements/CopyOnClick.tsx';
 import Alert from '@/elements/feedback/Alert.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
+import HiddenUsernameInput from '@/elements/input/HiddenUsernameInput.tsx';
 import PasswordInput from '@/elements/input/PasswordInput.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
@@ -22,6 +23,7 @@ import Code from '@/elements/typography/Code.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import { withTwoFactorMethod } from '@/lib/auth/twoFactor.ts';
 import { dashboardTwoFactorEnableSchema } from '@/lib/schemas/dashboard.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -51,7 +53,7 @@ export default function TwoFactorSetupButton() {
       code: '',
       password: '',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(
       dashboardTwoFactorEnableSchema.extend({
         password: user?.hasPassword
@@ -132,6 +134,7 @@ export default function TwoFactorSetupButton() {
           )}
 
           <Stack>
+            <HiddenUsernameInput username={user?.username ?? ''} />
             <Text>{t('pages.account.account.containers.twoFactor.modal.setupTwoFactor.description', {})}</Text>
             {!token ? (
               <Spinner.Centered />

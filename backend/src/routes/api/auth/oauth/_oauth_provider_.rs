@@ -12,8 +12,8 @@ use axum::{
 use base64::Engine;
 use compact_str::ToCompactString;
 use oauth2::{
-    AuthUrl, AuthorizationCode, ClientId, ClientSecret, HttpRequest, HttpResponse, RedirectUrl,
-    TokenResponse, TokenUrl, basic::BasicClient,
+    AuthUrl, AuthorizationCode, ClientId, ClientSecret, HttpRequest, HttpResponse,
+    PkceCodeVerifier, RedirectUrl, TokenResponse, TokenUrl, basic::BasicClient,
 };
 use serde::Deserialize;
 use shared::models::IntoApiObject;
@@ -147,15 +147,18 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                     .build(),
             );
 
-            let cache_key = format!("oauth_state::{}::{}", oauth_provider.uuid, params.state);
+            let cache_key = format!("oauth_flow::{}::{}", oauth_provider.uuid, params.state);
 
-            if state_cookie.as_deref() != Some(params.state.as_str())
-                || state.cache.get::<u16>(&cache_key).await?.is_none()
-            {
-                return ApiResponse::error("oauth csrf state not found, please try again")
-                    .with_status(StatusCode::NOT_FOUND)
-                    .ok();
-            }
+            let pkce_verifier = match state.cache.get::<Option<String>>(&cache_key).await? {
+                Some(pkce_verifier) if state_cookie.as_deref() == Some(params.state.as_str()) => {
+                    pkce_verifier
+                }
+                _ => {
+                    return ApiResponse::error("oauth csrf state not found, please try again")
+                        .with_status(StatusCode::NOT_FOUND)
+                        .ok();
+                }
+            };
 
             state.cache.invalidate(&cache_key).await?;
 
@@ -166,14 +169,14 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                 .trim_end_matches('/')
                 .to_compact_string();
 
-            let client = BasicClient::new(ClientId::new(oauth_provider.client_id.to_string()))
-                .set_client_secret(ClientSecret::new(
-                    oauth_provider
-                        .client_secret
-                        .decrypt(&state.database)
-                        .await?
-                        .into(),
-                ))
+            let client_secret = match &oauth_provider.client_secret {
+                Some(client_secret) => Some(ClientSecret::new(
+                    client_secret.decrypt(&state.database).await?.into(),
+                )),
+                None => None,
+            };
+
+            let mut client = BasicClient::new(ClientId::new(oauth_provider.client_id.to_string()))
                 .set_auth_uri(AuthUrl::new(oauth_provider.auth_url.clone())?)
                 .set_token_uri(TokenUrl::new(oauth_provider.token_url.clone())?)
                 .set_auth_type(if oauth_provider.basic_auth {
@@ -185,6 +188,9 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                     "{app_url}/api/auth/oauth/{}",
                     oauth_provider.uuid
                 ))?);
+            if let Some(client_secret) = client_secret {
+                client = client.set_client_secret(client_secret);
+            }
             let session_cookie = settings.app.session_cookie.clone();
 
             drop(settings);
@@ -240,10 +246,12 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
 
                 cookies.add(UserSession::get_cookie(&state, request_host.as_deref(), session_id.value().to_owned()).await?);
 
-                let token = client
-                    .exchange_code(AuthorizationCode::new(params.0.code))
-                    .request_async(&http_client)
-                    .await?;
+                let mut token_request = client.exchange_code(AuthorizationCode::new(params.0.code));
+                if let Some(pkce_verifier) = pkce_verifier {
+                    token_request = token_request.set_pkce_verifier(PkceCodeVerifier::new(pkce_verifier));
+                }
+
+                let token = token_request.request_async(&http_client).await?;
 
                 let info: serde_json::Value = state
                     .client
@@ -307,10 +315,12 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
                     .with_status(StatusCode::TEMPORARY_REDIRECT)
                     .ok()
             } else {
-                let token = client
-                    .exchange_code(AuthorizationCode::new(params.0.code))
-                    .request_async(&http_client)
-                    .await?;
+                let mut token_request = client.exchange_code(AuthorizationCode::new(params.0.code));
+                if let Some(pkce_verifier) = pkce_verifier {
+                    token_request = token_request.set_pkce_verifier(PkceCodeVerifier::new(pkce_verifier));
+                }
+
+                let token = token_request.request_async(&http_client).await?;
 
                 let info: serde_json::Value = state
                     .client

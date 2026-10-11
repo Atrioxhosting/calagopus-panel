@@ -11,6 +11,7 @@ import type { ContextMenuActionItem } from '@/elements/overlays/ContextMenu.tsx'
 import Code from '@/elements/typography/Code.tsx';
 import { serverBackupKindLabelMapping, streamingArchiveFormatLabelMapping } from '@/lib/enums.ts';
 import { bytesToString } from '@/lib/format/size.ts';
+import { downloadUrl } from '@/lib/network/url.ts';
 import { adminServerBackupSchema } from '@/lib/schemas/admin/servers.ts';
 import { streamingArchiveFormat } from '@/lib/schemas/generic.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
@@ -112,7 +113,7 @@ export function useBackupDownload(nodeUuid: string, downloadStartedMessage: stri
     downloadNodeBackup(nodeUuid, backupUuid, archiveFormat)
       .then(({ url }) => {
         addToast(downloadStartedMessage, 'success');
-        window.location.href = url;
+        downloadUrl(url);
       })
       .catch((msg) => {
         addToast(httpErrorToHuman(msg), 'error');

@@ -24,6 +24,7 @@ interface ResourceSelectModalProps extends ModalProps {
   onAdded?: () => void;
   onConfirm: (value: string) => Promise<unknown>;
   renderSelect?: (props: { value: string | null; onChange: (value: string | null) => void }) => ReactNode;
+  renderBelowSelect?: (value: string | null) => ReactNode;
   children?: ReactNode;
 }
 
@@ -41,6 +42,7 @@ export default function ResourceSelectModal({
   onAdded,
   onConfirm,
   renderSelect,
+  renderBelowSelect,
   children,
   ...props
 }: ResourceSelectModalProps) {
@@ -101,6 +103,8 @@ export default function ResourceSelectModal({
             loading={loading}
           />
         )}
+
+        {renderBelowSelect?.(value)}
 
         {children}
 

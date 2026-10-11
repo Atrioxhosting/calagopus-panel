@@ -13,10 +13,12 @@ import EmptyState from '@/elements/feedback/EmptyState.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
+import ConditionalTooltip from '@/elements/overlays/ConditionalTooltip.tsx';
 import { scheduleStepDefaultMapping, scheduleStepLabelMapping } from '@/lib/enums.ts';
 import { serverScheduleSchema, serverScheduleStepSchema } from '@/lib/schemas/server/schedules.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import { useGlobalStore } from '@/stores/global.ts';
 import { useServerStore, useServerStoreApi } from '@/stores/server.ts';
 import StepCreateOrUpdateModal from './modals/StepCreateOrUpdateModal.tsx';
 import StepCard, { StepCardBody } from './StepCard.tsx';
@@ -72,6 +74,7 @@ function stepBlockIssues(steps: z.infer<typeof serverScheduleStepSchema>[]): {
 
 export default function StepsEditor({ schedule }: { schedule: z.infer<typeof serverScheduleSchema> }) {
   const { t } = useTranslations();
+  const { settings } = useGlobalStore();
   const server = useServerStore((state) => state.server);
   const scheduleSteps = useServerStore((state) => state.scheduleSteps);
   const setScheduleSteps = useServerStore((state) => state.setScheduleSteps);
@@ -82,6 +85,12 @@ export default function StepsEditor({ schedule }: { schedule: z.infer<typeof ser
   const [openModal, setOpenModal] = useState<'edit' | 'create' | null>(null);
   const [childModalOpen, setChildModalOpen] = useState(false);
   const [dragProjection, setDragProjection] = useState<{ activeId: string; overId: string } | null>(null);
+
+  const remainingSteps = settings.server.maxScheduleStepCount - scheduleSteps.length;
+  const atLimit = remainingSteps <= 0;
+  const limitTooltip = t('pages.server.schedules.steps.tooltip.limitReached', {
+    max: settings.server.maxScheduleStepCount,
+  });
 
   const nextStepOrder = useMemo(
     () => scheduleSteps.reduce((max, step) => Math.max(max, step.order), 0) + 1,
@@ -270,9 +279,15 @@ export default function StepsEditor({ schedule }: { schedule: z.infer<typeof ser
             title={t('pages.server.schedules.steps.empty.title', {})}
             description={t('pages.server.schedules.steps.empty.description', {})}
           >
-            <Button onClick={() => setOpenModal('create')} leftSection={<FontAwesomeIcon icon={faPlus} />}>
-              {t('pages.server.schedules.button.createFirstStep', {})}
-            </Button>
+            <ConditionalTooltip enabled={atLimit} label={limitTooltip}>
+              <Button
+                onClick={() => setOpenModal('create')}
+                leftSection={<FontAwesomeIcon icon={faPlus} />}
+                disabled={atLimit}
+              >
+                {t('pages.server.schedules.button.createFirstStep', {})}
+              </Button>
+            </ConditionalTooltip>
           </EmptyState>
         ) : (
           <DndContainer
@@ -316,6 +331,7 @@ export default function StepsEditor({ schedule }: { schedule: z.infer<typeof ser
                             onStepDuplicate={handleStepCreate}
                             onStepAddBranch={handleStepAddBranch}
                             canAddElse={canAddElseMap.get(step.id) ?? false}
+                            remainingSteps={remainingSteps}
                           />
                         </div>
                       )}
@@ -338,9 +354,15 @@ export default function StepsEditor({ schedule }: { schedule: z.infer<typeof ser
 
         {sortedSteps.length > 0 && (
           <Group justify='center'>
-            <Button onClick={() => setOpenModal('create')} leftSection={<FontAwesomeIcon icon={faPlus} />}>
-              {t('pages.server.schedules.button.addStep', {})}
-            </Button>
+            <ConditionalTooltip enabled={atLimit} label={limitTooltip}>
+              <Button
+                onClick={() => setOpenModal('create')}
+                leftSection={<FontAwesomeIcon icon={faPlus} />}
+                disabled={atLimit}
+              >
+                {t('pages.server.schedules.button.addStep', {})}
+              </Button>
+            </ConditionalTooltip>
           </Group>
         )}
       </Stack>

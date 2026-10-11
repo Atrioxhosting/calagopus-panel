@@ -64,7 +64,11 @@ mod post {
 
         let ssh_keys_lock = state
             .cache
-            .lock(format!("users::{}::ssh_keys", user.uuid), Some(30), Some(5))
+            .lock(
+                format!("users::{}::ssh_keys", user.uuid),
+                Some(30),
+                Some(5000),
+            )
             .await?;
 
         let ssh_keys = UserSshKey::count_by_user_uuid(&state.database, user.uuid).await?;

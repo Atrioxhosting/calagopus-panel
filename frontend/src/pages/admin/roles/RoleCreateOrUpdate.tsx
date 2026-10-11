@@ -41,7 +41,6 @@ export default function RoleCreateOrUpdate({ contextRole }: { contextRole?: z.in
   const form = useFormEngine<RoleFormValues>('admin.roles.createOrUpdate', {
     schema: adminRoleUpdateSchema.unwrap(),
     initialValues: roleEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const { loading, doCreateOrUpdate, doDelete } = useResourceForm<RoleFormValues, z.infer<typeof roleSchema>>({

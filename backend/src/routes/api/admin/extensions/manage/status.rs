@@ -2,7 +2,6 @@ use super::State;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 mod get {
-    use axum::http::StatusCode;
     use compact_str::ToCompactString;
     use serde::Serialize;
     use shared::{
@@ -25,13 +24,7 @@ mod get {
         (status = OK, body = inline(Response)),
     ))]
     pub async fn route(state: GetState, permissions: GetPermissionManager) -> ApiResponseResult {
-        if !state.container_type.is_heavy() {
-            return ApiResponse::error(
-                "extension management is only available in the official heavy container",
-            )
-            .with_status(StatusCode::NOT_IMPLEMENTED)
-            .ok();
-        }
+        state.ensure_extension_management()?;
 
         permissions.has_admin_permission("extensions.manage")?;
 

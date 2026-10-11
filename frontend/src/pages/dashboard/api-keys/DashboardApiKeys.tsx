@@ -39,6 +39,8 @@ export default function DashboardApiKeys() {
     fetcher: getApiKeys,
   });
 
+  const atLimit = (apiKeys?.total ?? 0) >= settings.user.maxApiKeyCount;
+
   const {
     selected: selectedApiKeys,
     toggle: toggleApiKey,
@@ -65,14 +67,14 @@ export default function DashboardApiKeys() {
             </Button>
           </Anchor>
           <ConditionalTooltip
-            enabled={(apiKeys?.total ?? 0) >= settings.user.maxApiKeyCount}
+            enabled={atLimit}
             label={t('pages.account.apiKeys.tooltip.limitReached', { max: settings.user.maxApiKeyCount })}
           >
             <Button
               onClick={() => setOpenModal('create')}
               color='blue'
               leftSection={<FontAwesomeIcon icon={faPlus} />}
-              disabled={(apiKeys?.total ?? 0) >= settings.user.maxApiKeyCount}
+              disabled={atLimit}
             >
               {t('common.button.create', {})}
             </Button>
@@ -116,6 +118,7 @@ export default function DashboardApiKeys() {
             <SelectionArea.Selectable key={key.uuid} item={key}>
               {(innerRef: Ref<HTMLElement>) => (
                 <ApiKeyRow
+                  atLimit={atLimit}
                   apiKey={key}
                   ref={innerRef as Ref<HTMLTableRowElement>}
                   isSelected={selectedApiKeys.has(key.uuid)}

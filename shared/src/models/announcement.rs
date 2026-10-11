@@ -827,6 +827,7 @@ pub struct DuplicateAnnouncementOptions {}
 #[async_trait::async_trait]
 impl DuplicableModel for Announcement {
     type DuplicateOptions<'a> = DuplicateAnnouncementOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<Announcement>> =

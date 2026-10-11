@@ -12,12 +12,14 @@ import deleteSessions from '@/api/me/sessions/deleteSessions.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import TitleCard from '@/elements/data-display/TitleCard.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
+import HiddenUsernameInput from '@/elements/input/HiddenUsernameInput.tsx';
 import PasswordInput from '@/elements/input/PasswordInput.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { dashboardPasswordSchema } from '@/lib/schemas/dashboard.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -38,7 +40,7 @@ export default function PasswordContainer({ requireTwoFactorActivation }: Accoun
       newPassword: '',
       confirmNewPassword: '',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(
       dashboardPasswordSchema.refine((data) => !user?.hasPassword || data.currentPassword.length > 0, {
         message: t('common.form.passwordRequired', {}),
@@ -105,6 +107,7 @@ export default function PasswordContainer({ requireTwoFactorActivation }: Accoun
       </ConfirmationModal>
 
       <form onSubmit={form.onSubmit(() => doUpdate())} className='h-full'>
+        <HiddenUsernameInput username={user?.username ?? ''} />
         <Stack h='100%'>
           {user.hasPassword && (
             <PasswordInput

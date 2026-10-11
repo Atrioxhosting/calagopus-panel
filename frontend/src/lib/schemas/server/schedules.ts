@@ -565,3 +565,6 @@ export const serverScheduleStatusSchema = z.object({
   step: z.string().nullable(),
   errors: z.record(z.string(), z.string()),
 });
+
+export type ServerSchedule = z.infer<typeof serverScheduleSchema>;
+export type ServerScheduleStep = z.infer<typeof serverScheduleStepSchema>;

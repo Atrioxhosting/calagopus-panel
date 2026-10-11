@@ -7,7 +7,7 @@ mod post {
     use shared::{
         ApiError, GetState,
         models::{
-            user::{AuthMethod, GetAuthMethod, GetPermissionManager, GetUser},
+            user::{GetPermissionManager, GetUser},
             user_activity::GetUserActivityLogger,
             user_api_key::UserApiKey,
         },
@@ -34,7 +34,6 @@ mod post {
     pub async fn route(
         state: GetState,
         permissions: GetPermissionManager,
-        auth: GetAuthMethod,
         user: GetUser,
         activity_logger: GetUserActivityLogger,
         Path(api_key): Path<uuid::Uuid>,
@@ -51,20 +50,11 @@ mod post {
                 }
             };
 
-        if let AuthMethod::ApiKey(auth_api_key) = &**auth
-            && (api_key
-                .user_permissions
-                .iter()
-                .any(|p| !auth_api_key.user_permissions.contains(p))
-                || api_key
-                    .admin_permissions
-                    .iter()
-                    .any(|p| !auth_api_key.admin_permissions.contains(p))
-                || api_key
-                    .server_permissions
-                    .iter()
-                    .any(|p| !auth_api_key.server_permissions.contains(p)))
-        {
+        if !permissions.scope().covers(
+            &api_key.user_permissions,
+            &api_key.admin_permissions,
+            &api_key.server_permissions,
+        ) {
             return ApiResponse::error(
                 "unable to recreate api key with more permissions than self",
             )

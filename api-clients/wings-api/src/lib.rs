@@ -28,6 +28,12 @@ nestify::nest! {
 pub enum AppContainerType {
     #[serde(rename = "official")]
     Official,
+    #[serde(rename = "official_aio")]
+    OfficialAio,
+    #[serde(rename = "official_heavy")]
+    OfficialHeavy,
+    #[serde(rename = "official_heavy_aio")]
+    OfficialHeavyAio,
     #[serde(rename = "unknown")]
     Unknown,
     #[serde(rename = "none")]
@@ -170,6 +176,29 @@ nestify::nest! {
     }
 }
 
+nestify::nest! {
+    #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct DirectorySizes {
+        #[schema(inline)]
+        pub name: compact_str::CompactString,
+        #[schema(inline)]
+        pub size: u64,
+        #[schema(inline)]
+        pub size_physical: u64,
+        #[schema(inline)]
+        pub files_size: u64,
+        #[schema(inline)]
+        pub inaccessible_size: u64,
+        #[schema(inline)]
+        pub other_size: u64,
+        #[schema(inline)]
+        pub other_count: u64,
+        #[schema(inline)]
+        pub truncated: bool,
+        #[schema(no_recursion)]
+        pub children: Vec<DirectorySizes>,
+    }
+}
+
 #[derive(Debug, ToSchema, Deserialize, Serialize, Clone, Copy)]
 pub enum DiskLimiterMode {
     #[serde(rename = "none")]
@@ -261,6 +290,21 @@ nestify::nest! {
 }
 
 nestify::nest! {
+    #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct KopiaBackupConfiguration {
+        #[schema(inline)]
+        pub url: compact_str::CompactString,
+        #[schema(inline)]
+        pub username: compact_str::CompactString,
+        #[schema(inline)]
+        pub password: compact_str::CompactString,
+        #[schema(inline)]
+        pub fingerprint: Option<compact_str::CompactString>,
+        #[schema(inline)]
+        pub tags: IndexMap<compact_str::CompactString, compact_str::CompactString>,
+    }
+}
+
+nestify::nest! {
     #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct MatchBlock {
         #[schema(inline)]
         pub start_line: u64,
@@ -292,6 +336,23 @@ nestify::nest! {
         pub source: compact_str::CompactString,
         #[schema(inline)]
         pub read_only: bool,
+    }
+}
+
+nestify::nest! {
+    #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct PbsRepositoryConfiguration {
+        #[schema(inline)]
+        pub url: compact_str::CompactString,
+        #[schema(inline)]
+        pub datastore: compact_str::CompactString,
+        #[schema(inline)]
+        pub namespace: Option<compact_str::CompactString>,
+        #[schema(inline)]
+        pub token_id: compact_str::CompactString,
+        #[schema(inline)]
+        pub token_secret: compact_str::CompactString,
+        #[schema(inline)]
+        pub fingerprint: Option<compact_str::CompactString>,
     }
 }
 
@@ -409,6 +470,13 @@ nestify::nest! {
         pub is_snapshot: bool,
         #[schema(inline)]
         pub created: chrono::DateTime<chrono::Local>,
+    }
+}
+
+nestify::nest! {
+    #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct S3TestConfiguration {
+        #[schema(inline)]
+        pub upload_url: compact_str::CompactString,
     }
 }
 
@@ -1763,6 +1831,31 @@ pub mod servers_server_files_delete {
         pub type Response = Response200;
     }
 }
+pub mod servers_server_files_directory_sizes {
+    use super::*;
+
+    pub mod get {
+        use super::*;
+
+        pub type Response200 = DirectorySizes;
+
+        pub type Response404 = ApiError;
+
+        pub type Response417 = ApiError;
+
+        pub type Response = Response200;
+
+        #[derive(Debug, Clone, Default)]
+        #[allow(clippy::manual_non_exhaustive)]
+        pub struct Query {
+            pub directory: Option<compact_str::CompactString>,
+            pub depth: Option<u64>,
+            pub ignored: Option<Vec<compact_str::CompactString>>,
+            #[doc(hidden)]
+            pub __priv: (),
+        }
+    }
+}
 pub mod servers_server_files_fingerprints {
     use super::*;
 
@@ -2703,6 +2796,28 @@ pub mod system {
                 pub os: compact_str::CompactString,
                 #[schema(inline)]
                 pub version: compact_str::CompactString,
+            }
+        }
+
+        pub type Response = Response200;
+    }
+}
+pub mod system_backups_test {
+    use super::*;
+
+    pub mod post {
+        use super::*;
+
+        pub type RequestBody = BackupTestTarget;
+
+        nestify::nest! {
+            #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200 {
+                #[schema(inline)]
+                pub successful: bool,
+                #[schema(inline)]
+                pub duration_ms: u64,
+                #[schema(inline)]
+                pub error: Option<compact_str::CompactString>,
             }
         }
 

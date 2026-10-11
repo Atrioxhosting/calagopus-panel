@@ -224,6 +224,13 @@ impl UserApiKey {
     /// "Bearer " (7) + key (48)
     pub const HEADER_LEN: usize = 7 + 48;
 
+    fn generate_key() -> String {
+        format!(
+            "c7sp_{}",
+            rand::distr::Alphanumeric.sample_string(&mut rand::rng(), 43)
+        )
+    }
+
     pub async fn by_user_uuid_uuid(
         database: &crate::database::Database,
         user_uuid: uuid::Uuid,
@@ -369,10 +376,7 @@ impl UserApiKey {
         &mut self,
         database: &crate::database::Database,
     ) -> Result<String, crate::database::DatabaseError> {
-        let new_key = format!(
-            "c7sp_{}",
-            rand::distr::Alphanumeric.sample_string(&mut rand::rng(), 43)
-        );
+        let new_key = Self::generate_key();
 
         sqlx::query(
             r#"
@@ -490,10 +494,7 @@ impl CreatableModel for UserApiKey {
     ) -> Result<Self::CreateResult, crate::database::DatabaseError> {
         options.validate()?;
 
-        let key = format!(
-            "c7sp_{}",
-            rand::distr::Alphanumeric.sample_string(&mut rand::rng(), 43)
-        );
+        let key = Self::generate_key();
 
         let mut query_builder = InsertQueryBuilder::new("user_api_keys");
 
@@ -620,6 +621,66 @@ impl UpdatableModel for UserApiKey {
         self.run_after_update_handlers(state, transaction).await?;
 
         Ok(())
+    }
+}
+
+#[derive(Validate)]
+pub struct DuplicateUserApiKeyOptions {
+    #[garde(skip)]
+    pub user_uuid: uuid::Uuid,
+    #[garde(length(chars, min = 3, max = 31))]
+    pub name: compact_str::CompactString,
+}
+
+#[async_trait::async_trait]
+impl DuplicableModel for UserApiKey {
+    type DuplicateOptions<'a> = DuplicateUserApiKeyOptions;
+    type DuplicateResult = (String, Self);
+
+    fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
+        static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<UserApiKey>> =
+            LazyLock::new(|| Arc::new(ModelHandlerList::default()));
+
+        &DUPLICATE_LISTENERS
+    }
+
+    async fn duplicate_with_transaction(
+        &self,
+        state: &crate::State,
+        options: Self::DuplicateOptions<'_>,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<Self::DuplicateResult, crate::database::DatabaseError> {
+        options.validate()?;
+
+        self.run_duplicate_handlers(&options, state, transaction)
+            .await?;
+
+        let key = Self::generate_key();
+
+        let mut query_builder = InsertQueryBuilder::new("user_api_keys");
+
+        query_builder
+            .set("user_uuid", options.user_uuid)
+            .set("name", &options.name)
+            .set("key_start", &key[0..16])
+            .set("key", crate::crypt::token_digest(&key))
+            .set("allowed_ips", &self.allowed_ips)
+            .set("enabled", self.enabled)
+            .set("user_permissions", &*self.user_permissions)
+            .set("admin_permissions", &*self.admin_permissions)
+            .set("server_permissions", &*self.server_permissions)
+            .set("expires", self.expires);
+
+        let row = query_builder
+            .returning(&Self::columns_sql(None))
+            .fetch_one(&mut **transaction)
+            .await?;
+        let mut result = (key, Self::map(None, &row)?);
+
+        self.run_after_duplicate_handlers(&mut result, &options, state, transaction)
+            .await?;
+
+        Ok(result)
     }
 }
 

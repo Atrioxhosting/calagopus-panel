@@ -58,7 +58,6 @@ export default function ServerUpdate({ contextServer }: { contextServer: AdminSe
     mode: 'uncontrolled',
     initialValues: serverUpdateEmptyFormValues,
     onValuesChange: () => setIsValid(form.isValid()),
-    validateInputOnBlur: true,
   });
 
   const [selectedEggUuid, setSelectedEggUuid] = useState(contextServer?.egg.uuid ?? '');

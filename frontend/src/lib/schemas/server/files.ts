@@ -219,6 +219,20 @@ export const serverDirectoryEntrySchema = z.object({
   created: z.coerce.date(),
 });
 
+export const serverDirectorySizesSchema = z.object({
+  name: z.string(),
+  size: z.number(),
+  sizePhysical: z.number(),
+  filesSize: z.number(),
+  inaccessibleSize: z.number(),
+  otherSize: z.number(),
+  otherCount: z.number(),
+  truncated: z.boolean(),
+  get children() {
+    return z.array(serverDirectorySizesSchema);
+  },
+});
+
 export const serverDirectoryUploadSchema = z.object({
   name: z.string(),
   targetName: z.string(),

@@ -57,7 +57,7 @@ mod post {
 
         let deployment_lock = state
             .cache
-            .lock("database_agent_hosts::deployment", Some(30), Some(5))
+            .lock("database_agent_hosts::deployment", Some(30), Some(5000))
             .await?;
 
         let version = database_agent_template.version;

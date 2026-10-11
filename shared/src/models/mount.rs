@@ -435,6 +435,7 @@ pub struct DuplicateMountOptions {
 #[async_trait::async_trait]
 impl DuplicableModel for Mount {
     type DuplicateOptions<'a> = DuplicateMountOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<Mount>> =

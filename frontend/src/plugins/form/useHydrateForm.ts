@@ -38,6 +38,10 @@ export function useHydrateForm<T extends Record<string, unknown>, C>(
     }
 
     hydratedKeyRef.current = key;
-    form.setValues(toFormValues(context));
+
+    const values = toFormValues(context);
+
+    form.resetDirty({ ...form.getValues(), ...values });
+    form.setValues(values);
   }, [context]);
 }

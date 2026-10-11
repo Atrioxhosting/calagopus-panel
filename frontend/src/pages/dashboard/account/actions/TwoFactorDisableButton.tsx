@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import disableTwoFactor from '@/api/me/account/disableTwoFactor.ts';
 import Button from '@/elements/buttons/Button.tsx';
+import HiddenUsernameInput from '@/elements/input/HiddenUsernameInput.tsx';
 import PasswordInput from '@/elements/input/PasswordInput.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
@@ -13,6 +14,7 @@ import { ModalFooter } from '@/elements/modals/Modal.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import { withTwoFactorMethod } from '@/lib/auth/twoFactor.ts';
 import { dashboardTwoFactorDisableSchema } from '@/lib/schemas/dashboard.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -32,7 +34,7 @@ export default function TwoFactorDisableButton() {
       code: '',
       password: '',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(
       dashboardTwoFactorDisableSchema.extend({
         password: user?.hasPassword
@@ -78,6 +80,7 @@ export default function TwoFactorDisableButton() {
         onSubmit={doDisable}
       >
         <Stack>
+          <HiddenUsernameInput username={user?.username ?? ''} />
           <Text>{t('pages.account.account.containers.twoFactor.modal.disableTwoFactor.description', {}).md()}</Text>
 
           <TextInput

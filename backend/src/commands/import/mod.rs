@@ -1,7 +1,7 @@
 use aes::cipher::{BlockModeDecrypt, KeyIvInit, block_padding::Pkcs7};
 use anyhow::Context;
 use base64::Engine;
-use futures_util::StreamExt;
+use colored::Colorize;
 use rsa::{pkcs1::DecodeRsaPublicKey, traits::PublicKeyParts};
 use serde::Deserialize;
 use shared::extensions::commands::CliCommandGroupBuilder;
@@ -9,12 +9,17 @@ use spki::der::Decode;
 use sqlx::Row;
 use sqlx::any::AnyPoolOptions;
 use std::{
-    collections::HashMap,
+    collections::HashSet,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
+mod issues;
+mod model;
 mod pelican;
 mod pterodactyl;
+mod validate;
+mod write;
 
 static BASE64_ENGINE: base64::engine::general_purpose::GeneralPurpose =
     base64::engine::general_purpose::GeneralPurpose::new(
@@ -22,13 +27,6 @@ static BASE64_ENGINE: base64::engine::general_purpose::GeneralPurpose =
         base64::engine::general_purpose::GeneralPurposeConfig::new()
             .with_decode_padding_mode(base64::engine::DecodePaddingMode::Indifferent),
     );
-
-#[inline]
-fn collect_mappings<K: std::hash::Hash + Eq>(
-    mappings: Vec<HashMap<K, uuid::Uuid>>,
-) -> HashMap<K, uuid::Uuid> {
-    mappings.into_iter().flatten().collect()
-}
 
 pub(super) type SourcePool = sqlx::AnyPool;
 pub(super) type SourceRow = sqlx::any::AnyRow;
@@ -167,59 +165,6 @@ fn source_optional_text(row: &SourceRow, column: &str) -> Result<Option<String>,
         return Ok(Some(String::from_utf8_lossy(&b).into_owned()));
     }
     Ok(None)
-}
-
-fn source_uuid(row: &SourceRow, column: &str) -> Result<uuid::Uuid, anyhow::Error> {
-    row.try_get::<String, _>(column)
-        .with_context(|| format!("failed to read source uuid column `{column}`"))?
-        .parse::<uuid::Uuid>()
-        .with_context(|| format!("failed to parse source uuid column `{column}`"))
-}
-
-fn source_datetime(
-    row: &SourceRow,
-    column: &str,
-) -> Result<chrono::DateTime<chrono::Utc>, anyhow::Error> {
-    let value: String = row
-        .try_get(column)
-        .with_context(|| format!("failed to read source datetime column `{column}`"))?;
-
-    chrono::DateTime::parse_from_rfc3339(&value)
-        .map(|value| value.with_timezone(&chrono::Utc))
-        .or_else(|_| {
-            chrono::NaiveDateTime::parse_from_str(&value, "%Y-%m-%d %H:%M:%S%.f")
-                .map(|value| value.and_utc())
-        })
-        .or_else(|_| {
-            chrono::NaiveDateTime::parse_from_str(&value, "%Y-%m-%d %H:%M:%S")
-                .map(|value| value.and_utc())
-        })
-        .with_context(|| format!("failed to parse source datetime column `{column}`"))
-}
-
-fn source_optional_datetime(
-    row: &SourceRow,
-    column: &str,
-) -> Result<Option<chrono::DateTime<chrono::Utc>>, anyhow::Error> {
-    let value = row
-        .try_get::<Option<String>, _>(column)
-        .with_context(|| format!("failed to read source datetime column `{column}`"))?;
-
-    value
-        .map(|value| {
-            chrono::DateTime::parse_from_rfc3339(&value)
-                .map(|value| value.with_timezone(&chrono::Utc))
-                .or_else(|_| {
-                    chrono::NaiveDateTime::parse_from_str(&value, "%Y-%m-%d %H:%M:%S%.f")
-                        .map(|value| value.and_utc())
-                })
-                .or_else(|_| {
-                    chrono::NaiveDateTime::parse_from_str(&value, "%Y-%m-%d %H:%M:%S")
-                        .map(|value| value.and_utc())
-                })
-                .with_context(|| format!("failed to parse source datetime column `{column}`"))
-        })
-        .transpose()
 }
 
 fn source_bool(row: &SourceRow, column: &str) -> Result<bool, anyhow::Error> {
@@ -409,60 +354,149 @@ pub(crate) fn is_datetime_column(column: &str) -> bool {
     ) || column.ends_with("_at")
 }
 
-pub async fn process_table<DB, T, Fut: Future<Output = Result<T, anyhow::Error>>>(
-    source_database: &sqlx::Pool<DB>,
-    table: &str,
-    sql_where: Option<&str>,
-    compute: impl Fn(Vec<DB::Row>) -> Fut,
-    page_size: usize,
-) -> Result<Vec<T>, anyhow::Error>
-where
-    DB: sqlx::Database,
-    for<'q> <DB as sqlx::Database>::Arguments: sqlx::IntoArguments<DB>,
-    for<'c> &'c sqlx::Pool<DB>: sqlx::Executor<'c, Database = DB>,
-    for<'r> &'r str: sqlx::ColumnIndex<DB::Row>,
-    usize: sqlx::ColumnIndex<DB::Row>,
-    for<'r> i64: sqlx::Decode<'r, DB> + sqlx::Type<DB>,
-    for<'r> String: sqlx::Decode<'r, DB> + sqlx::Type<DB>,
-{
-    let is_pg = is_postgres_source();
-    let q = if is_pg { '"' } else { '`' };
+fn source_i64(row: &SourceRow, column: &str) -> Result<i64, anyhow::Error> {
+    source_optional_i64(row, column)?
+        .with_context(|| format!("source column `{column}` is unexpectedly null"))
+}
 
-    let projection = if is_sqlite_source() {
-        let pragma_query = format!("PRAGMA table_info(`{table}`)");
-        let columns: Vec<DB::Row> = sqlx::query::<DB>(sqlx::AssertSqlSafe(pragma_query))
-            .fetch_all(source_database)
-            .await?;
-        columns
-            .into_iter()
-            .map(|column| {
-                let name: String = column.try_get("name")?;
-                Ok::<_, anyhow::Error>(if is_datetime_column(&name) {
-                    format!("CAST(`{name}` AS TEXT) AS `{name}`")
-                } else {
-                    format!("`{name}`")
-                })
-            })
-            .collect::<Result<Vec<_>, _>>()?
-            .join(", ")
-    } else if is_pg {
-        let info_query = format!(
-            "SELECT column_name::TEXT, data_type::TEXT FROM information_schema.columns \
-            WHERE table_schema = 'public' AND table_name = '{table}' \
-            ORDER BY ordinal_position"
-        );
-        let columns: Vec<DB::Row> = sqlx::query::<DB>(sqlx::AssertSqlSafe(info_query))
-            .fetch_all(source_database)
-            .await?;
-        if columns.is_empty() {
-            "*".to_string()
+fn source_optional_i64(row: &SourceRow, column: &str) -> Result<Option<i64>, anyhow::Error> {
+    if let Ok(value) = row.try_get::<Option<i64>, _>(column) {
+        return Ok(value);
+    }
+    if let Ok(value) = row.try_get::<Option<i32>, _>(column) {
+        return Ok(value.map(i64::from));
+    }
+    if let Ok(value) = row.try_get::<Option<bool>, _>(column) {
+        return Ok(value.map(i64::from));
+    }
+    if let Ok(value) = row.try_get::<Option<f64>, _>(column) {
+        return Ok(value.map(|value| value as i64));
+    }
+
+    match source_optional_text(row, column)? {
+        Some(value) => value
+            .trim()
+            .parse()
+            .map(Some)
+            .with_context(|| format!("failed to parse source integer column `{column}`")),
+        None => row
+            .try_column(column)
+            .map(|_| None)
+            .with_context(|| format!("failed to read source integer column `{column}`")),
+    }
+}
+
+/// Reads a timestamp, treating missing and unparseable values (such as MySQL zero dates) alike.
+fn source_timestamp(row: &SourceRow, column: &str) -> Option<chrono::DateTime<chrono::Utc>> {
+    let value = source_optional_text(row, column).ok()??;
+
+    chrono::DateTime::parse_from_rfc3339(&value)
+        .map(|value| value.with_timezone(&chrono::Utc))
+        .or_else(|_| {
+            chrono::NaiveDateTime::parse_from_str(&value, "%Y-%m-%d %H:%M:%S%.f")
+                .map(|value| value.and_utc())
+        })
+        .ok()
+}
+
+fn source_readable_uuid(row: &SourceRow, column: &str) -> model::Readable<uuid::Uuid> {
+    let value = source_optional_text(row, column)
+        .ok()
+        .flatten()
+        .unwrap_or_default();
+
+    value
+        .trim()
+        .parse()
+        .map_err(|err| model::Unreadable::new(value.as_str(), format!("not a uuid: {err}")))
+}
+
+pub(super) struct SourceColumns(HashSet<String>);
+
+impl SourceColumns {
+    pub fn has(&self, column: &str) -> bool {
+        self.0.contains(column)
+    }
+}
+
+pub(super) struct SourceContext {
+    pool: SourcePool,
+    app_key: Vec<u8>,
+    prefix: String,
+}
+
+impl SourceContext {
+    async fn column_types(&self, table: &str) -> Result<Vec<(String, String)>, anyhow::Error> {
+        let table = format!("{}{table}", self.prefix);
+
+        let (query, name_column, type_column) = if is_sqlite_source() {
+            (format!("PRAGMA table_info(`{table}`)"), "name", "type")
+        } else if is_postgres_source() {
+            (
+                format!(
+                    "SELECT column_name::TEXT AS column_name, data_type::TEXT AS data_type FROM information_schema.columns \
+                    WHERE table_schema = current_schema() AND table_name = '{table}' \
+                    ORDER BY ordinal_position"
+                ),
+                "column_name",
+                "data_type",
+            )
         } else {
-            columns
-                .into_iter()
-                .map(|column| {
-                    let name: String = column.try_get("column_name")?;
-                    let data_type: String = column.try_get("data_type")?;
-                    Ok::<_, anyhow::Error>(match data_type.as_str() {
+            (
+                format!(
+                    "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS \
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' \
+                    ORDER BY ORDINAL_POSITION"
+                ),
+                "COLUMN_NAME",
+                "DATA_TYPE",
+            )
+        };
+
+        sqlx::query(sqlx::AssertSqlSafe(query))
+            .fetch_all(&self.pool)
+            .await
+            .with_context(|| format!("failed to inspect source table `{table}`"))?
+            .iter()
+            .map(|column| {
+                Ok((
+                    source_text(column, name_column)?,
+                    source_text(column, type_column)?.to_ascii_lowercase(),
+                ))
+            })
+            .collect()
+    }
+
+    pub async fn has_table(&self, table: &str) -> Result<bool, anyhow::Error> {
+        Ok(!self.column_types(table).await?.is_empty())
+    }
+
+    /// Builds the query for a whole table, casting driver-specific column types to ones
+    /// every source database returns the same way.
+    async fn select(
+        &self,
+        table: &str,
+        sql_where: Option<&str>,
+    ) -> Result<(SourceColumns, String), anyhow::Error> {
+        let columns = self.column_types(table).await?;
+        if columns.is_empty() {
+            anyhow::bail!(
+                "table `{}{table}` does not exist in the source database",
+                self.prefix
+            );
+        }
+
+        let is_pg = is_postgres_source();
+        let is_sqlite = is_sqlite_source();
+        let q = if is_pg { '"' } else { '`' };
+
+        let projection = columns
+            .iter()
+            .map(|(name, data_type)| {
+                let cast = if is_sqlite {
+                    is_datetime_column(name).then_some("TEXT")
+                } else if is_pg {
+                    match data_type.as_str() {
                         "timestamp without time zone"
                         | "timestamp with time zone"
                         | "date"
@@ -470,131 +504,403 @@ where
                         | "time with time zone"
                         | "uuid"
                         | "json"
-                        | "jsonb" => {
-                            format!("CAST(\"{name}\" AS TEXT) AS \"{name}\"")
+                        | "jsonb" => Some("TEXT"),
+                        "smallint" => Some("INTEGER"),
+                        _ => None,
+                    }
+                } else {
+                    match data_type.as_str() {
+                        "datetime" | "timestamp" | "date" | "time" | "year" | "tinytext"
+                        | "text" | "mediumtext" | "longtext" | "tinyblob" | "blob"
+                        | "mediumblob" | "longblob" | "json" => Some("CHAR"),
+                        "tinyint" | "smallint" | "mediumint" | "int" | "bigint" | "bit" => {
+                            Some("SIGNED")
                         }
-                        "smallint" => format!("CAST(\"{name}\" AS INTEGER) AS \"{name}\""),
-                        _ => format!("\"{name}\""),
-                    })
-                })
-                .collect::<Result<Vec<_>, _>>()?
-                .join(", ")
-        }
-    } else {
-        let info_query = format!(
-            "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS \
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' \
-            ORDER BY ORDINAL_POSITION"
+                        _ => None,
+                    }
+                };
+
+                match cast {
+                    Some(cast) => format!("CAST({q}{name}{q} AS {cast}) AS {q}{name}{q}"),
+                    None => format!("{q}{name}{q}"),
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        let query = format!(
+            "SELECT {projection} FROM {q}{}{table}{q} {}",
+            self.prefix,
+            sql_where.map_or_else(String::new, |sql_where| format!("WHERE {sql_where}"))
         );
-        let columns: Vec<DB::Row> = sqlx::query::<DB>(sqlx::AssertSqlSafe(info_query))
-            .fetch_all(source_database)
-            .await?;
-        if columns.is_empty() {
-            "*".to_string()
-        } else {
-            columns
-                .into_iter()
-                .map(|column| {
-                    let name: String = column.try_get("COLUMN_NAME")?;
-                    let data_type: String = column.try_get("DATA_TYPE")?;
-                    Ok::<_, anyhow::Error>(match data_type.to_ascii_lowercase().as_str() {
-                        "datetime" | "timestamp" | "date" | "time" | "year" => {
-                            format!("CAST(`{name}` AS CHAR) AS `{name}`")
-                        }
-                        "tinyint" | "smallint" | "mediumint" | "bit" => {
-                            format!("CAST(`{name}` AS SIGNED) AS `{name}`")
-                        }
-                        "tinytext" | "text" | "mediumtext" | "longtext" | "tinyblob" | "blob"
-                        | "mediumblob" | "longblob" => {
-                            format!("CAST(`{name}` AS CHAR) AS `{name}`")
-                        }
-                        _ => format!("`{name}`"),
-                    })
-                })
-                .collect::<Result<Vec<_>, _>>()?
-                .join(", ")
+
+        Ok((
+            SourceColumns(columns.into_iter().map(|(name, _)| name).collect()),
+            query,
+        ))
+    }
+
+    /// Reads a whole table at once, only meant for small tables.
+    pub async fn table(
+        &self,
+        table: &str,
+        sql_where: Option<&str>,
+    ) -> Result<Vec<SourceRow>, anyhow::Error> {
+        self.map_table(table, sql_where, |_, row| Ok(row.clone()))
+            .await
+    }
+
+    /// Reads a table row by row, converting each row as it arrives so the driver's rows
+    /// are never all held at once.
+    pub async fn map_table<T>(
+        &self,
+        table: &str,
+        sql_where: Option<&str>,
+        mut map: impl FnMut(&SourceColumns, &SourceRow) -> Result<T, anyhow::Error>,
+    ) -> Result<Vec<T>, anyhow::Error> {
+        use futures_util::TryStreamExt;
+
+        let (columns, query) = self.select(table, sql_where).await?;
+        let mut rows = sqlx::query(sqlx::AssertSqlSafe(query)).fetch(&self.pool);
+        let mut mapped = Vec::new();
+
+        while let Some(row) = rows
+            .try_next()
+            .await
+            .with_context(|| format!("failed to read source table `{table}`"))?
+        {
+            mapped.push(map(&columns, &row).with_context(|| {
+                format!(
+                    "failed to read row {} of source table `{table}`",
+                    mapped.len() + 1
+                )
+            })?);
+        }
+
+        mapped.shrink_to_fit();
+        tracing::info!("read {} rows from {table}", mapped.len());
+
+        Ok(mapped)
+    }
+
+    pub fn decrypt(&self, value: &str) -> model::Readable<compact_str::CompactString> {
+        decrypt_laravel_value(value, &self.app_key).map_err(|err| {
+            model::Unreadable::new(
+                "<encrypted>",
+                format!("cannot be decrypted with the source APP_KEY: {err}"),
+            )
+        })
+    }
+}
+
+#[derive(clap::Args)]
+pub(super) struct ImportArgs {
+    #[arg(
+        long = "on-invalid",
+        help = "what to do with rows that fail validation",
+        value_enum,
+        default_value = "ask"
+    )]
+    on_invalid: issues::OnInvalid,
+    #[arg(
+        long = "dry-run",
+        help = "validate the source data and report problems without writing anything"
+    )]
+    dry_run: bool,
+    #[arg(
+        long = "force",
+        help = "import into a panel that already contains users, nodes, servers, nests or locations"
+    )]
+    force: bool,
+    #[arg(
+        long = "unlimited-as",
+        help = "the limit given to servers whose database, allocation or backup limit is unlimited in the source panel",
+        default_value_t = 100
+    )]
+    unlimited_as: i32,
+    #[arg(
+        long = "report",
+        help = "write every problem, fix and skipped row to this file as JSON",
+        value_hint = clap::ValueHint::FilePath
+    )]
+    report: Option<String>,
+    #[arg(
+        short = 'y',
+        long = "yes",
+        help = "do not ask for confirmation before writing"
+    )]
+    yes: bool,
+}
+
+async fn apply_settings(
+    settings: &shared::settings::Settings,
+    source: &model::SourceSettings,
+) -> Result<(), anyhow::Error> {
+    let mut guard = settings.get_mut().await?;
+
+    guard.app.url = source.app_url.clone();
+    if let Some(app_name) = &source.app_name {
+        guard.app.name = app_name.clone();
+    }
+
+    if let Some(mail) = &source.mail {
+        guard.mail_mode = shared::settings::MailMode::Smtp {
+            host: mail.host.clone(),
+            port: mail.port,
+            username: mail.username.clone(),
+            password: mail.password.clone(),
+            tls_mode: if mail.start_tls {
+                shared::settings::TlsMode::StartTls
+            } else {
+                shared::settings::TlsMode::None
+            },
+            skip_cert_validation: false,
+            helo_domain: None,
+            from_address: mail.from_address.clone(),
+            from_name: mail.from_name.clone(),
+        };
+    }
+
+    guard.save().await?;
+    settings.set_oobe_step(None).await?;
+
+    Ok(())
+}
+
+pub(super) async fn run(
+    kind: model::SourceKind,
+    environment: &str,
+    args: ImportArgs,
+    env: Option<Arc<shared::env::Env>>,
+) -> Result<i32, anyhow::Error> {
+    let start_time = std::time::Instant::now();
+    let name = kind.name();
+
+    let Some(env) = env else {
+        eprintln!(
+            "{}",
+            "please setup the new panel environment before importing.".red()
+        );
+        return Ok(1);
+    };
+
+    if let Err(err) = dotenvy::from_path(environment) {
+        eprintln!(
+            "{}: {:#?}",
+            format!("failed to read {name} environment file").red(),
+            err
+        );
+        return Ok(1);
+    }
+
+    let app_url = match std::env::var("APP_URL") {
+        Ok(value) => value,
+        Err(err) => {
+            eprintln!(
+                "{}: {:#?}",
+                format!("failed to read {name} environment APP_URL").red(),
+                err
+            );
+            return Ok(1);
+        }
+    };
+    let app_key = match std::env::var("APP_KEY") {
+        Ok(value) => {
+            let bytes = if let Some(encoded) = value.strip_prefix("base64:") {
+                match BASE64_ENGINE.decode(encoded) {
+                    Ok(bytes) => bytes,
+                    Err(err) => {
+                        eprintln!(
+                            "{}: {:#?}",
+                            format!("failed to base64-decode {name} APP_KEY").red(),
+                            err
+                        );
+                        return Ok(1);
+                    }
+                }
+            } else {
+                value.into_bytes()
+            };
+
+            if bytes.len() != 32 {
+                eprintln!(
+                    "{}: expected 32 bytes, got {}",
+                    format!("{name} APP_KEY has wrong length").red(),
+                    bytes.len()
+                );
+                return Ok(1);
+            }
+
+            bytes
+        }
+        Err(err) => {
+            eprintln!(
+                "{}: {:#?}",
+                format!("failed to read {name} environment APP_KEY").red(),
+                err
+            );
+            return Ok(1);
+        }
+    };
+    let pool = match connect_source_database_any(environment).await {
+        Ok(pool) => pool,
+        Err(err) => {
+            eprintln!(
+                "{}: {:#?}",
+                format!("failed to connect to {name} database").red(),
+                err
+            );
+            return Ok(1);
         }
     };
 
-    let total: i64 = sqlx::query_scalar::<DB, i64>(sqlx::AssertSqlSafe(format!(
-        "SELECT COUNT(*) FROM {q}{table}{q} {}",
-        if let Some(where_clause) = sql_where {
-            format!("WHERE {where_clause}")
-        } else {
+    let context = SourceContext {
+        pool,
+        app_key,
+        prefix: if is_sqlite_source() {
             String::new()
-        }
-    )))
-    .fetch_one(source_database)
-    .await
-    .context("failed to count total rows for table")?;
+        } else {
+            std::env::var("DB_PREFIX")
+                .unwrap_or_default()
+                .trim_matches('"')
+                .to_string()
+        },
+    };
 
-    let query = format!(
-        "SELECT {projection} FROM {q}{table}{q} {}",
-        if let Some(where_clause) = sql_where {
-            format!("WHERE {where_clause}")
-        } else {
-            String::new()
+    let source = match kind {
+        model::SourceKind::Pterodactyl => pterodactyl::read(&context, &app_url).await,
+        model::SourceKind::Pelican => pelican::read(&context, &app_url).await,
+    };
+    let source = match source {
+        Ok(source) => source,
+        Err(err) => {
+            eprintln!(
+                "{}: {:#}",
+                format!("failed to read the {name} database").red(),
+                err
+            );
+            return Ok(1);
         }
+    };
+
+    let cache = shared::cache::Cache::new(&env).await;
+    let database = Arc::new(shared::database::Database::new(&env, cache.clone()).await);
+    let settings = Arc::new(
+        shared::settings::Settings::new(database.clone())
+            .await
+            .context("failed to load settings")?,
     );
-    let mut query_rows = sqlx::query::<DB>(sqlx::AssertSqlSafe(query)).fetch(source_database);
 
-    let mut processed_rows: usize = 0;
-    let mut results = Vec::new();
-    let mut rows = Vec::new();
+    let target_counts = write::target_counts(&mut *database.write().acquire().await?).await?;
+    let occupied: Vec<String> = target_counts
+        .iter()
+        .filter(|(_, count)| *count > 0)
+        .map(|(table, count)| format!("{count} {table}"))
+        .collect();
+    let target = if occupied.is_empty() {
+        model::TargetSnapshot::default()
+    } else if args.force {
+        eprintln!(
+            "{} the panel already contains {}, colliding rows will be reported",
+            "warning:".yellow(),
+            occupied.join(", ")
+        );
+        write::load_target_snapshot(&database).await?
+    } else {
+        eprintln!(
+            "{}: it already contains {}. import into a fresh panel, or pass --force to import next to the existing data.",
+            "the panel database is not empty".red(),
+            occupied.join(", ")
+        );
+        return Ok(1);
+    };
 
-    loop {
-        rows.reserve_exact(page_size);
-        while let Some(row) = query_rows.next().await {
-            rows.push(row?);
+    let options = validate::Options {
+        unlimited_as: args.unlimited_as.max(0),
+        default_language: settings.get().await?.app.language.clone(),
+        languages: shared::FRONTEND_LANGUAGES.clone(),
+        server_permissions: shared::permissions::base_server_permission_keys(),
+    };
 
-            if rows.len() >= page_size {
-                break;
+    let interactive = args.on_invalid == issues::OnInvalid::Ask && issues::is_interactive();
+    let mut decisions = issues::Decisions::new(args.on_invalid);
+    decisions.provisional = !interactive;
+
+    let (plan, findings) = loop {
+        let (plan, findings) = validate::build_plan(&source, &target, &options, &decisions);
+        if findings.pending.is_empty() {
+            break (plan, findings);
+        }
+
+        if !interactive {
+            findings.print_pending();
+            if let Some(report) = &args.report {
+                findings.write_report(report)?;
             }
+            eprintln!(
+                "{}: {} problem(s) found, nothing was written. run the import in a terminal to decide per problem, or pass --on-invalid=fix or --on-invalid=skip.",
+                "import aborted".red(),
+                findings.pending.len()
+            );
+            return Ok(1);
         }
 
-        if rows.is_empty() {
-            break;
+        if issues::prompt(&findings, &mut decisions).is_err() {
+            eprintln!("{}", "import aborted, nothing was written.".red());
+            return Ok(1);
         }
+    };
 
-        let batch = std::mem::take(&mut rows);
-        let batch_len = batch.len();
-        let result = compute(batch).await?;
+    findings.print_summary();
+    if let Some(report) = &args.report {
+        findings.write_report(report)?;
+    }
 
-        if std::mem::size_of::<T>() > 0 {
-            results.push(result);
-        }
+    eprintln!("{}", "ready to import:".green().bold());
+    for (table, count) in plan.counts() {
+        eprintln!("  {count} {table}");
+    }
 
-        processed_rows += batch_len;
+    if args.dry_run {
+        eprintln!("{}", "dry run, nothing was written.".green());
+        return Ok(0);
+    }
 
-        let percent = if total > 0 {
-            (processed_rows as f64 / total as f64) * 100.0
-        } else {
-            100.0
-        };
+    if issues::is_interactive()
+        && !args.yes
+        && !dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
+            .with_prompt("Write this to the panel database?")
+            .default(true)
+            .interact()?
+    {
+        eprintln!("{}", "import aborted, nothing was written.".red());
+        return Ok(1);
+    }
 
-        let bar_width = 40;
-        let filled = if total > 0 {
-            (processed_rows as f64 / total as f64 * bar_width as f64).round() as usize
-        } else {
-            bar_width
-        };
-        let empty = bar_width.saturating_sub(filled);
+    if let Err(err) = write::write_plan(&database, &plan, &target_counts).await {
+        eprintln!(
+            "{}: {:#}",
+            "import failed and was rolled back, nothing was written".red(),
+            err
+        );
+        return Ok(1);
+    }
 
-        tracing::info!(
-            "{} [{}{}] {:.2}% ({}/{})",
-            table,
-            "=".repeat(filled),
-            " ".repeat(empty),
-            percent,
-            processed_rows,
-            total
+    if let Err(err) = apply_settings(&settings, &source.settings).await {
+        eprintln!(
+            "{}: {:#}",
+            "the data was imported, but the panel settings (url, name, mail) could not be saved; set them in the admin area"
+                .yellow(),
+            err
         );
     }
 
-    tracing::info!("");
-    results.shrink_to_fit();
+    tracing::info!(
+        "finished import, took {:.2} seconds. restart the panel if it is running.",
+        start_time.elapsed().as_secs_f32()
+    );
 
-    Ok(results)
+    Ok(0)
 }
 
 pub fn commands(cli: CliCommandGroupBuilder) -> CliCommandGroupBuilder {

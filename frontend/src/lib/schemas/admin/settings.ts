@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { oobeStepKey } from '@/lib/schemas/oobe.ts';
+import { ruleMessage } from '@/lib/schemas/rules.ts';
 import { twoFactorMethod } from '@/lib/schemas/user.ts';
 import { nullableNumber, nullableString } from '@/lib/serialization/transformers.ts';
 import { eggConfigurationRouteItemSchema, hostnameSchema } from '../generic.ts';
@@ -54,6 +55,7 @@ export const adminSettingsCaptchaProviderRecaptchaSchema = z.object({
   siteKey: z.string().min(1).max(255),
   secretKey: z.string().min(1).max(255),
   v3: z.boolean(),
+  threshold: z.number().min(0).max(1).default(0.5),
 });
 
 export const adminSettingsCaptchaProviderHcaptchaSchema = z.object({
@@ -68,12 +70,37 @@ export const adminSettingsCaptchaProviderFriendlyCaptchaSchema = z.object({
   apiKey: z.string().min(1).max(255),
 });
 
+export const adminSettingsCaptchaProviderCapSchema = z.object({
+  type: z.literal('cap'),
+  apiUrl: z
+    .url({ protocol: /^https?$/ })
+    .max(255)
+    .refine(
+      (value) => {
+        if (!URL.canParse(value)) return false;
+        const url = new URL(value);
+        return !url.username && !url.password && !value.includes('?') && !value.includes('#');
+      },
+      { message: 'The URL must not contain credentials, a query, or a fragment' },
+    ),
+  siteKey: z
+    .string()
+    .min(1)
+    .max(255)
+    .regex(
+      /^[a-zA-Z0-9_-]+$/,
+      ruleMessage((t) => t('common.form.rule.captchaSiteKey', {})),
+    ),
+  secretKey: z.string().min(1).max(255),
+});
+
 export const adminSettingsCaptchaProviderSchema = z.discriminatedUnion('type', [
   adminSettingsCaptchaProviderNoneSchema,
   adminSettingsCaptchaProviderTurnstileSchema,
   adminSettingsCaptchaProviderRecaptchaSchema,
   adminSettingsCaptchaProviderHcaptchaSchema,
   adminSettingsCaptchaProviderFriendlyCaptchaSchema,
+  adminSettingsCaptchaProviderCapSchema,
 ]);
 
 export const adminSettingsEmailNoneSchema = z.object({
@@ -156,7 +183,10 @@ export const adminSettingsEmailVariableCreateSchema = z.object({
     .string()
     .min(1)
     .max(64)
-    .regex(/^[a-z][a-z0-9_]{0,63}$/),
+    .regex(
+      /^[a-z][a-z0-9_]{0,63}$/,
+      ruleMessage((t) => t('common.form.rule.variableName', {})),
+    ),
   value: z.string().min(1).max(8192),
   valueTranslations: z.record(z.string(), z.string().min(1).max(8192)),
 });
@@ -268,7 +298,10 @@ export const adminSettingsWebauthnSchema = z.object({
 
 export const adminSettingsMetadataSchema = z.object({
   description: z.preprocess(nullableString, z.string().min(1).max(320).nullable()),
-  themeColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  themeColor: z.string().regex(
+    /^#[0-9a-fA-F]{6}$/,
+    ruleMessage((t) => t('common.form.rule.hexColor', {})),
+  ),
   ogImage: z.preprocess(nullableString, z.string().min(1).max(255).nullable()),
   twitterCard: z.enum(['summary', 'summary_large_image']),
   indexable: z.boolean(),

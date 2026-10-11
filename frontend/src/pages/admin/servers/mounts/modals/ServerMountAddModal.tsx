@@ -5,6 +5,7 @@ import getAvailableServerMounts from '@/api/admin/servers/mounts/getAvailableSer
 import ResourceSelectModal from '@/elements/modals/ResourceSelectModal.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { AdminServer, adminServerMountSchema } from '@/lib/schemas/admin/servers.ts';
+import NodeAllowedSourceAlert from '@/pages/admin/nodes/NodeAllowedSourceAlert.tsx';
 import { useSearchableResource } from '@/plugins/resource/useSearchableResource.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -25,6 +26,7 @@ export default function ServerMountAddModal({ server, ...props }: ModalProps & {
       loading={mounts.loading}
       searchValue={mounts.search}
       onSearchChange={mounts.setSearch}
+      renderBelowSelect={(value) => <NodeAllowedSourceAlert nodeUuid={server.node.uuid} kind='mount' uuid={value} />}
       addedToast={t('pages.admin.servers.tabs.mounts.page.toast.added', {})}
       invalidateKeys={[queryKeys.admin.mountAssignments.all()]}
       onConfirm={(mountUuid) => createServerMount(server.uuid, { mountUuid })}

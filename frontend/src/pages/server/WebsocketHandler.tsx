@@ -9,6 +9,7 @@ import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore, useServerStoreApi } from '@/stores/server.ts';
 
 const MAX_TOKEN_REFRESH_FAILURES = 3;
+const TOKEN_EXPIRED_REFRESH_DELAY_MS = 1000;
 
 export default function WebsocketHandler() {
   const serverStoreApi = useServerStoreApi();
@@ -40,7 +41,7 @@ export default function WebsocketHandler() {
     uuidRef.current = uuid;
   }, [uuid]);
 
-  const updateToken = (socket: Websocket) => {
+  const updateToken = (socket: Websocket, delayMs = 0) => {
     const currentUuid = uuidRef.current;
     if (updatingTokenRef.current || !currentUuid) {
       return;
@@ -62,7 +63,8 @@ export default function WebsocketHandler() {
     }
 
     updatingTokenRef.current = true;
-    getWebsocketToken(currentUuid)
+    new Promise((resolve) => setTimeout(resolve, delayMs))
+      .then(() => getWebsocketToken(currentUuid))
       .then((data) => {
         if (socketRef.current === socket) {
           socket.setToken(data.token, true);
@@ -149,7 +151,7 @@ export default function WebsocketHandler() {
             expiryFailureCountedRef.current = true;
             tokenRefreshFailuresRef.current += 1;
           }
-          updateToken(socket);
+          updateToken(socket, TOKEN_EXPIRED_REFRESH_DELAY_MS);
         });
         socket.on('jwt error', (error: string) => {
           socket.setAuthGapped(true);

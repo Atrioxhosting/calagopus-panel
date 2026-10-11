@@ -27,6 +27,10 @@ const admin = {
     systemDirect: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'system', 'direct'] as const,
     systemIps: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'system', 'ips'] as const,
     config: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'config'] as const,
+    mountAllowed: (nodeUuid: string, mountUuid: string) =>
+      ['admin', 'nodes', nodeUuid, 'mounts', mountUuid, 'allowed'] as const,
+    deviceAllowed: (nodeUuid: string, deviceUuid: string) =>
+      ['admin', 'nodes', nodeUuid, 'devices', deviceUuid, 'allowed'] as const,
     logs: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'system', 'logs'] as const,
     allocations: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'allocations'] as const,
     availableAllocations: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'allocations', 'available'] as const,

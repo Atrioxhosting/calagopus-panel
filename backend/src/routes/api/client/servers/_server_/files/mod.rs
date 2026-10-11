@@ -12,6 +12,7 @@ mod create_directory;
 mod create_symlink;
 mod decompress;
 mod delete;
+mod directory_sizes;
 mod download;
 mod fingerprint;
 mod largest_directories;
@@ -47,6 +48,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .nest("/create-directory", create_directory::router(state))
         .nest("/create-symlink", create_symlink::router(state))
         .nest("/largest-directories", largest_directories::router(state))
+        .nest("/directory-sizes", directory_sizes::router(state))
         .nest("/chmod", chmod::router(state))
         .nest("/search", search::router(state))
         .nest("/sqlite-query", sqlite_query::router(state))

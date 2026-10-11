@@ -1,6 +1,8 @@
 use super::State;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
+mod allowed;
+
 mod delete {
     use axum::{extract::Path, http::StatusCode};
     use serde::Serialize;
@@ -8,7 +10,7 @@ mod delete {
         ApiError, GetState,
         models::{
             DeletableModel, admin_activity::GetAdminActivityLogger, node::GetNode,
-            node_device::NodeDevice, user::GetPermissionManager,
+            node_mount::NodeMount, user::GetPermissionManager,
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -27,8 +29,8 @@ mod delete {
             example = "123e4567-e89b-12d3-a456-426614174000",
         ),
         (
-            "device" = uuid::Uuid,
-            description = "The device ID",
+            "mount" = uuid::Uuid,
+            description = "The mount ID",
             example = "123e4567-e89b-12d3-a456-426614174000",
         ),
     ))]
@@ -37,28 +39,28 @@ mod delete {
         permissions: GetPermissionManager,
         node: GetNode,
         activity_logger: GetAdminActivityLogger,
-        Path((_node, device)): Path<(uuid::Uuid, uuid::Uuid)>,
+        Path((_node, mount)): Path<(uuid::Uuid, uuid::Uuid)>,
     ) -> ApiResponseResult {
-        permissions.has_admin_permission("nodes.devices")?;
+        permissions.has_admin_permission("nodes.mounts")?;
 
-        let node_device =
-            match NodeDevice::by_node_uuid_device_uuid(&state.database, node.uuid, device).await? {
-                Some(device) => device,
+        let node_mount =
+            match NodeMount::by_node_uuid_mount_uuid(&state.database, node.uuid, mount).await? {
+                Some(mount) => mount,
                 None => {
-                    return ApiResponse::error("device not found")
+                    return ApiResponse::error("mount not found")
                         .with_status(StatusCode::NOT_FOUND)
                         .ok();
                 }
             };
 
-        node_device.delete(&state, ()).await?;
+        node_mount.delete(&state, ()).await?;
 
         activity_logger
             .log(
-                "node:device.delete",
+                "node:mount.delete",
                 serde_json::json!({
                     "node_uuid": node.uuid,
-                    "device_uuid": node_device.device.uuid,
+                    "mount_uuid": node_mount.mount.uuid,
                 }),
             )
             .await;
@@ -70,5 +72,6 @@ mod delete {
 pub fn router(state: &State) -> OpenApiRouter<State> {
     OpenApiRouter::new()
         .routes(routes!(delete::route))
+        .nest("/allowed", allowed::router(state))
         .with_state(state.clone())
 }

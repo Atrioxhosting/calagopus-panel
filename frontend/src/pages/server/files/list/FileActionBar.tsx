@@ -53,6 +53,7 @@ function FileActionBar() {
     clearActingFiles,
     doOpenModal,
     invalidateFilemanager,
+    alwaysOverwrite,
   } = useFileManager(
     useShallow((state) => ({
       actingMode: state.actingMode,
@@ -66,6 +67,7 @@ function FileActionBar() {
       clearActingFiles: state.clearActingFiles,
       doOpenModal: state.doOpenModal,
       invalidateFilemanager: state.invalidateFilemanager,
+      alwaysOverwrite: state.alwaysOverwrite,
     })),
   );
 
@@ -92,6 +94,7 @@ function FileActionBar() {
       uuid: server.uuid,
       root: '/',
       files: files.map(({ from, to }) => ({ from, to })),
+      overwrite: alwaysOverwrite,
     })
       .then(({ skipped }) => {
         clearActingFiles();

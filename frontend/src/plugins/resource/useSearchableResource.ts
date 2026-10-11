@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import debounce from 'debounce';
 import { useEffect, useMemo, useState } from 'react';
 import { httpErrorToHuman } from '@/api/axios.ts';
@@ -24,6 +24,7 @@ export function useSearchableResource<T>({
   canRequest = true,
 }: UseSearchableResourceOptions<T>) {
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState(defaultSearchValue);
   const [debouncedSearch, setDebouncedSearch] = useState(defaultSearchValue);
@@ -53,5 +54,6 @@ export function useSearchableResource<T>({
     search,
     setSearch,
     refetch: () => refetch(),
+    invalidate: () => queryClient.invalidateQueries({ queryKey: [...queryKey, ...deps] }),
   };
 }

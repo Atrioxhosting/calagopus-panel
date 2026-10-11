@@ -7,7 +7,7 @@ export const adminOAuthProviderSchema = z.looseObject({
   name: z.string().min(1).max(255),
   description: z.preprocess(nullableString, z.string().max(1024).nullable()),
   clientId: z.string().min(3).max(255),
-  clientSecret: z.string().min(3).max(255),
+  clientSecret: z.preprocess(nullableString, z.string().min(3).max(255).nullable()),
   authUrl: z.string().min(3).max(255),
   tokenUrl: z.string().min(3).max(255),
   infoUrl: z.string().min(3).max(255),
@@ -25,6 +25,7 @@ export const adminOAuthProviderSchema = z.looseObject({
   linkViewable: z.boolean(),
   userManageable: z.boolean(),
   basicAuth: z.boolean(),
+  pkce: z.boolean().default(false),
   created: z.coerce.date(),
 });
 
@@ -35,9 +36,25 @@ export const adminOAuthProviderUpdateSchema = z.lazy(() =>
   }),
 );
 
+export const adminOAuthProviderDiscoverySchema = adminOAuthProviderSchema.pick({
+  name: true,
+  authUrl: true,
+  tokenUrl: true,
+  infoUrl: true,
+  scopes: true,
+  identifierPath: true,
+  emailPath: true,
+  usernamePath: true,
+  nameFirstPath: true,
+  nameLastPath: true,
+  avatarUrlTemplate: true,
+  basicAuth: true,
+  pkce: true,
+});
+
 /**
- * API field names holding provider credentials: redacted when exporting a provider and seeded
- * with placeholders when importing one (the backend requires non-empty values on create).
+ * API field names holding provider credentials: redacted when exporting a provider. Only
+ * `client_id` is seeded with a placeholder on import, the secret is optional for public clients.
  */
 export const oauthProviderSecretFields = ['client_id', 'client_secret'];
 

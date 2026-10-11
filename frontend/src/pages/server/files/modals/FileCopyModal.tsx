@@ -43,6 +43,7 @@ export default function FileCopyModal({ file, ...props }: Props) {
   const browsingDirectory = useFileManager((state) => state.browsingDirectory);
   const browsingEntries = useFileManager((state) => state.browsingEntries);
   const browsingWritableDirectory = useFileManager((state) => state.browsingWritableDirectory);
+  const alwaysOverwrite = useFileManager((state) => state.alwaysOverwrite);
   const canCreate = useServerCan('files.create');
 
   const readOnly = !browsingWritableDirectory;
@@ -65,7 +66,7 @@ export default function FileCopyModal({ file, ...props }: Props) {
     },
     onSubmit: async (values) => {
       if (!file) return;
-      await copyFile(server.uuid, join(browsingDirectory, file.name), buildDestination(values));
+      await copyFile(server.uuid, join(browsingDirectory, file.name), buildDestination(values), alwaysOverwrite);
       addToast(t('pages.server.files.toast.fileCopyingStarted', {}), 'success');
     },
     onError: (err) => {

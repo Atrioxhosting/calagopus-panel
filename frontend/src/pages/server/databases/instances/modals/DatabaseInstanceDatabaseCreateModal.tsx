@@ -95,7 +95,12 @@ export default function DatabaseInstanceDatabaseCreateModal({ instance, userCoun
           {t('pages.server.databases.instance.databases.modal.createDatabase.content', {}).md()}
         </Text>
 
-        <TextInput withAsterisk label={t('common.form.name', {})} {...form.getInputProps('name')} />
+        <TextInput
+          withAsterisk
+          label={t('common.form.name', {})}
+          description={t('common.form.rule.databaseInstanceIdentifier', {})}
+          {...form.getInputProps('name')}
+        />
 
         {canCreateUser && (
           <ConditionalTooltip

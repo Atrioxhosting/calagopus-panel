@@ -1,6 +1,7 @@
 use super::State;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
+mod duplicate;
 mod recreate;
 
 mod delete {
@@ -110,21 +111,11 @@ mod patch {
     ) -> ApiResponseResult {
         permissions.has_user_permission("api-keys.update")?;
 
-        if let AuthMethod::ApiKey(api_key) = &**auth
-            && (data.user_permissions.as_ref().is_some_and(|req_perms| {
-                req_perms
-                    .iter()
-                    .any(|perm| !api_key.user_permissions.contains(perm))
-            }) || data.admin_permissions.as_ref().is_some_and(|req_perms| {
-                req_perms
-                    .iter()
-                    .any(|perm| !api_key.admin_permissions.contains(perm))
-            }) || data.server_permissions.as_ref().is_some_and(|req_perms| {
-                req_perms
-                    .iter()
-                    .any(|perm| !api_key.server_permissions.contains(perm))
-            }))
-        {
+        if !permissions.scope().covers(
+            data.user_permissions.as_deref().unwrap_or_default(),
+            data.admin_permissions.as_deref().unwrap_or_default(),
+            data.server_permissions.as_deref().unwrap_or_default(),
+        ) {
             return ApiResponse::error("permissions: more permissions than self")
                 .with_status(StatusCode::BAD_REQUEST)
                 .ok();
@@ -184,6 +175,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
     OpenApiRouter::new()
         .routes(routes!(delete::route))
         .routes(routes!(patch::route))
+        .nest("/duplicate", duplicate::router(state))
         .nest("/recreate", recreate::router(state))
         .with_state(state.clone())
 }

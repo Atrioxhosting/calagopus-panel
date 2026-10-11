@@ -39,7 +39,10 @@ export default function InstalledExtensionsGrid({
     return (
       <span>
         {t('pages.admin.extensions.alert.noExtensions', {})}{' '}
-        {!extensionStatus && (
+        {!extensionStatus && adminExtensions.managementDisabled && (
+          <span>{t('pages.admin.extensions.alert.managementDisabled', {})}</span>
+        )}
+        {!extensionStatus && !adminExtensions.managementDisabled && (
           <span>
             {t('pages.admin.extensions.alert.heavyImageMissing', {
               docsUrl: 'https://calagopus.com/docs/panel/extensions/switching-to-the-heavy-image',

@@ -19,6 +19,7 @@ import Stack from '@/elements/layout/Stack.tsx';
 import Title from '@/elements/typography/Title.tsx';
 import { isIP } from '@/lib/network/ip.ts';
 import { oobeConfigurationSchema } from '@/lib/schemas/oobe.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { OobeComponentProps } from '@/routers/OobeRouter.tsx';
@@ -58,7 +59,7 @@ export default function OobeConfiguration({ onNext }: OobeComponentProps) {
       applicationRegistration: false,
       applicationSecurityKeys: true,
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(oobeConfigurationSchema),
   });
 

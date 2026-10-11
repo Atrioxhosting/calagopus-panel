@@ -7,6 +7,7 @@ import Group from '@/elements/layout/Group.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import { isIP } from '@/lib/network/ip.ts';
 import { adminSettingsWebauthnSchema } from '@/lib/schemas/admin/settings.ts';
+import { useFormDraft } from '@/plugins/form/useFormDraft.ts';
 import { useHydrateForm } from '@/plugins/form/useHydrateForm.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -25,10 +26,10 @@ export default function WebauthnContainer() {
   const form = useFormEngine<WebauthnFormValues>('admin.settings.webauthn', {
     schema: adminSettingsWebauthnSchema,
     initialValues: webauthnEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   useHydrateForm(form, webauthn, webauthnToFormValues);
+  useFormDraft(form, 'webauthn');
 
   const { loading, submit, confirmOpened, closeConfirm, confirmSave } = useSettingsSection({
     form,

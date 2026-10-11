@@ -3,6 +3,7 @@ use crate::{
     models::{InsertQueryBuilder, UpdateQueryBuilder},
     prelude::*,
 };
+use futures_util::TryStreamExt;
 use garde::Validate;
 use rand::distr::SampleString;
 use serde::{Deserialize, Serialize};
@@ -21,7 +22,7 @@ pub struct OAuthProvider {
     pub description: Option<compact_str::CompactString>,
 
     pub client_id: compact_str::CompactString,
-    pub client_secret: EncryptedString,
+    pub client_secret: Option<EncryptedString>,
     pub auth_url: String,
     pub token_url: String,
     pub info_url: String,
@@ -41,6 +42,7 @@ pub struct OAuthProvider {
     pub link_viewable: bool,
     pub user_manageable: bool,
     pub basic_auth: bool,
+    pub pkce: bool,
 
     pub created: chrono::NaiveDateTime,
 
@@ -155,6 +157,10 @@ impl BaseModel for OAuthProvider {
                 compact_str::format_compact!("{prefix}basic_auth"),
             ),
             (
+                "oauth_providers.pkce",
+                compact_str::format_compact!("{prefix}pkce"),
+            ),
+            (
                 "oauth_providers.created",
                 compact_str::format_compact!("{prefix}created"),
             ),
@@ -200,6 +206,7 @@ impl BaseModel for OAuthProvider {
             user_manageable: row
                 .try_get(compact_str::format_compact!("{prefix}user_manageable").as_str())?,
             basic_auth: row.try_get(compact_str::format_compact!("{prefix}basic_auth").as_str())?,
+            pkce: row.try_get(compact_str::format_compact!("{prefix}pkce").as_str())?,
             created: row.try_get(compact_str::format_compact!("{prefix}created").as_str())?,
             extension_data: Self::map_extensions(prefix, row)?,
         })
@@ -208,6 +215,7 @@ impl BaseModel for OAuthProvider {
 
 impl OAuthProvider {
     const MAX_AVATAR_URL_LENGTH: usize = 2048;
+    const MAX_DISCOVERY_SIZE: usize = 64 * 1024;
 
     pub async fn all_with_pagination(
         database: &crate::database::Database,
@@ -470,6 +478,172 @@ impl OAuthProvider {
 
         Ok(Some(url.into()))
     }
+
+    /// Fetches an OpenID Connect discovery document and derives provider settings from it.
+    ///
+    /// `url` may be either the issuer or the full `/.well-known/openid-configuration` url. Claim
+    /// paths are only filled in when the provider advertises the claim, as a configured path that
+    /// is missing from the userinfo response fails the login.
+    pub async fn discover(
+        state: &crate::State,
+        url: &reqwest::Url,
+    ) -> Result<DiscoveredOAuthProvider, anyhow::Error> {
+        const WELL_KNOWN_PATH: &str = "/.well-known/openid-configuration";
+
+        let mut url = url.clone();
+        if !url.path().ends_with(WELL_KNOWN_PATH) {
+            let path = format!("{}{WELL_KNOWN_PATH}", url.path().trim_end_matches('/'));
+            url.set_path(&path);
+            url.set_query(None);
+        }
+        url.set_fragment(None);
+
+        let request =
+            match crate::net::outbound_request(&state.env, reqwest::Method::GET, url.clone()) {
+                Ok(request) => request,
+                Err(err) => {
+                    return Err(crate::response::DisplayError::new(format!(
+                        "failed to fetch {url}: {err:#}"
+                    ))
+                    .into());
+                }
+            };
+
+        let response = match request
+            .header(reqwest::header::ACCEPT, "application/json")
+            .send()
+            .await
+        {
+            Ok(response) => response,
+            Err(err) => {
+                return Err(crate::response::DisplayError::new(format!(
+                    "failed to fetch {url}: {:#}",
+                    anyhow::Error::from(err)
+                ))
+                .into());
+            }
+        };
+
+        if !response.status().is_success() {
+            return Err(crate::response::DisplayError::new(format!(
+                "{url} responded with status {}",
+                response.status()
+            ))
+            .into());
+        }
+
+        let mut content = Vec::new();
+        let mut stream = response.bytes_stream();
+
+        while let Some(chunk) = stream.try_next().await? {
+            if content.len() + chunk.len() > Self::MAX_DISCOVERY_SIZE {
+                return Err(crate::response::DisplayError::new(
+                    "openid configuration is too large",
+                )
+                .into());
+            }
+
+            content.extend_from_slice(&chunk);
+        }
+
+        let Ok(configuration) = serde_json::from_slice::<OpenIdConfiguration>(&content) else {
+            return Err(crate::response::DisplayError::new(format!(
+                "{url} did not return a valid openid configuration"
+            ))
+            .into());
+        };
+
+        let Some(info_url) = configuration.userinfo_endpoint else {
+            return Err(crate::response::DisplayError::new(
+                "openid configuration does not include a userinfo endpoint",
+            )
+            .into());
+        };
+
+        let lists = |list: &Option<Vec<String>>, item: &str| {
+            list.as_ref()
+                .is_none_or(|list| list.iter().any(|entry| entry == item))
+        };
+        let scope_email = lists(&configuration.scopes_supported, "email");
+        let scope_profile = lists(&configuration.scopes_supported, "profile");
+        let profile_claim =
+            |claim: &str| scope_profile && lists(&configuration.claims_supported, claim);
+
+        let graph_userinfo = reqwest::Url::parse(&info_url)
+            .is_ok_and(|info_url| info_url.host_str() == Some("graph.microsoft.com"));
+
+        let mut scopes = vec![compact_str::CompactString::const_new("openid")];
+        if scope_email {
+            scopes.push("email".into());
+        }
+        if scope_profile {
+            scopes.push("profile".into());
+        }
+
+        let name = reqwest::Url::parse(&configuration.issuer)
+            .ok()
+            .and_then(|issuer| issuer.host_str().map(Into::into))
+            .or_else(|| url.host_str().map(Into::into))
+            .unwrap_or_else(|| configuration.issuer.as_str().into());
+
+        Ok(DiscoveredOAuthProvider {
+            name,
+            auth_url: configuration.authorization_endpoint,
+            token_url: configuration.token_endpoint,
+            info_url,
+            scopes,
+            identifier_path: "$.sub".into(),
+            email_path: (scope_email && lists(&configuration.claims_supported, "email"))
+                .then(|| "$.email".into()),
+            username_path: (profile_claim("preferred_username") && !graph_userinfo)
+                .then(|| "$.preferred_username".into()),
+            name_first_path: profile_claim("given_name").then(|| "$.given_name".into()),
+            name_last_path: profile_claim("family_name").then(|| "$.family_name".into()),
+            avatar_url_template: (profile_claim("picture") && !graph_userinfo)
+                .then(|| "{$.picture}".into()),
+            basic_auth: configuration
+                .token_endpoint_auth_methods_supported
+                .is_some_and(|methods| {
+                    !methods.iter().any(|method| method == "client_secret_post")
+                        && methods.iter().any(|method| method == "client_secret_basic")
+                }),
+            pkce: configuration
+                .code_challenge_methods_supported
+                .is_some_and(|methods| methods.iter().any(|method| method == "S256")),
+        })
+    }
+}
+
+#[derive(Deserialize)]
+struct OpenIdConfiguration {
+    issuer: String,
+    authorization_endpoint: String,
+    token_endpoint: String,
+    userinfo_endpoint: Option<String>,
+    scopes_supported: Option<Vec<String>>,
+    claims_supported: Option<Vec<String>>,
+    code_challenge_methods_supported: Option<Vec<String>>,
+    token_endpoint_auth_methods_supported: Option<Vec<String>>,
+}
+
+#[derive(ToSchema, Serialize)]
+pub struct DiscoveredOAuthProvider {
+    pub name: compact_str::CompactString,
+
+    pub auth_url: String,
+    pub token_url: String,
+    pub info_url: String,
+    pub scopes: Vec<compact_str::CompactString>,
+
+    pub identifier_path: String,
+    pub email_path: Option<String>,
+    pub username_path: Option<String>,
+    pub name_first_path: Option<String>,
+    pub name_last_path: Option<String>,
+    pub avatar_url_template: Option<String>,
+
+    pub basic_auth: bool,
+    pub pkce: bool,
 }
 
 #[async_trait::async_trait]
@@ -490,7 +664,10 @@ impl IntoAdminApiObject for OAuthProvider {
                 name: self.name,
                 description: self.description,
                 client_id: self.client_id,
-                client_secret: self.client_secret.decrypt(&state.database).await?,
+                client_secret: match self.client_secret {
+                    Some(client_secret) => Some(client_secret.decrypt(&state.database).await?),
+                    None => None,
+                },
                 auth_url: self.auth_url,
                 token_url: self.token_url,
                 info_url: self.info_url,
@@ -508,6 +685,7 @@ impl IntoAdminApiObject for OAuthProvider {
                 link_viewable: self.link_viewable,
                 user_manageable: self.user_manageable,
                 basic_auth: self.basic_auth,
+                pkce: self.pkce,
                 created: self.created.and_utc(),
             },
             api_object,
@@ -606,13 +784,16 @@ pub struct CreateOAuthProviderOptions {
     pub user_manageable: bool,
     #[garde(skip)]
     pub basic_auth: bool,
+    #[garde(skip)]
+    #[serde(default)]
+    pub pkce: bool,
 
     #[garde(length(chars, min = 3, max = 255))]
     #[schema(min_length = 3, max_length = 255)]
     pub client_id: compact_str::CompactString,
     #[garde(length(chars, min = 3, max = 255))]
     #[schema(min_length = 3, max_length = 255)]
-    pub client_secret: compact_str::CompactString,
+    pub client_secret: Option<compact_str::CompactString>,
 
     #[garde(length(chars, min = 3, max = 255))]
     #[schema(min_length = 3, max_length = 255)]
@@ -664,6 +845,7 @@ pub struct CreateOAuthProviderOptions {
     #[schema(min_length = 1, max_length = 255)]
     pub avatar_url_template: Option<String>,
     #[garde(skip)]
+    #[serde(default)]
     pub avatar_overwrite: bool,
 }
 
@@ -690,10 +872,15 @@ impl CreatableModel for OAuthProvider {
 
         Self::run_create_handlers(&mut options, &mut query_builder, state, transaction).await?;
 
-        let encrypted_client_secret =
-            EncryptedString::from_plaintext(options.client_secret.to_string(), &state.database)
-                .await
-                .map_err(|err| sqlx::Error::Encode(err.into()))?;
+        let encrypted_client_secret = if let Some(ref client_secret) = options.client_secret {
+            Some(
+                EncryptedString::from_plaintext(client_secret.to_string(), &state.database)
+                    .await
+                    .map_err(|err| sqlx::Error::Encode(err.into()))?,
+            )
+        } else {
+            None
+        };
 
         query_builder
             .set("name", &options.name)
@@ -716,7 +903,8 @@ impl CreatableModel for OAuthProvider {
             .set("login_bypass_two_factor", options.login_bypass_two_factor)
             .set("link_viewable", options.link_viewable)
             .set("user_manageable", options.user_manageable)
-            .set("basic_auth", options.basic_auth);
+            .set("basic_auth", options.basic_auth)
+            .set("pkce", options.pkce);
 
         let row = query_builder
             .returning(&Self::columns_sql(None))
@@ -755,13 +943,20 @@ pub struct UpdateOAuthProviderOptions {
     pub user_manageable: Option<bool>,
     #[garde(skip)]
     pub basic_auth: Option<bool>,
+    #[garde(skip)]
+    pub pkce: Option<bool>,
 
     #[garde(length(chars, min = 3, max = 255))]
     #[schema(min_length = 3, max_length = 255)]
     pub client_id: Option<compact_str::CompactString>,
     #[garde(length(chars, min = 3, max = 255))]
     #[schema(min_length = 3, max_length = 255)]
-    pub client_secret: Option<compact_str::CompactString>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub client_secret: Option<Option<compact_str::CompactString>>,
 
     #[garde(length(chars, min = 3, max = 255))]
     #[schema(min_length = 3, max_length = 255)]
@@ -865,14 +1060,14 @@ impl UpdatableModel for OAuthProvider {
         self.run_update_handlers(&mut options, &mut query_builder, state, transaction)
             .await?;
 
-        let encrypted_client_secret = if let Some(ref client_secret) = options.client_secret {
-            Some(
+        let encrypted_client_secret = match options.client_secret {
+            Some(Some(ref client_secret)) => Some(Some(
                 EncryptedString::from_plaintext(client_secret.to_string(), &state.database)
                     .await
                     .map_err(|err| sqlx::Error::Encode(err.into()))?,
-            )
-        } else {
-            None
+            )),
+            Some(None) => Some(None),
+            None => None,
         };
 
         query_builder
@@ -882,7 +1077,7 @@ impl UpdatableModel for OAuthProvider {
                 options.description.as_ref().map(|d| d.as_ref()),
             )
             .set("client_id", options.client_id.as_ref())
-            .set("client_secret", encrypted_client_secret)
+            .set("client_secret", encrypted_client_secret.clone())
             .set("auth_url", options.auth_url.as_ref())
             .set("token_url", options.token_url.as_ref())
             .set("info_url", options.info_url.as_ref())
@@ -915,6 +1110,7 @@ impl UpdatableModel for OAuthProvider {
             .set("link_viewable", options.link_viewable)
             .set("user_manageable", options.user_manageable)
             .set("basic_auth", options.basic_auth)
+            .set("pkce", options.pkce)
             .where_eq("uuid", self.uuid);
 
         query_builder.execute(&mut **transaction).await?;
@@ -943,13 +1139,14 @@ impl UpdatableModel for OAuthProvider {
         if let Some(basic_auth) = options.basic_auth {
             self.basic_auth = basic_auth;
         }
+        if let Some(pkce) = options.pkce {
+            self.pkce = pkce;
+        }
         if let Some(client_id) = options.client_id {
             self.client_id = client_id;
         }
-        if let Some(client_secret) = options.client_secret {
-            self.client_secret = EncryptedString::from_plaintext(client_secret, &state.database)
-                .await
-                .map_err(|err| sqlx::Error::Encode(err.into()))?;
+        if let Some(client_secret) = encrypted_client_secret {
+            self.client_secret = client_secret;
         }
         if let Some(auth_url) = options.auth_url {
             self.auth_url = auth_url;
@@ -1037,6 +1234,7 @@ pub struct DuplicateOAuthProviderOptions {
 #[async_trait::async_trait]
 impl DuplicableModel for OAuthProvider {
     type DuplicateOptions<'a> = DuplicateOAuthProviderOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<OAuthProvider>> =
@@ -1079,7 +1277,8 @@ impl DuplicableModel for OAuthProvider {
             .set("login_bypass_two_factor", self.login_bypass_two_factor)
             .set("link_viewable", self.link_viewable)
             .set("user_manageable", self.user_manageable)
-            .set("basic_auth", self.basic_auth);
+            .set("basic_auth", self.basic_auth)
+            .set("pkce", self.pkce);
 
         let row = query_builder
             .returning(&Self::columns_sql(None))
@@ -1117,7 +1316,7 @@ pub struct AdminApiOAuthProvider {
     pub description: Option<compact_str::CompactString>,
 
     pub client_id: compact_str::CompactString,
-    pub client_secret: compact_str::CompactString,
+    pub client_secret: Option<compact_str::CompactString>,
     pub auth_url: String,
     pub token_url: String,
     pub info_url: String,
@@ -1137,6 +1336,7 @@ pub struct AdminApiOAuthProvider {
     pub link_viewable: bool,
     pub user_manageable: bool,
     pub basic_auth: bool,
+    pub pkce: bool,
 
     pub created: chrono::DateTime<chrono::Utc>,
 }

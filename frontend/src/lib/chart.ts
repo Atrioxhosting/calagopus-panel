@@ -6,6 +6,8 @@ export const CHART_DELAY = 2_000;
 export const CHART_TICK = 1_000;
 
 const CHART_TICKS = 3;
+const CHART_HEADROOM = 1.25;
+const CHART_LIMIT_REACH = 0.4;
 const CHART_SERIES_COLORS = 4;
 const CHART_SERIES_DASHES = [undefined, '6 4', '2 3', '10 4 2 4'];
 
@@ -36,6 +38,8 @@ export interface StreamChartProps {
   series: StreamChartSeries[];
   format: (value: number) => string;
   highlighted?: string | null;
+  limit?: number | null;
+  compact?: boolean;
 }
 
 export interface ChartLegendProps {
@@ -49,6 +53,7 @@ export interface UseStreamChartOptions {
   format: (value: number) => string;
   scale?: ChartScale;
   min?: number;
+  limit?: number | null;
 }
 
 export function formatPercent(value: number): string {
@@ -84,7 +89,13 @@ function seriesDash(index: number, total: number): string | undefined {
   return total > 1 ? CHART_SERIES_DASHES[index % CHART_SERIES_DASHES.length] : undefined;
 }
 
-export function useStreamChart({ series: labels, format, scale = 'decimal', min = 0 }: UseStreamChartOptions) {
+export function useStreamChart({
+  series: labels,
+  format,
+  scale = 'decimal',
+  min = 0,
+  limit = null,
+}: UseStreamChartOptions) {
   const [samples, setSamples] = useState<Sample[]>([]);
   const [end, setEnd] = useState(() => Date.now() - CHART_DELAY);
   const [hidden, setHidden] = useState(NO_HIDDEN_SERIES);
@@ -147,7 +158,10 @@ export function useStreamChart({ series: labels, format, scale = 'decimal', min 
     }
   }
 
-  const wanted = niceCeil(peak * 1.25, scale);
+  const wanted =
+    limit !== null && limit > 0 && peak >= limit * CHART_LIMIT_REACH && peak <= limit
+      ? limit
+      : niceCeil(peak * CHART_HEADROOM, scale);
 
   if (previousHidden !== hidden) {
     setPreviousHidden(hidden);
@@ -196,6 +210,7 @@ export function useStreamChart({ series: labels, format, scale = 'decimal', min 
       series,
       format,
       highlighted,
+      limit,
     } satisfies StreamChartProps,
     legend: {
       series,

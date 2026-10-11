@@ -32,6 +32,7 @@ import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
 import { serverBackupKindLabelMapping, streamingArchiveFormatLabelMapping } from '@/lib/enums.ts';
 import { bytesProgressString, bytesToString } from '@/lib/format/size.ts';
+import { downloadUrl } from '@/lib/network/url.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { streamingArchiveFormat } from '@/lib/schemas/generic.ts';
 import { serverBackupSchema } from '@/lib/schemas/server/backups.ts';
@@ -81,7 +82,7 @@ const BackupRow = forwardRef<HTMLTableRowElement, BackupRowProps>(function Backu
     downloadBackup(server.uuid, backup.uuid, archiveFormat)
       .then(({ url }) => {
         addToast(t('pages.server.backups.toast.downloadStarted', {}), 'success');
-        window.location.href = url;
+        downloadUrl(url);
       })
       .catch((msg) => {
         const message = httpErrorToHuman(msg);

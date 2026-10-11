@@ -5,12 +5,14 @@ import deleteNodeMount from '@/api/admin/nodes/mounts/deleteNodeMount.ts';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
 import TableLink from '@/elements/data-display/TableLink.tsx';
+import Group from '@/elements/layout/Group.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import ContextMenu, { ContextMenuToggle } from '@/elements/overlays/ContextMenu.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { AdminNode, AdminNodeMount } from '@/lib/schemas/admin/nodes.ts';
+import NodeAllowedSourceBadge from '@/pages/admin/nodes/NodeAllowedSourceBadge.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
@@ -73,7 +75,12 @@ export default function NodeMountRow({ node, mount }: { node: AdminNode; mount: 
                 <Code>{mount.mount.uuid}</Code>
               </TableLink>
             </TableData>
-            <TableData>{mount.mount.name}</TableData>
+            <TableData>
+              <Group gap='xs' wrap='nowrap'>
+                {mount.mount.name}
+                <NodeAllowedSourceBadge nodeUuid={node.uuid} kind='mount' uuid={mount.mount.uuid} />
+              </Group>
+            </TableData>
             <TableData>
               <Code>{mount.mount.source}</Code>
             </TableData>

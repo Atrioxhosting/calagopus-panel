@@ -32,7 +32,6 @@ export default function DeviceCreateOrUpdate({ contextDevice }: { contextDevice?
   const form = useFormEngine<DeviceFormValues>('admin.devices.createOrUpdate', {
     schema: adminDeviceUpdateSchema.unwrap(),
     initialValues: deviceEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const { loading, doCreateOrUpdate, doDelete } = useResourceForm<DeviceFormValues, z.infer<typeof adminDeviceSchema>>({

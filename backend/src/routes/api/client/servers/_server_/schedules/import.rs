@@ -53,7 +53,7 @@ mod post {
             .lock(
                 format!("servers::{}::schedules", server.uuid),
                 Some(30),
-                Some(5),
+                Some(5000),
             )
             .await?;
 

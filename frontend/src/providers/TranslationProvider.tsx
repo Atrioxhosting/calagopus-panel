@@ -4,7 +4,13 @@ import Markdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
-import { getTranslationMapping, setGlobalTranslationHandle, TranslationContext, TranslationItemRecord } from 'shared';
+import {
+  getTranslationMapping,
+  globalTranslationHandle,
+  setGlobalTranslationHandle,
+  TranslationContext,
+  TranslationItemRecord,
+} from 'shared';
 import { z } from 'zod';
 import { $ZodConfig } from 'zod/v4/core';
 import { axiosInstance } from '@/api/axios.ts';
@@ -17,6 +23,14 @@ const zodLocaleModules = import.meta.glob('/node_modules/zod/v4/locales/*.js');
 const monacoNlsModules = import.meta.glob('/node_modules/monaco-editor/esm/nls.messages.*.js');
 const monacoLocaleAliases: Record<string, string> = { zh: 'zh-cn', pt: 'pt-br' };
 const monacoNlsCache: Record<string, string[] | undefined> = {};
+
+// zod's own regex message prints the raw pattern, schemas with a known rule override this via ruleMessage
+z.config({
+  customError: (issue) =>
+    issue.code === 'invalid_format' && issue.format === 'regex' && globalTranslationHandle
+      ? globalTranslationHandle.t('common.form.rule.invalidCharacters', {})
+      : undefined,
+});
 
 type LanguageData = {
   items: TranslationItemRecord;

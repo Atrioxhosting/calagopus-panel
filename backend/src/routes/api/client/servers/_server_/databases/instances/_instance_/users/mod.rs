@@ -158,7 +158,7 @@ mod post {
                 .lock(
                     format!("database-instances::{}::users", database_instance.uuid),
                     Some(30),
-                    Some(5),
+                    Some(5000),
                 )
                 .await?;
 

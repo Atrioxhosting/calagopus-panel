@@ -177,7 +177,7 @@ mod post {
                 .lock(
                     format!("servers::{}::databases", server.uuid),
                     Some(30),
-                    Some(5),
+                    Some(5000),
                 )
                 .await?;
 

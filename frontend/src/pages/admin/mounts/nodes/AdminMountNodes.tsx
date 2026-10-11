@@ -20,6 +20,7 @@ import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePag
 import { useAdminCan } from '@/plugins/usePermissions.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import NodeAllowedSourceBadge from '../../nodes/NodeAllowedSourceBadge.tsx';
 import NodeRow from '../../nodes/NodeRow.tsx';
 import MountAddNodeModal from './modals/MountAddNodeModal.tsx';
 
@@ -74,7 +75,13 @@ function MountNodeRow({
         registry={window.extensionContext.extensionRegistry.pages.admin.mounts.view.nodes.contextMenu}
         registryProps={{ mount, node }}
       >
-        {(props) => <NodeRow node={node} contextMenuProps={props} />}
+        {(props) => (
+          <NodeRow
+            node={node}
+            contextMenuProps={props}
+            nameSection={<NodeAllowedSourceBadge nodeUuid={node.uuid} kind='mount' uuid={mount.uuid} />}
+          />
+        )}
       </ContextMenu>
     </>
   );

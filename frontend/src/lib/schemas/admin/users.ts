@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { oAuthProviderSchema } from '@/lib/schemas/generic.ts';
+import { usernameSchema } from '@/lib/schemas/rules.ts';
 import { roleSchema, twoFactorMethod } from '@/lib/schemas/user.ts';
 import { nullableString } from '@/lib/serialization/transformers.ts';
 
@@ -42,6 +43,7 @@ export const adminUserUpdateSchema = z.lazy(() =>
       created: true,
     })
     .extend({
+      username: usernameSchema,
       roleUuid: z.string().nullable(),
       password: z.preprocess(nullableString, z.string().nullable()),
     }),

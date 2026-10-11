@@ -24,13 +24,14 @@ import { useServerStore } from '@/stores/server.ts';
 
 interface ScheduleRowProps {
   schedule: z.infer<typeof serverScheduleSchema>;
+  atLimit?: boolean;
   isSelected?: boolean;
   onSelectionChange?: (selected: boolean) => void;
   onClick?: (event: React.MouseEvent) => void;
 }
 
 const ScheduleRow = forwardRef<HTMLTableRowElement, ScheduleRowProps>(function ScheduleRow(
-  { schedule, isSelected = false, onSelectionChange, onClick },
+  { schedule, atLimit = false, isSelected = false, onSelectionChange, onClick },
   ref,
 ) {
   const { t } = useTranslations();
@@ -149,6 +150,7 @@ const ScheduleRow = forwardRef<HTMLTableRowElement, ScheduleRowProps>(function S
             icon: faClone,
             label: t('common.button.duplicate', {}),
             onClick: () => setOpenModal('duplicate'),
+            disabled: atLimit,
             color: 'gray',
             canAccess: useServerCan('schedules.create'),
           },
@@ -191,7 +193,7 @@ const ScheduleRow = forwardRef<HTMLTableRowElement, ScheduleRowProps>(function S
             </TableData>
 
             <TableData>
-              <Badge color={schedule.enabled ? 'green' : 'red'}>
+              <Badge className='w-max!' color={schedule.enabled ? 'green' : 'red'}>
                 {schedule.enabled ? t('common.badge.active', {}) : t('common.badge.inactive', {})}
               </Badge>
             </TableData>

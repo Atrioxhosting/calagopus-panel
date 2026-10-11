@@ -7,19 +7,22 @@ import { useResource } from '@/plugins/resource/useResource.ts';
 interface UseNodeDeploymentResult {
   state: NodeDeploymentState;
   usage: ReturnType<typeof getNodeDeploymentUsage> | null;
+  loading: boolean;
 }
 
 export function useNodeDeployment(node: AdminNode): UseNodeDeploymentResult {
-  const { data } = useResource({
+  const { data, loading } = useResource({
     queryKey: queryKeys.admin.nodes.capacities(),
     queryFn: getNodeCapacities,
     silent: true,
   });
 
   const allocated = data?.[node.uuid];
+  const state = getNodeDeploymentState(node, allocated);
 
   return {
-    state: getNodeDeploymentState(node, allocated),
+    state,
     usage: allocated ? getNodeDeploymentUsage(node, allocated) : null,
+    loading: loading && data === undefined && state === 'available',
   };
 }

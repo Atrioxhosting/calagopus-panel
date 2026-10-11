@@ -32,7 +32,6 @@ export default function MountCreateOrUpdate({ contextMount }: { contextMount?: z
   const form = useFormEngine<MountFormValues>('admin.mounts.createOrUpdate', {
     schema: adminMountUpdateSchema.unwrap(),
     initialValues: mountEmptyFormValues,
-    validateInputOnBlur: true,
   });
 
   const { loading, doCreateOrUpdate, doDelete } = useResourceForm<MountFormValues, z.infer<typeof adminMountSchema>>({

@@ -9,6 +9,7 @@ import Button from '@/elements/buttons/Button.tsx';
 import TextInput from '@/elements/input/TextInput.tsx';
 import { Modal, ModalFooter } from '@/elements/modals/Modal.tsx';
 import { adminSettingsEmailTestSchema } from '@/lib/schemas/admin/settings.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -24,7 +25,7 @@ export default function EmailSendTestModal({ ...props }: ModalProps) {
     initialValues: {
       email: user?.email ?? '',
     },
-    validateInputOnBlur: true,
+    ...liveValidation,
     validate: zod4Resolver(adminSettingsEmailTestSchema),
   });
 

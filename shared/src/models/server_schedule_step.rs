@@ -343,6 +343,7 @@ pub struct DuplicateServerScheduleStepOptions {
 #[async_trait::async_trait]
 impl DuplicableModel for ServerScheduleStep {
     type DuplicateOptions<'a> = DuplicateServerScheduleStepOptions;
+    type DuplicateResult = Self;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>> {
         static DUPLICATE_LISTENERS: LazyLock<DuplicateHandlerList<ServerScheduleStep>> =

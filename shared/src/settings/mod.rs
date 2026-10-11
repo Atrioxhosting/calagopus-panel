@@ -200,6 +200,9 @@ pub enum CaptchaProvider {
     Recaptcha {
         #[garde(skip)]
         v3: bool,
+        #[serde(default = "default_recaptcha_threshold")]
+        #[garde(custom(validate_recaptcha_threshold))]
+        threshold: f64,
         #[garde(length(chars, min = 1, max = 255))]
         site_key: compact_str::CompactString,
         #[garde(length(chars, min = 1, max = 255))]
@@ -217,6 +220,45 @@ pub enum CaptchaProvider {
         #[garde(length(chars, min = 1, max = 255))]
         api_key: compact_str::CompactString,
     },
+    Cap {
+        #[garde(length(chars, min = 1, max = 255), custom(validate_cap_api_url))]
+        api_url: compact_str::CompactString,
+        #[garde(length(chars, min = 1, max = 255), pattern(r"^[a-zA-Z0-9_-]+$"))]
+        site_key: compact_str::CompactString,
+        #[garde(length(chars, min = 1, max = 255))]
+        secret_key: compact_str::CompactString,
+    },
+}
+
+fn default_recaptcha_threshold() -> f64 {
+    0.5
+}
+
+fn validate_recaptcha_threshold(value: &f64, _context: &()) -> Result<(), garde::Error> {
+    if !(0.0..=1.0).contains(value) {
+        return Err(garde::Error::new("must be between 0 and 1"));
+    }
+
+    Ok(())
+}
+
+fn validate_cap_api_url(value: &str, context: &()) -> Result<(), garde::Error> {
+    if value.trim() != value {
+        return Err(garde::Error::new("must not contain surrounding whitespace"));
+    }
+    let url = reqwest::Url::parse(value).map_err(|err| garde::Error::new(err.to_string()))?;
+    crate::utils::validate_http_url(&url, context)?;
+    if !url.username().is_empty()
+        || url.password().is_some()
+        || url.query().is_some()
+        || url.fragment().is_some()
+    {
+        return Err(garde::Error::new(
+            "must not contain credentials, a query, or a fragment",
+        ));
+    }
+
+    Ok(())
 }
 
 impl CaptchaProvider {
@@ -238,6 +280,12 @@ impl CaptchaProvider {
                     site_key: site_key.as_str(),
                 }
             }
+            CaptchaProvider::Cap {
+                api_url, site_key, ..
+            } => PublicCaptchaProvider::Cap {
+                api_url: api_url.as_str(),
+                site_key: site_key.as_str(),
+            },
         }
     }
 
@@ -250,6 +298,7 @@ impl CaptchaProvider {
             }
             CaptchaProvider::Hcaptcha { .. } => "https://hcaptcha.com https://*.hcaptcha.com",
             CaptchaProvider::FriendlyCaptcha { .. } => "",
+            CaptchaProvider::Cap { .. } => "'wasm-unsafe-eval'",
         }
     }
 
@@ -260,6 +309,7 @@ impl CaptchaProvider {
             CaptchaProvider::Recaptcha { .. } => "",
             CaptchaProvider::Hcaptcha { .. } => "https://hcaptcha.com https://*.hcaptcha.com",
             CaptchaProvider::FriendlyCaptcha { .. } => "",
+            CaptchaProvider::Cap { .. } => "",
         }
     }
 }
@@ -270,7 +320,8 @@ impl Censor for CaptchaProvider {
             CaptchaProvider::None => {}
             CaptchaProvider::Turnstile { secret_key, .. }
             | CaptchaProvider::Recaptcha { secret_key, .. }
-            | CaptchaProvider::Hcaptcha { secret_key, .. } => {
+            | CaptchaProvider::Hcaptcha { secret_key, .. }
+            | CaptchaProvider::Cap { secret_key, .. } => {
                 *secret_key = CENSORED_PLACEHOLDER.into();
             }
             CaptchaProvider::FriendlyCaptcha { api_key, .. } => {
@@ -288,6 +339,7 @@ pub enum PublicCaptchaProvider<'a> {
     Recaptcha { v3: bool, site_key: &'a str },
     Hcaptcha { site_key: &'a str },
     FriendlyCaptcha { site_key: &'a str },
+    Cap { api_url: &'a str, site_key: &'a str },
 }
 
 #[derive(ToSchema, Serialize, Deserialize, Clone, Default, PartialEq)]
@@ -553,12 +605,14 @@ impl SettingsSerializeExt for AppSettings {
             }
             CaptchaProvider::Recaptcha {
                 v3,
+                threshold,
                 site_key,
                 secret_key,
             } => {
                 serializer = serializer
                     .write_raw_setting("captcha_provider", "recaptcha")
                     .write_raw_setting("recaptcha_v3", v3.to_compact_string())
+                    .write_raw_setting("recaptcha_threshold", threshold.to_compact_string())
                     .write_raw_setting("recaptcha_site_key", &**site_key)
                     .write_raw_setting("recaptcha_secret_key", &**secret_key);
             }
@@ -576,6 +630,17 @@ impl SettingsSerializeExt for AppSettings {
                     .write_raw_setting("captcha_provider", "friendlycaptcha")
                     .write_raw_setting("friendlycaptcha_site_key", &**site_key)
                     .write_raw_setting("friendlycaptcha_api_key", &**api_key);
+            }
+            CaptchaProvider::Cap {
+                api_url,
+                site_key,
+                secret_key,
+            } => {
+                serializer = serializer
+                    .write_raw_setting("captcha_provider", "cap")
+                    .write_raw_setting("cap_api_url", &**api_url)
+                    .write_raw_setting("cap_site_key", &**site_key)
+                    .write_raw_setting("cap_secret_key", &**secret_key);
             }
         }
 
@@ -796,6 +861,11 @@ impl SettingsDeserializeExt for AppSettingsDeserializer {
                         .unwrap_or_default(),
                 },
                 Some("recaptcha") => CaptchaProvider::Recaptcha {
+                    threshold: deserializer
+                        .take_raw_setting("recaptcha_threshold")
+                        .and_then(|s| s.parse::<f64>().ok())
+                        .filter(|threshold| (0.0..=1.0).contains(threshold))
+                        .unwrap_or_else(default_recaptcha_threshold),
                     v3: deserializer
                         .take_raw_setting("recaptcha_v3")
                         .map(|s| s == "true")
@@ -821,6 +891,17 @@ impl SettingsDeserializeExt for AppSettingsDeserializer {
                         .unwrap_or_default(),
                     api_key: deserializer
                         .take_raw_setting("friendlycaptcha_api_key")
+                        .unwrap_or_default(),
+                },
+                Some("cap") => CaptchaProvider::Cap {
+                    api_url: deserializer
+                        .take_raw_setting("cap_api_url")
+                        .unwrap_or_default(),
+                    site_key: deserializer
+                        .take_raw_setting("cap_site_key")
+                        .unwrap_or_default(),
+                    secret_key: deserializer
+                        .take_raw_setting("cap_secret_key")
                         .unwrap_or_default(),
                 },
                 _ => CaptchaProvider::None,
@@ -1367,12 +1448,18 @@ mod tests {
     #[test]
     fn captcha_provider_censors_its_secret_but_not_its_site_key() {
         for provider in [
+            CaptchaProvider::Cap {
+                api_url: "https://cap.example.com".into(),
+                site_key: "public".into(),
+                secret_key: "s3cr3t".into(),
+            },
             CaptchaProvider::Turnstile {
                 site_key: "public".into(),
                 secret_key: "s3cr3t".into(),
             },
             CaptchaProvider::Recaptcha {
                 v3: true,
+                threshold: 0.5,
                 site_key: "public".into(),
                 secret_key: "s3cr3t".into(),
             },
@@ -1398,6 +1485,90 @@ mod tests {
 
         assert_eq!(value["api_key"], CENSORED_PLACEHOLDER);
         assert_eq!(value["site_key"], "public");
+    }
+
+    #[test]
+    fn cap_provider_validates_configuration_and_keeps_secrets_private() {
+        for api_url in ["https://cap.example.com", "http://localhost:3000/cap/"] {
+            let provider = CaptchaProvider::Cap {
+                api_url: api_url.into(),
+                site_key: "site-key_123".into(),
+                secret_key: "secret".into(),
+            };
+            assert!(provider.validate().is_ok());
+            let public = serde_json::to_value(provider.to_public_provider()).unwrap();
+            assert_eq!(public["api_url"], api_url);
+            assert_eq!(public["site_key"], "site-key_123");
+            assert!(public.get("secret_key").is_none());
+
+            let serialized = serde_json::to_value(&provider).unwrap();
+            let restored: CaptchaProvider = serde_json::from_value(serialized.clone()).unwrap();
+            assert_eq!(serde_json::to_value(restored).unwrap(), serialized);
+        }
+
+        for api_url in [
+            "not a url",
+            "file:///tmp/cap",
+            "https://user:password@cap.example.com",
+            "https://cap.example.com?query",
+            "https://cap.example.com#fragment",
+            "https://cap.example.com ",
+            " https://cap.example.com",
+        ] {
+            let provider = CaptchaProvider::Cap {
+                api_url: api_url.into(),
+                site_key: "public".into(),
+                secret_key: "secret".into(),
+            };
+            assert!(provider.validate().is_err(), "{api_url}");
+        }
+
+        for site_key in ["", "../other", "site/key", "site?query", "site#fragment"] {
+            let provider = CaptchaProvider::Cap {
+                api_url: "https://cap.example.com".into(),
+                site_key: site_key.into(),
+                secret_key: "secret".into(),
+            };
+            assert!(provider.validate().is_err(), "{site_key}");
+        }
+    }
+
+    #[test]
+    fn recaptcha_threshold_defaults_and_validates_bounds() {
+        let provider: CaptchaProvider = serde_json::from_value(serde_json::json!({
+            "type": "recaptcha",
+            "v3": true,
+            "site_key": "public",
+            "secret_key": "secret",
+        }))
+        .unwrap();
+        assert_eq!(serde_json::to_value(provider).unwrap()["threshold"], 0.5);
+
+        for threshold in [
+            0.0,
+            0.5,
+            0.9,
+            1.0,
+            -0.1,
+            1.1,
+            f64::NAN,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+        ] {
+            let provider = CaptchaProvider::Recaptcha {
+                v3: true,
+                threshold,
+                site_key: "public".into(),
+                secret_key: "secret".into(),
+            };
+            assert_eq!(
+                provider.validate().is_ok(),
+                (0.0..=1.0).contains(&threshold)
+            );
+            let public = serde_json::to_value(provider.to_public_provider()).unwrap();
+            assert!(public.get("secret_key").is_none());
+            assert!(public.get("threshold").is_none());
+        }
     }
 
     #[test]

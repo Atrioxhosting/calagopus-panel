@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { usernameSchema } from '@/lib/schemas/rules.ts';
 import { nullableString } from '@/lib/serialization/transformers.ts';
 
 export const authForgotPasswordSchema = z.object({
@@ -6,11 +7,7 @@ export const authForgotPasswordSchema = z.object({
 });
 
 export const authRegisterSchema = z.object({
-  username: z
-    .string()
-    .min(3)
-    .max(15)
-    .regex(/^[a-zA-Z0-9_]+$/),
+  username: usernameSchema,
   email: z.email(),
   nameFirst: z.preprocess(nullableString, z.string().min(1).max(255).nullable()),
   nameLast: z.preprocess(nullableString, z.string().min(1).max(255).nullable()),

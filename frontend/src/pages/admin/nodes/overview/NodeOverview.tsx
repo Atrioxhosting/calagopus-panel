@@ -201,12 +201,10 @@ export default function NodeOverview({ node }: { node: Node }) {
           title={t('pages.admin.nodes.tabs.capacity.page.card.resources', {})}
           icon={<FontAwesomeIcon icon={faChartPie} />}
           rightSection={
-            capacity ? (
-              <Badge color='gray' variant='light' ml='auto'>
-                <FontAwesomeIcon icon={faServer} className='mr-1.5' />
-                {t('pages.admin.nodes.tabs.capacity.page.label.servers', {})}: {capacity.allocated.servers}
-              </Badge>
-            ) : null
+            <Badge color='gray' variant='light' ml='auto' loading={!capacity}>
+              <FontAwesomeIcon icon={faServer} className='mr-1.5' />
+              {t('pages.admin.nodes.tabs.capacity.page.label.servers', {})}: {capacity?.allocated.servers}
+            </Badge>
           }
         >
           {!capacity ? (

@@ -804,6 +804,38 @@ impl WingsClient {
         .await
     }
 
+    pub async fn get_servers_server_files_directory_sizes(
+        &self,
+        server: uuid::Uuid,
+        query: &super::servers_server_files_directory_sizes::get::Query,
+    ) -> Result<super::servers_server_files_directory_sizes::get::Response, ApiHttpError> {
+        let mut query_parts: Vec<compact_str::CompactString> = Vec::new();
+        if let Some(value) = &query.directory {
+            query_parts.push(format!("directory={}", urlencoding::encode(value)).into());
+        }
+        if let Some(value) = query.depth {
+            query_parts.push(format!("depth={}", value).into());
+        }
+        if let Some(value) = &query.ignored {
+            for value in value {
+                query_parts.push(format!("ignored={}", urlencoding::encode(value)).into());
+            }
+        }
+        let query = if query_parts.is_empty() {
+            String::new()
+        } else {
+            format!("?{}", query_parts.join("&"))
+        };
+        request_impl(
+            self,
+            Method::GET,
+            format!("/api/servers/{server}/files/directory-sizes{query}"),
+            None::<&()>,
+            None,
+        )
+        .await
+    }
+
     pub async fn get_servers_server_files_fingerprints(
         &self,
         server: uuid::Uuid,
@@ -1540,6 +1572,20 @@ impl WingsClient {
 
     pub async fn get_system(&self) -> Result<super::system::get::Response, ApiHttpError> {
         request_impl(self, Method::GET, "/api/system", None::<&()>, None).await
+    }
+
+    pub async fn post_system_backups_test(
+        &self,
+        data: &super::system_backups_test::post::RequestBody,
+    ) -> Result<super::system_backups_test::post::Response, ApiHttpError> {
+        request_impl(
+            self,
+            Method::POST,
+            "/api/system/backups/test",
+            Some(data),
+            None,
+        )
+        .await
     }
 
     pub async fn get_system_config(

@@ -35,6 +35,8 @@ import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminEggRepositoryEggSchema, adminEggRepositorySchema } from '@/lib/schemas/admin/eggRepositories.ts';
 import { adminEggSchema, adminEggUpdateSchema } from '@/lib/schemas/admin/eggs.ts';
 import { adminNestSchema } from '@/lib/schemas/admin/nests.ts';
+import { liveValidation } from '@/plugins/form/liveValidation.ts';
+import { useFormDraft } from '@/plugins/form/useFormDraft.ts';
 import { useHydrateForm } from '@/plugins/form/useHydrateForm.ts';
 import { useResourceForm } from '@/plugins/resource/useResourceForm.ts';
 import { useSearchableResource } from '@/plugins/resource/useSearchableResource.ts';
@@ -67,8 +69,11 @@ export default function EggCreateOrUpdate({
   const form = useForm<z.infer<typeof adminEggUpdateSchema>>({
     mode: 'uncontrolled',
     initialValues: eggEmptyFormValues,
-    onValuesChange: () => setIsValid(form.isValid()),
-    validateInputOnBlur: true,
+    onValuesChange: () => {
+      setIsValid(form.isValid());
+      syncDraft();
+    },
+    ...liveValidation,
     validate: zod4Resolver(adminEggUpdateSchema),
   });
 
@@ -92,6 +97,7 @@ export default function EggCreateOrUpdate({
   });
 
   useHydrateForm(form, contextEgg, eggToFormValues);
+  const syncDraft = useFormDraft(form, 'general');
 
   const eggRepositories = useSearchableResource<z.infer<typeof adminEggRepositorySchema>>({
     queryKey: queryKeys.admin.eggRepositories.all(),
@@ -138,7 +144,9 @@ export default function EggCreateOrUpdate({
 
     getEgg(contextNest.uuid, contextEgg.uuid)
       .then((egg) => {
-        form.setValues(eggToFormValues(egg));
+        const values = eggToFormValues(egg);
+        form.resetDirty({ ...form.getValues(), ...values });
+        form.setValues(values);
         addToast(t('pages.admin.nests.tabs.eggs.page.tabs.general.page.toast.updated', {}), 'success');
       })
       .catch((msg) => {
@@ -299,7 +307,7 @@ export default function EggCreateOrUpdate({
             title={t('pages.admin.nests.tabs.eggs.page.tabs.general.page.card.startupConfiguration', {})}
             icon={<FontAwesomeIcon icon={faPlay} size='sm' />}
           >
-            <Group grow align='top'>
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <TagsInput
                 withAsterisk
                 label={t('pages.admin.nests.tabs.eggs.page.tabs.general.page.form.startupDone', {})}
@@ -316,7 +324,7 @@ export default function EggCreateOrUpdate({
                   type: 'checkbox',
                 })}
               />
-            </Group>
+            </div>
           </TitleCard>
 
           <EggStopConfigEditor form={form} />
@@ -344,7 +352,7 @@ export default function EggCreateOrUpdate({
             />
           </Group>
 
-          <Group grow align='top'>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <TagsInput
               label={t('pages.admin.nests.tabs.eggs.page.tabs.general.page.form.features', {})}
               placeholder={t('pages.admin.nests.tabs.eggs.page.tabs.general.page.form.featurePlaceholder', {})}
@@ -356,7 +364,7 @@ export default function EggCreateOrUpdate({
               key={form.key('fileDenylist')}
               {...form.getInputProps('fileDenylist')}
             />
-          </Group>
+          </div>
 
           <MultiKeyValueInput
             label={t('pages.admin.nests.tabs.eggs.page.tabs.general.page.form.dockerImages', {})}

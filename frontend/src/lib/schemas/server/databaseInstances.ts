@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { databaseAgentType } from '@/lib/schemas/generic.ts';
+import { databaseInstanceIdentifierSchema } from '@/lib/schemas/rules.ts';
 import { nullableString } from '@/lib/serialization/transformers.ts';
 
 export const serverDatabaseInstanceStatus = z.enum(['restoring_backup']);
@@ -107,11 +108,7 @@ export const serverDatabaseInstanceEditSchema = z.object({
 });
 
 export const serverDatabaseInstanceDatabaseCreateSchema = z.object({
-  name: z
-    .string()
-    .min(2)
-    .max(23)
-    .regex(/^[a-zA-Z0-9]+$/),
+  name: databaseInstanceIdentifierSchema,
 });
 
 export const serverDatabaseInstanceRemoteImportSchema = z.object({
@@ -126,11 +123,7 @@ export const serverDatabaseInstanceUserDatabaseGrantSchema = z.object({
 });
 
 export const serverDatabaseInstanceUserCreateSchema = z.object({
-  username: z
-    .string()
-    .min(2)
-    .max(23)
-    .regex(/^[a-zA-Z0-9]+$/),
+  username: databaseInstanceIdentifierSchema,
   databases: z.array(serverDatabaseInstanceUserDatabaseGrantSchema),
 });
 
