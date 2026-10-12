@@ -14,6 +14,7 @@ import ExtensionSlot from '@/elements/ExtensionSlot.tsx';
 import Checkbox from '@/elements/input/Checkbox.tsx';
 import UserSettingScopeMenu from '@/elements/UserSettingScopeMenu.tsx';
 import { formatAllocation } from '@/lib/domain/server.ts';
+import { formatNetworkBytes, formatNetworkRate } from '@/lib/format/network.ts';
 import { bytesToString, mbToBytes } from '@/lib/format/size.ts';
 import { formatMilliseconds } from '@/lib/format/time.ts';
 import { useUserSetting } from '@/lib/userSettings.ts';
@@ -185,12 +186,12 @@ export default function ServerDetails() {
         value={
           state === 'offline' && server.status !== 'installing'
             ? t('common.enum.serverState.offline', {})
-            : bytesToString(stats?.network.rxBytes || 0)
+            : formatNetworkBytes(stats?.network.rxBytes || 0)
         }
         details={
           state === 'offline' && server.status !== 'installing'
             ? null
-            : `${bytesToString(Math.round(networkSpeeds.rxBytesSpeed), undefined, true)}/s, ${Math.round(networkSpeeds.rxPacketsSpeed)} pps`
+            : `${formatNetworkRate(networkSpeeds.rxBytesSpeed)}, ${Math.round(networkSpeeds.rxPacketsSpeed)} pps`
         }
       />
       <StatCard
@@ -200,12 +201,12 @@ export default function ServerDetails() {
         value={
           state === 'offline' && server.status !== 'installing'
             ? t('common.enum.serverState.offline', {})
-            : bytesToString(stats?.network.txBytes || 0)
+            : formatNetworkBytes(stats?.network.txBytes || 0)
         }
         details={
           state === 'offline' && server.status !== 'installing'
             ? null
-            : `${bytesToString(Math.round(networkSpeeds.txBytesSpeed), undefined, true)}/s, ${Math.round(networkSpeeds.txPacketsSpeed)} pps`
+            : `${formatNetworkRate(networkSpeeds.txBytesSpeed)}, ${Math.round(networkSpeeds.txPacketsSpeed)} pps`
         }
       />
       <ExtensionSlot

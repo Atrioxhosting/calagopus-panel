@@ -20,7 +20,7 @@ import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import Text from '@/elements/typography/Text.tsx';
-import { bytesToString } from '@/lib/format/size.ts';
+import { formatNetworkBytes } from '@/lib/format/network.ts';
 import { formatMilliseconds } from '@/lib/format/time.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminNodeTunnelMetricsSchema, adminNodeTunnelPeerMetricsSchema } from '@/lib/schemas/admin/nodeTunnel.ts';
@@ -99,11 +99,11 @@ function PeerRow({ peer }: { peer: Peer }) {
         <Group gap='sm' wrap='nowrap'>
           <Text size='sm'>
             <FontAwesomeIcon icon={faArrowDown} size='xs' />{' '}
-            {bytesToString(peer.relay.streamBytesIn + peer.relay.datagramBytesIn)}
+            {formatNetworkBytes(peer.relay.streamBytesIn + peer.relay.datagramBytesIn)}
           </Text>
           <Text size='sm'>
             <FontAwesomeIcon icon={faArrowUp} size='xs' />{' '}
-            {bytesToString(peer.relay.streamBytesOut + peer.relay.datagramBytesOut)}
+            {formatNetworkBytes(peer.relay.streamBytesOut + peer.relay.datagramBytesOut)}
           </Text>
         </Group>
       </TableData>

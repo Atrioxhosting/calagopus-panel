@@ -6,6 +6,7 @@ import Progress from '@/elements/feedback/Progress.tsx';
 import Tooltip from '@/elements/overlays/Tooltip.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Code from '@/elements/typography/Code.tsx';
+import { formatNetworkRate } from '@/lib/format/network.ts';
 import { bytesProgressString, bytesToString } from '@/lib/format/size.ts';
 import { adminNodeTransferProgressSchema } from '@/lib/schemas/admin/nodes.ts';
 import { adminServerSchema } from '@/lib/schemas/admin/servers.ts';
@@ -47,7 +48,7 @@ const ServerRow = memo(
 
         <TableData>{bytesToString(transferProgress?.archiveRate || 0)}/s</TableData>
 
-        <TableData>{bytesToString(transferProgress?.networkRate || 0)}/s</TableData>
+        <TableData>{formatNetworkRate(transferProgress?.networkRate || 0)}</TableData>
 
         <TableData>{server.name}</TableData>
 

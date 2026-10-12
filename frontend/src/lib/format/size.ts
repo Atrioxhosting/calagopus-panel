@@ -1,4 +1,5 @@
 import { getTranslations } from '@/providers/TranslationProvider.tsx';
+import { formatNetworkBytes } from './network.ts';
 
 const _CONVERSION_UNIT = 1024;
 
@@ -58,10 +59,7 @@ export function bytesToString(bytes: number, decimals = 2, shortBytes = false): 
 }
 
 export function trafficBytesToString(bytes: number): string {
-  if (bytes < 1000) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB', 'TB', 'PB'];
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1000)) - 1, units.length - 1);
-  return `${(bytes / 1000 ** (index + 1)).toFixed(2)} ${units[index]}`;
+  return formatNetworkBytes(bytes);
 }
 
 /**

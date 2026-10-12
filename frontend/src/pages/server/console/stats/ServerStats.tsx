@@ -6,7 +6,8 @@ import ChartLegend from '@/elements/charts/ChartLegend.tsx';
 import ChartSyncGroup from '@/elements/charts/ChartSyncGroup.tsx';
 import StreamChart from '@/elements/charts/StreamChart.tsx';
 import ExtensionSlot from '@/elements/ExtensionSlot.tsx';
-import { formatBytes, formatBytesRate, formatPercent, useStreamChart } from '@/lib/chart.ts';
+import { formatBytes, formatPercent, useStreamChart } from '@/lib/chart.ts';
+import { formatNetworkRate } from '@/lib/format/network.ts';
 import { mbToBytes, trafficBytesToString } from '@/lib/format/size.ts';
 import { formatTrafficPercent } from '@/lib/format/traffic.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -40,8 +41,8 @@ export default function ServerStats() {
   });
   const network = useStreamChart({
     series: useMemo(() => [t('common.stat.outbound', {}), t('common.stat.inbound', {})], [t]),
-    format: formatBytesRate,
-    scale: 'binary',
+    format: formatNetworkRate,
+    scale: 'decimal',
   });
 
   const offline = !stats?.state || (stats.state === 'offline' && server.status !== 'installing');

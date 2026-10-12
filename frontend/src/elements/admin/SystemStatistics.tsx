@@ -13,6 +13,7 @@ import SemiCircleProgress from '@/elements/feedback/SemiCircleProgress.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import Title from '@/elements/typography/Title.tsx';
 import { formatBytes, formatBytesRate, formatPercent, useStreamChart } from '@/lib/chart.ts';
+import { formatNetworkBytes, formatNetworkRate } from '@/lib/format/network.ts';
 import { bytesToString, mbToBytes } from '@/lib/format/size.ts';
 import { usagePercentColor } from '@/lib/format/usage.ts';
 import { adminSystemStatisticsSchema } from '@/lib/schemas/admin/system.ts';
@@ -65,8 +66,8 @@ export default function SystemStatistics({ wsPath, labels }: { wsPath: string; l
   });
   const network = useStreamChart({
     series: useMemo(() => [labels.inbound, labels.outbound], [labels.inbound, labels.outbound]),
-    format: formatBytesRate,
-    scale: 'binary',
+    format: formatNetworkRate,
+    scale: 'decimal',
   });
 
   useWebsocket({
@@ -164,8 +165,8 @@ export default function SystemStatistics({ wsPath, labels }: { wsPath: string; l
                     <ChartLegend series={network.series} />
                   </div>
                   <p className='flex gap-3 text-xs'>
-                    <span>{labels.networkIn(bytesToString(stats.network.received))}</span>
-                    <span>{labels.networkOut(bytesToString(stats.network.sent))}</span>
+                    <span>{labels.networkIn(formatNetworkBytes(stats.network.received))}</span>
+                    <span>{labels.networkOut(formatNetworkBytes(stats.network.sent))}</span>
                   </p>
                 </div>
               </div>
