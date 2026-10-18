@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ReactNode, startTransition, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { AuthImpersonateEvent, AuthLogoutEvent } from 'shared';
 import { z } from 'zod';
 import { getImpersonatedUser, httpErrorToHuman, setImpersonatedUser } from '@/api/axios.ts';
 import getMe from '@/api/me/getMe.ts';
@@ -73,11 +74,16 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener('session-expired', handleSessionExpired);
   }, [queryClient]);
 
-  const doImpersonate = async (user: z.infer<typeof fullUserSchema>) => {
+  const doImpersonate = async (target: z.infer<typeof fullUserSchema>) => {
+    const event = window.extensionContext.extensionRegistry.events.auth.impersonateHandlers.emit(
+      new AuthImpersonateEvent(target, user),
+    );
+    if (event.cancelled) return;
+
     await flushUserSettings();
 
     const previousImpersonatedUser = getImpersonatedUser();
-    setImpersonatedUser(user.uuid);
+    setImpersonatedUser(target.uuid);
 
     try {
       const impersonatedUser = await getMe();
@@ -102,6 +108,11 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const doLogout = () => {
+    const event = window.extensionContext.extensionRegistry.events.auth.logoutHandlers.emit(
+      new AuthLogoutEvent(getImpersonatedUser() ? 'stopImpersonating' : 'logout', user),
+    );
+    if (event.cancelled) return;
+
     if (getImpersonatedUser()) {
       setImpersonatedUser(null);
 

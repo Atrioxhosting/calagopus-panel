@@ -4,6 +4,7 @@ import { UseFormReturnType } from '@mantine/form';
 import { z } from 'zod';
 import CollapsibleSection from '@/elements/CollapsibleSection.tsx';
 import { type FieldDef } from '@/elements/form-engine/index.ts';
+import NestSelect from '@/elements/input/NestSelect.tsx';
 import Select from '@/elements/input/Select.tsx';
 import { eggRepositoryCredentialTypeLabelMapping, mappingToSelectData } from '@/lib/enums.ts';
 import {
@@ -14,6 +15,8 @@ import {
   adminEggRepositorySchema,
   adminEggRepositoryUpdateSchema,
 } from '@/lib/schemas/admin/eggRepositories.ts';
+import NestCreateField from '@/pages/admin/nests/NestCreateField.tsx';
+import { useAdminCan } from '@/plugins/usePermissions.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import CredentialPassword from './forms/CredentialPassword.tsx';
 import CredentialPrivateKey from './forms/CredentialPrivateKey.tsx';
@@ -36,6 +39,8 @@ export const eggRepositoryEmptyFormValues: EggRepositoryFormValues = {
   description: null,
   gitRepository: '',
   credentials: undefined,
+  defaultNestUuid: null,
+  autoSync: true,
 };
 
 export const eggRepositoryToFormValues = (
@@ -45,12 +50,15 @@ export const eggRepositoryToFormValues = (
   description: eggRepository.description,
   gitRepository: eggRepository.gitRepository,
   credentials: undefined,
+  defaultNestUuid: eggRepository.defaultNest?.uuid ?? null,
+  autoSync: eggRepository.autoSync,
 });
 
 export function useEggRepositoryFormFields(
   contextEggRepository?: z.infer<typeof adminEggRepositorySchema>,
 ): FieldDef<EggRepositoryFormValues>[] {
   const { t } = useTranslations();
+  const canReadNests = useAdminCan('nests.read');
 
   return [
     { type: 'text', name: 'name', label: t('common.form.name', {}), required: true },
@@ -61,6 +69,31 @@ export function useEggRepositoryFormFields(
       required: true,
     },
     { type: 'textarea', name: 'description', label: t('common.form.description', {}), rows: 3, colSpan: 'full' },
+    {
+      type: 'custom',
+      name: 'defaultNestUuid',
+      render: (f) => (
+        <div className='flex flex-col gap-1'>
+          <NestSelect
+            label={t('pages.admin.eggRepositories.tabs.general.page.form.defaultNest', {})}
+            description={t('pages.admin.eggRepositories.tabs.general.page.form.defaultNestDescription', {})}
+            value={f.values.defaultNestUuid}
+            onChange={(uuid) => f.setFieldValue('defaultNestUuid', uuid)}
+            includeItems={contextEggRepository?.defaultNest ? [contextEggRepository.defaultNest] : []}
+            allowDeselect
+            clearable
+            disabled={!canReadNests}
+          />
+          <NestCreateField onCreated={(nest) => f.setFieldValue('defaultNestUuid', nest.uuid)} />
+        </div>
+      ),
+    },
+    {
+      type: 'switch',
+      name: 'autoSync',
+      label: t('pages.admin.eggRepositories.tabs.general.page.form.autoSync', {}),
+      description: t('pages.admin.eggRepositories.tabs.general.page.form.autoSyncDescription', {}),
+    },
     {
       type: 'custom',
       name: 'credentials',

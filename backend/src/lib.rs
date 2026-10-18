@@ -1044,7 +1044,9 @@ pub async fn handle_startup() -> Result<
                                 .to_compact_string()
                         });
 
-                        let cache_control = if base_dir == "avatars" {
+                        let cache_control = if base_dir == "avatars"
+                            || (base_dir == "publicdata" && path.starts_with("egg-repositories/"))
+                        {
                             "public, max-age=31536000, immutable"
                         } else {
                             "no-cache"

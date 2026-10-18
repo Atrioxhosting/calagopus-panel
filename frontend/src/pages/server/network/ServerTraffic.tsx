@@ -1,8 +1,8 @@
 import ServerContentContainer from '@/elements/containers/ServerContentContainer.tsx';
 import TitleCard from '@/elements/data-display/TitleCard.tsx';
 import { trafficBytesToString } from '@/lib/format/size.ts';
-import { formatTrafficPercent } from '@/lib/format/traffic.ts';
 import { formatDateTime } from '@/lib/format/time.ts';
+import { formatTrafficPercent } from '@/lib/format/traffic.ts';
 import { useServerStore } from '@/stores/server.ts';
 import NetworkSubNavigation from './NetworkSubNavigation.tsx';
 

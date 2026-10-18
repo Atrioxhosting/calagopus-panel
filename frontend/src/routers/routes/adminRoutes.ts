@@ -9,6 +9,7 @@ import {
   faDatabase,
   faDownload,
   faEarthAmerica,
+  faEgg,
   faFileZipper,
   faFingerprint,
   faFolderOpen,
@@ -32,6 +33,7 @@ import AdminDatabaseAgentTemplates from '@/pages/admin/database-agent-templates/
 import AdminDatabaseHosts from '@/pages/admin/database-hosts/AdminDatabaseHosts.tsx';
 import AdminDevices from '@/pages/admin/devices/AdminDevices.tsx';
 import AdminEggConfigurations from '@/pages/admin/egg-configurations/AdminEggConfigurations.tsx';
+import AdminEggLibrary from '@/pages/admin/egg-library/AdminEggLibrary.tsx';
 import AdminEggRepositories from '@/pages/admin/egg-repositories/AdminEggRepositories.tsx';
 import AdminExtensions from '@/pages/admin/extensions/AdminExtensions.tsx';
 import AdminExtensionsExtension from '@/pages/admin/extensions/extension/AdminExtensionsExtension.tsx';
@@ -98,6 +100,14 @@ const routes: AdminRouteDefinition[] = [
     path: '/nests/*',
     element: AdminNests,
     permission: ['nests.*'],
+    category: 'eggs',
+  },
+  {
+    name: () => getTranslations().t('pages.admin.eggLibrary.title', {}),
+    icon: faEgg,
+    path: '/egg-library/*',
+    element: AdminEggLibrary,
+    permission: ['eggs.read'],
     category: 'eggs',
   },
   {

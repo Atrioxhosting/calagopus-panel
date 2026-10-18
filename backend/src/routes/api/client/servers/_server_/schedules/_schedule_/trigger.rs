@@ -65,7 +65,7 @@ mod post {
         let node = server.node.fetch_cached(&state.database).await?;
 
         tokio::spawn(async move {
-            match server.0.sync(&state.database).await {
+            match server.0.sync(&state).await {
                 Ok(_) => {}
                 Err(err) => {
                     tracing::error!(server = %server_uuid, "failed to post server sync: {:?}", err);

@@ -26,6 +26,7 @@ mod database_hosts;
 mod devices;
 mod egg_configurations;
 mod egg_repositories;
+mod eggs;
 mod extensions;
 mod locations;
 mod mounts;
@@ -89,6 +90,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .nest("/nests", nests::router(state))
         .nest("/egg-repositories", egg_repositories::router(state))
         .nest("/egg-configurations", egg_configurations::router(state))
+        .nest("/eggs", eggs::router(state))
         .nest("/database-hosts", database_hosts::router(state))
         .nest("/database-agent-hosts", database_agent_hosts::router(state))
         .nest(

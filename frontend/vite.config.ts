@@ -19,6 +19,12 @@ const usePrecompress = process.env.PRECOMPRESS === 'true';
 const monacoVsDir = normalizePath(
   path.join(path.dirname(fileURLToPath(import.meta.resolve('monaco-editor/package.json'))), 'min/vs'),
 );
+const pakoInflateUmd = normalizePath(
+  path.join(
+    path.dirname(fileURLToPath(import.meta.resolve('pako/package.json'))),
+    'dist/browser/pako_inflate.umd.min.js',
+  ),
+);
 const svgCountryFlagsDir = normalizePath(
   path.join(path.dirname(fileURLToPath(import.meta.resolve('svg-country-flags/package.json'))), 'svg'),
 );
@@ -214,6 +220,10 @@ export default defineConfig({
       {
         find: 'monaco-editor/esm/vs/editor/editor.api.js',
         replacement: path.resolve(import.meta.dirname, 'src/lib/editor/monacoApiShim.ts'),
+      },
+      {
+        find: /^pako\/dist\/browser\/pako_inflate\.umd\.min\.js/,
+        replacement: pakoInflateUmd,
       },
     ],
   },

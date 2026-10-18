@@ -40,6 +40,7 @@ mod put {
         models::{
             admin_activity::GetAdminActivityLogger,
             oauth_provider::OAuthProvider,
+            server::TrashSettings,
             user::{GetPermissionManager, GetUser},
             user_api_key::UserApiKey,
             user_oauth_link::UserOAuthLink,
@@ -164,6 +165,12 @@ mod put {
         #[garde(skip)]
         allow_viewing_transfer_progress: Option<bool>,
 
+        #[garde(dive)]
+        #[schema(inline)]
+        trash: Option<TrashSettings>,
+        #[garde(skip)]
+        allow_changing_trash_settings: Option<bool>,
+
         #[garde(length(chars, min = 1, max = 255))]
         container_prelude: Option<compact_str::CompactString>,
     }
@@ -187,6 +194,8 @@ mod put {
 
         #[garde(skip)]
         allow_changing_language: Option<bool>,
+        #[garde(skip)]
+        allow_changing_avatar: Option<bool>,
 
         #[garde(length(max = 100))]
         #[schema(max_items = 100)]
@@ -452,6 +461,9 @@ mod put {
             if let Some(allow_changing_language) = user.allow_changing_language {
                 settings.user.allow_changing_language = allow_changing_language;
             }
+            if let Some(allow_changing_avatar) = user.allow_changing_avatar {
+                settings.user.allow_changing_avatar = allow_changing_avatar;
+            }
             if let Some(route_order) = user.route_order {
                 settings.user.route_order = route_order;
             }
@@ -537,6 +549,12 @@ mod put {
             }
             if let Some(allow_viewing_transfer_progress) = server.allow_viewing_transfer_progress {
                 settings.server.allow_viewing_transfer_progress = allow_viewing_transfer_progress;
+            }
+            if let Some(trash) = server.trash {
+                settings.server.trash = trash;
+            }
+            if let Some(allow_changing_trash_settings) = server.allow_changing_trash_settings {
+                settings.server.allow_changing_trash_settings = allow_changing_trash_settings;
             }
             if let Some(container_prelude) = server.container_prelude {
                 settings.server.container_prelude = container_prelude;

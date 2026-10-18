@@ -11,6 +11,7 @@ import Stack from '@/elements/layout/Stack.tsx';
 import { Modal, ModalFooter } from '@/elements/modals/Modal.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
 import Text from '@/elements/typography/Text.tsx';
+import { generateCopyName } from '@/lib/files/files.ts';
 import { bytesToString } from '@/lib/format/size.ts';
 import { serverDirectoryEntrySchema } from '@/lib/schemas/server/files.ts';
 import FileRowIcon from '@/pages/server/files/list/FileRowIcon.tsx';
@@ -19,13 +20,14 @@ import { useTranslations } from '@/providers/TranslationProvider.tsx';
 export interface FileConflict {
   from: string;
   to: string;
+  server?: { uuid: string; name: string };
   source: z.infer<typeof serverDirectoryEntrySchema>;
   destination: z.infer<typeof serverDirectoryEntrySchema>;
 }
 
 export interface ConflictResolutions {
-  overwrite: { from: string; to: string }[];
-  rename: { from: string; to: string }[];
+  overwrite: { from: string; to: string; server?: string }[];
+  rename: { from: string; to: string; server?: string }[];
 }
 
 type Resolution = 'skip' | 'overwrite' | 'rename';
@@ -36,12 +38,8 @@ type Props = ModalProps & {
   onResolve: (resolutions: ConflictResolutions) => void;
 };
 
-function generateCopyName(name: string): string {
-  const dot = name.lastIndexOf('.');
-  const ext = dot > 0 ? name.slice(dot) : '';
-  const base = dot > 0 ? name.slice(0, dot) : name;
-
-  return `${base} copy${ext}`;
+function conflictKey(conflict: FileConflict): string {
+  return conflict.server ? `${conflict.server.uuid}:${conflict.to}` : conflict.to;
 }
 
 function FileMeta({ entry, label }: { entry: z.infer<typeof serverDirectoryEntrySchema>; label: string }) {
@@ -77,23 +75,28 @@ export default function FileCopyConflictModal({ conflicts, loading, onResolve, .
 
   useEffect(() => {
     if (props.opened) {
-      setResolutions(Object.fromEntries(conflicts.map((c) => [c.to, 'skip' as Resolution])));
-      setRenames(Object.fromEntries(conflicts.map((c) => [c.to, generateCopyName(basename(c.to))])));
+      setResolutions(Object.fromEntries(conflicts.map((c) => [conflictKey(c), 'skip' as Resolution])));
+      setRenames(Object.fromEntries(conflicts.map((c) => [conflictKey(c), generateCopyName(basename(c.to))])));
     }
   }, [props.opened, conflicts]);
 
   const setAll = (resolution: Resolution) => {
-    setResolutions(Object.fromEntries(conflicts.map((c) => [c.to, resolution])));
+    setResolutions(Object.fromEntries(conflicts.map((c) => [conflictKey(c), resolution])));
   };
 
   const invalidRename = useMemo(
     () =>
-      conflicts.some((c) => resolutions[c.to] === 'rename' && (!renames[c.to]?.trim() || renames[c.to].includes('/'))),
+      conflicts.some((c) => {
+        const key = conflictKey(c);
+        return resolutions[key] === 'rename' && (!renames[key]?.trim() || renames[key].includes('/'));
+      }),
     [conflicts, resolutions, renames],
   );
 
   const actionCount = useMemo(
-    () => conflicts.filter((c) => resolutions[c.to] === 'overwrite' || resolutions[c.to] === 'rename').length,
+    () =>
+      conflicts.filter((c) => resolutions[conflictKey(c)] === 'overwrite' || resolutions[conflictKey(c)] === 'rename')
+        .length,
     [conflicts, resolutions],
   );
 
@@ -101,11 +104,16 @@ export default function FileCopyConflictModal({ conflicts, loading, onResolve, .
     const result: ConflictResolutions = { overwrite: [], rename: [] };
 
     for (const conflict of conflicts) {
-      const resolution = resolutions[conflict.to];
+      const key = conflictKey(conflict);
+      const resolution = resolutions[key];
       if (resolution === 'overwrite') {
-        result.overwrite.push({ from: conflict.from, to: conflict.to });
+        result.overwrite.push({ from: conflict.from, to: conflict.to, server: conflict.server?.uuid });
       } else if (resolution === 'rename') {
-        result.rename.push({ from: conflict.from, to: join(dirname(conflict.to), renames[conflict.to].trim()) });
+        result.rename.push({
+          from: conflict.from,
+          to: join(dirname(conflict.to), renames[key].trim()),
+          server: conflict.server?.uuid,
+        });
       }
     }
 
@@ -134,8 +142,13 @@ export default function FileCopyConflictModal({ conflicts, loading, onResolve, .
         <div className='max-h-[50vh] min-h-0 overflow-y-auto'>
           <Stack gap='xs'>
             {conflicts.map((conflict) => (
-              <Card key={conflict.to} className='p-3'>
+              <Card key={conflictKey(conflict)} className='p-3'>
                 <Stack gap='xs'>
+                  {conflict.server && (
+                    <Text size='xs' fw={600} c='dimmed' className='break-all'>
+                      {conflict.server.name}
+                    </Text>
+                  )}
                   <Text fw={500} className='break-all'>
                     <FileRowIcon className='mr-2' file={conflict.source} />
                     {basename(conflict.to)}
@@ -150,20 +163,22 @@ export default function FileCopyConflictModal({ conflicts, loading, onResolve, .
                   <SegmentedControl
                     fullWidth
                     size='xs'
-                    value={resolutions[conflict.to] ?? 'skip'}
-                    onChange={(value) => setResolutions((prev) => ({ ...prev, [conflict.to]: value as Resolution }))}
+                    value={resolutions[conflictKey(conflict)] ?? 'skip'}
+                    onChange={(value) =>
+                      setResolutions((prev) => ({ ...prev, [conflictKey(conflict)]: value as Resolution }))
+                    }
                     data={[
                       { value: 'skip', label: t('pages.server.files.modal.copyConflict.skip', {}) },
                       { value: 'overwrite', label: t('pages.server.files.modal.copyConflict.overwrite', {}) },
                       { value: 'rename', label: t('pages.server.files.modal.copyConflict.rename', {}) },
                     ]}
                   />
-                  {resolutions[conflict.to] === 'rename' && (
+                  {resolutions[conflictKey(conflict)] === 'rename' && (
                     <TextInput
                       size='xs'
                       label={t('common.form.newName', {})}
-                      value={renames[conflict.to] ?? ''}
-                      onChange={(e) => setRenames((prev) => ({ ...prev, [conflict.to]: e.target.value }))}
+                      value={renames[conflictKey(conflict)] ?? ''}
+                      onChange={(e) => setRenames((prev) => ({ ...prev, [conflictKey(conflict)]: e.target.value }))}
                     />
                   )}
                 </Stack>

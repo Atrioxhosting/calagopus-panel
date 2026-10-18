@@ -53,6 +53,9 @@ export default function OobeServer({ onNext, onBack, canGoBack, skipFrom, data }
   const [selectedEggRepositoryUuid, setSelectedEggRepositoryUuid] = useState<string | null>(null);
   const [selectedEgg, setSelectedEgg] = useState<z.infer<typeof adminEggRepositoryEggSchema> | null>(null);
 
+  const selectedEggRepository = data.eggRepositories.find((repo) => repo.uuid === selectedEggRepositoryUuid) ?? null;
+  const needsNest = !!selectedEggRepository && !selectedEggRepository.defaultNest;
+
   const eggs = useSearchableResource<z.infer<typeof adminEggRepositoryEggSchema>>({
     queryKey: selectedEggRepositoryUuid
       ? queryKeys.admin.eggRepositories.eggs(selectedEggRepositoryUuid)
@@ -78,7 +81,7 @@ export default function OobeServer({ onNext, onBack, canGoBack, skipFrom, data }
 
   const form = useForm<z.infer<typeof oobeServerSchema>>({
     initialValues: {
-      nestName: '',
+      nestName: null,
       name: '',
       limits: { cpu: 100, memory: 1024, swap: 0, disk: 10240 },
       image: '',
@@ -106,17 +109,24 @@ export default function OobeServer({ onNext, onBack, canGoBack, skipFrom, data }
     setLoading(true);
 
     try {
-      const nest =
-        createdNest ??
-        (await createNest({
-          author: user!.email,
-          name: form.getValues().nestName,
-          description: null,
-        }));
+      const nest = needsNest
+        ? (createdNest ??
+          (await createNest({
+            author: user!.email,
+            name: form.getValues().nestName!,
+            description: null,
+          })))
+        : null;
       setCreatedNest(nest);
 
-      const egg = installedEgg ?? (await installEgg(selectedEggRepositoryUuid!, selectedEgg!.uuid, nest.uuid));
-      setInstalledEgg(egg);
+      let egg = installedEgg;
+      if (!egg) {
+        const installed = await installEgg(selectedEggRepositoryUuid!, selectedEgg!.uuid, nest?.uuid ?? null).then(
+          (result) => result.egg,
+        );
+        setInstalledEgg(installed);
+        egg = installed;
+      }
 
       await createServer({
         externalId: null,
@@ -228,15 +238,17 @@ export default function OobeServer({ onNext, onBack, canGoBack, skipFrom, data }
                   />
                 </div>
 
-                <Stack gap='xs'>
-                  <Text size='sm'>{t('pages.oobe.server.egg.nestDescription', {})}</Text>
-                  <TextInput
-                    withAsterisk
-                    label='Nest Name'
-                    key={form.key('nestName')}
-                    {...form.getInputProps('nestName')}
-                  />
-                </Stack>
+                {needsNest && (
+                  <Stack gap='xs'>
+                    <Text size='sm'>{t('pages.oobe.server.egg.nestDescription', {})}</Text>
+                    <TextInput
+                      withAsterisk
+                      label='Nest Name'
+                      key={form.key('nestName')}
+                      {...form.getInputProps('nestName')}
+                    />
+                  </Stack>
+                )}
               </Stack>
             </Card>
 
@@ -408,7 +420,7 @@ export default function OobeServer({ onNext, onBack, canGoBack, skipFrom, data }
           ) : (
             <Button
               type='submit'
-              disabled={!selectedEgg || !form.isValid()}
+              disabled={!selectedEgg || !form.isValid() || (needsNest && !form.getValues().nestName)}
               loading={loading}
               onClick={() => (!form.getValues().allocationUuid ? setOpenModal('confirm-no-allocation') : onSubmit())}
             >

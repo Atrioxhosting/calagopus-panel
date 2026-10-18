@@ -10,6 +10,7 @@ use std::{
     time::Duration,
 };
 
+mod blame;
 mod runner;
 mod verify;
 
@@ -26,6 +27,7 @@ const NODE_HEAP_MB: u32 = 1024;
 
 const LIST_TIMEOUT: Duration = Duration::from_secs(60);
 const FRONTEND_KEEP: [&str; 2] = ["shared", "tsconfig.json"];
+const EXTENSION_ZIP_SUFFIX: &str = ".c7s.zip";
 
 pub fn repo_dirty_marker(repo_dir: &Path) -> PathBuf {
     repo_dir.join(REPO_DIRTY_MARKER)
@@ -287,13 +289,71 @@ pub enum BuildOutcome {
 struct Failure {
     reason: String,
     exit_code: Option<i32>,
+    step: Option<StepKind>,
+    blamed: Vec<String>,
+}
+
+impl Failure {
+    fn new(reason: String, exit_code: Option<i32>) -> Self {
+        Self {
+            reason,
+            exit_code,
+            step: None,
+            blamed: Vec::new(),
+        }
+    }
 }
 
 impl From<anyhow::Error> for Failure {
     fn from(err: anyhow::Error) -> Self {
-        Self {
-            reason: format!("{err:#}"),
-            exit_code: None,
+        Self::new(format!("{err:#}"), None)
+    }
+}
+
+fn zip_identifier(zip: &Path) -> Option<&str> {
+    zip.file_name()?
+        .to_str()?
+        .strip_suffix(EXTENSION_ZIP_SUFFIX)
+}
+
+fn suspects(config: &Config, zips: &[PathBuf]) -> Vec<blame::Suspect> {
+    #[derive(serde::Deserialize)]
+    struct PackageJson {
+        name: Option<String>,
+    }
+
+    zips.iter()
+        .filter_map(|zip| zip_identifier(zip))
+        .map(|identifier| {
+            let npm_name = std::fs::read(
+                config
+                    .repo_dir
+                    .join("frontend")
+                    .join("extensions")
+                    .join(identifier)
+                    .join("package.json"),
+            )
+            .ok()
+            .and_then(|raw| serde_json::from_slice::<PackageJson>(&raw).ok())
+            .and_then(|package| package.name);
+
+            blame::Suspect::from_identifier(identifier, npm_name)
+        })
+        .collect()
+}
+
+fn blame_apply(config: &Config, build_dir: &Path, zips: &[PathBuf]) -> Vec<String> {
+    let log = build_dir.join(crate::store::record::BUILD_LOG_FILE);
+
+    match std::fs::read(&log) {
+        Ok(raw) => blame::blame(&String::from_utf8_lossy(&raw), &suspects(config, zips)),
+        Err(err) => {
+            tracing::warn!(
+                "reading {} to find failing extensions: {err}",
+                log.display()
+            );
+
+            Vec::new()
         }
     }
 }
@@ -330,6 +390,7 @@ pub async fn run<R: CommandRunner>(
         finished_at: None,
         exit_code: None,
         failure_reason: None,
+        failed_extensions: Vec::new(),
     };
 
     let built = pipeline(
@@ -362,9 +423,15 @@ pub async fn run<R: CommandRunner>(
             record.failure_reason = Some(if cancelled {
                 format!("the build was cancelled: {}", failure.reason)
             } else {
-                failure.reason
+                failure.reason.clone()
             });
             record.exit_code = failure.exit_code;
+            if !cancelled {
+                record.failed_extensions = match failure.step {
+                    Some(StepKind::Apply) => blame_apply(config, &build_dir, &request.zips),
+                    _ => failure.blamed,
+                };
+            }
             crate::store::record::write_record(&build_dir, &record)?;
             if !cancelled {
                 crate::store::write_failure_memo(binaries, &record)?;
@@ -410,12 +477,19 @@ async fn pipeline<R: CommandRunner>(
     run_step(runner, &commands.clear).await?;
 
     let total = commands.adds.len() as u32;
-    for (index, add) in commands.adds.iter().enumerate() {
+    for (index, (add, zip)) in commands.adds.iter().zip(zips).enumerate() {
         report(BuildPhase::Adding {
             done: index as u32,
             total,
         });
-        run_step(runner, add).await?;
+        run_step(runner, add).await.map_err(|mut failure| {
+            failure.blamed = zip_identifier(zip)
+                .map(|identifier| blame::Suspect::from_identifier(identifier, None).package_name)
+                .into_iter()
+                .collect();
+
+            failure
+        })?;
     }
 
     report(BuildPhase::Resync);
@@ -430,14 +504,14 @@ async fn pipeline<R: CommandRunner>(
     })?;
 
     if zips.is_empty() != record.intended_extensions.is_empty() {
-        return Err(Failure {
-            reason: format!(
+        return Err(Failure::new(
+            format!(
                 "{} extension archives are installed but the repo lists {}",
                 zips.len(),
                 record.intended_extensions.len()
             ),
-            exit_code: None,
-        });
+            None,
+        ));
     }
 
     report(BuildPhase::StagingTranslations);
@@ -464,8 +538,8 @@ async fn pipeline<R: CommandRunner>(
     report(BuildPhase::Verifying);
     let (verification, exit_code) = verify_built(runner, &commands.verify, record).await;
     if !verification.verified {
-        return Err(Failure {
-            reason: format!(
+        return Err(Failure::new(
+            format!(
                 "the built binary did not verify: {}",
                 verification.failure_reason.unwrap_or_else(|| {
                     "it does not hold every extension this build was meant to compile in"
@@ -473,7 +547,7 @@ async fn pipeline<R: CommandRunner>(
                 })
             ),
             exit_code,
-        });
+        ));
     }
     record.verified_extensions = verification.compiled_in;
 
@@ -534,16 +608,19 @@ async fn run_step<R: CommandRunner>(
     match runner.run(command).await {
         Ok(output) if output.succeeded() => Ok(output),
         Ok(output) => Err(Failure {
-            reason: format!(
-                "{} exited with {}",
-                command.describe(),
-                describe_exit(output.exit_code)
-            ),
-            exit_code: output.exit_code,
+            step: Some(command.kind),
+            ..Failure::new(
+                format!(
+                    "{} exited with {}",
+                    command.describe(),
+                    describe_exit(output.exit_code)
+                ),
+                output.exit_code,
+            )
         }),
         Err(err) => Err(Failure {
-            reason: format!("{err:#}"),
-            exit_code: None,
+            step: Some(command.kind),
+            ..Failure::new(format!("{err:#}"), None)
         }),
     }
 }

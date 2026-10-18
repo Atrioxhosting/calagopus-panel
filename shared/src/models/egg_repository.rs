@@ -7,13 +7,74 @@ use compact_str::ToCompactString;
 use futures_util::StreamExt;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use sqlx::{Row, postgres::PgRow};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap, HashSet},
+    io::Read,
     path::PathBuf,
     sync::{Arc, LazyLock},
 };
 use utoipa::ToSchema;
+
+fn default_true() -> bool {
+    true
+}
+
+const BANNER_MAX_SOURCE_BYTES: u64 = 8 * 1024 * 1024;
+const BANNER_MAX_WIDTH: u32 = 960;
+const BANNER_MAX_HEIGHT: u32 = 480;
+
+fn is_banner_file_name(name: &str) -> bool {
+    let Some((stem, extension)) = name.rsplit_once('.') else {
+        return false;
+    };
+
+    stem.eq_ignore_ascii_case("banner")
+        && ["png", "jpg", "jpeg", "webp", "gif"]
+            .iter()
+            .any(|e| extension.eq_ignore_ascii_case(e))
+}
+
+fn banner_storage_path(egg_repository_uuid: uuid::Uuid, source: &[u8]) -> String {
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(b"v1");
+    hasher.update(source);
+
+    format!(
+        "publicdata/egg-repositories/{}/banners/{}.webp",
+        egg_repository_uuid,
+        hex::encode(&hasher.finalize()[..16])
+    )
+}
+
+async fn transcode_banner(data: Vec<u8>) -> Result<Vec<u8>, anyhow::Error> {
+    let image = super::user::avatar::decode(data, super::user::avatar::upload_limits()).await?;
+
+    tokio::task::spawn_blocking(move || -> Result<Vec<u8>, anyhow::Error> {
+        let image = if image.width() > BANNER_MAX_WIDTH || image.height() > BANNER_MAX_HEIGHT {
+            image.resize(
+                BANNER_MAX_WIDTH,
+                BANNER_MAX_HEIGHT,
+                image::imageops::FilterType::Triangle,
+            )
+        } else {
+            image
+        };
+        let image = image::DynamicImage::ImageRgba8(image.into_rgba8());
+
+        let mut data = Vec::new();
+        image::codecs::webp::WebPEncoder::new_lossless(&mut data).encode(
+            image.as_bytes(),
+            image.width(),
+            image.height(),
+            image::ExtendedColorType::Rgba8,
+        )?;
+
+        Ok(data)
+    })
+    .await?
+}
 
 fn validate_git_repository(
     git_repository: &compact_str::CompactString,
@@ -219,6 +280,8 @@ pub struct EggRepository {
     pub description: Option<compact_str::CompactString>,
     pub git_repository: compact_str::CompactString,
     pub credentials: EggRepositoryCredentials,
+    pub default_nest: Option<Fetchable<super::nest::Nest>>,
+    pub auto_sync: bool,
 
     pub last_synced: Option<chrono::NaiveDateTime>,
     pub created: chrono::NaiveDateTime,
@@ -266,6 +329,14 @@ impl BaseModel for EggRepository {
                 compact_str::format_compact!("{prefix}credentials"),
             ),
             (
+                "egg_repositories.default_nest_uuid",
+                compact_str::format_compact!("{prefix}default_nest_uuid"),
+            ),
+            (
+                "egg_repositories.auto_sync",
+                compact_str::format_compact!("{prefix}auto_sync"),
+            ),
+            (
                 "egg_repositories.last_synced",
                 compact_str::format_compact!("{prefix}last_synced"),
             ),
@@ -290,6 +361,12 @@ impl BaseModel for EggRepository {
             credentials: serde_json::from_value(
                 row.try_get(compact_str::format_compact!("{prefix}credentials").as_str())?,
             )?,
+            default_nest: row
+                .try_get::<Option<uuid::Uuid>, _>(
+                    compact_str::format_compact!("{prefix}default_nest_uuid").as_str(),
+                )?
+                .map(super::nest::Nest::get_fetchable),
+            auto_sync: row.try_get(compact_str::format_compact!("{prefix}auto_sync").as_str())?,
             last_synced: row
                 .try_get(compact_str::format_compact!("{prefix}last_synced").as_str())?,
             created: row.try_get(compact_str::format_compact!("{prefix}created").as_str())?,
@@ -345,6 +422,26 @@ impl EggRepository {
         })
     }
 
+    pub async fn all_auto_sync(
+        database: &crate::database::Database,
+    ) -> Result<Vec<Self>, crate::database::DatabaseError> {
+        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
+            r#"
+            SELECT {}
+            FROM egg_repositories
+            WHERE egg_repositories.auto_sync
+            ORDER BY egg_repositories.created
+            "#,
+            Self::columns_sql(None)
+        )))
+        .fetch_all(database.read())
+        .await?;
+
+        rows.into_iter()
+            .map(|row| Self::map(None, &row))
+            .try_collect_vec()
+    }
+
     pub async fn sync(&self, state: &crate::State) -> Result<usize, anyhow::Error> {
         let git_repository = self.git_repository.clone();
 
@@ -359,13 +456,28 @@ impl EggRepository {
         struct FoundEgg {
             path: PathBuf,
             readme: Option<String>,
+            banner: Option<String>,
             exported_egg: super::nest_egg::ExportedNestEgg,
             updated: chrono::DateTime<chrono::Utc>,
         }
+        type NewBanners = HashMap<String, Vec<u8>>;
 
-        let exported_eggs =
-            tokio::task::spawn_blocking(move || -> Result<Vec<FoundEgg>, anyhow::Error> {
+        let egg_repository_uuid = self.uuid;
+        let previous_banners: HashSet<String> =
+            super::egg_repository_egg::EggRepositoryEgg::banners_by_egg_repository_uuid(
+                &state.database,
+                self.uuid,
+            )
+            .await?
+            .into_iter()
+            .collect();
+        let known_banners = previous_banners.clone();
+
+        let (mut exported_eggs, new_banners) = tokio::task::spawn_blocking(
+            move || -> Result<(Vec<FoundEgg>, NewBanners), anyhow::Error> {
                 let mut exported_eggs = Vec::new();
+                let mut banner_files: HashMap<PathBuf, Option<String>> = HashMap::new();
+                let mut new_banners: HashMap<String, Vec<u8>> = HashMap::new();
                 let temp_dir = tempfile::tempdir()?;
                 let filesystem = crate::cap::CapFilesystem::new(temp_dir.path().to_path_buf())?;
 
@@ -432,8 +544,11 @@ impl EggRepository {
                         };
 
                     let mut readme = None;
+                    let mut banner = None;
                     let mut current_path = entry.parent();
-                    'readme: while let Some(path) = current_path {
+                    while let Some(path) = current_path
+                        && (readme.is_none() || banner.is_none())
+                    {
                         let mut dir = filesystem.read_dir(path)?;
 
                         while let Some(Ok((is_dir, entry))) = dir.next_entry() {
@@ -443,14 +558,41 @@ impl EggRepository {
 
                             let path = path.join(&entry);
 
-                            if entry.to_lowercase().contains("readme")
+                            if readme.is_none()
+                                && entry.to_lowercase().contains("readme")
                                 && filesystem
                                     .metadata(&path)
                                     .is_ok_and(|m| m.is_file() && m.len() <= 1024 * 1024)
                                 && let Ok(content) = filesystem.read_to_string(&path)
                             {
                                 readme = Some(content);
-                                break 'readme;
+                            } else if banner.is_none() && is_banner_file_name(&entry) {
+                                banner = banner_files
+                                    .entry(path.clone())
+                                    .or_insert_with(|| {
+                                        if !filesystem.metadata(&path).is_ok_and(|m| {
+                                            m.is_file() && m.len() <= BANNER_MAX_SOURCE_BYTES
+                                        }) {
+                                            return None;
+                                        }
+
+                                        let mut data = Vec::new();
+                                        filesystem
+                                            .open(&path)
+                                            .ok()?
+                                            .take(BANNER_MAX_SOURCE_BYTES)
+                                            .read_to_end(&mut data)
+                                            .ok()?;
+
+                                        let storage_path =
+                                            banner_storage_path(egg_repository_uuid, &data);
+                                        if !known_banners.contains(&storage_path) {
+                                            new_banners.insert(storage_path.clone(), data);
+                                        }
+
+                                        Some(storage_path)
+                                    })
+                                    .clone();
                             }
                         }
 
@@ -460,6 +602,7 @@ impl EggRepository {
                     exported_eggs.push(FoundEgg {
                         path: entry,
                         readme,
+                        banner,
                         exported_egg,
                         updated: chrono::DateTime::from_timestamp(
                             metadata
@@ -476,9 +619,48 @@ impl EggRepository {
 
                 drop(prepare_fetch);
 
-                Ok(exported_eggs)
-            })
-            .await??;
+                Ok((exported_eggs, new_banners))
+            },
+        )
+        .await??;
+
+        let mut failed_banners = HashSet::new();
+        for (path, data) in new_banners {
+            let result = match transcode_banner(data).await {
+                Ok(data) => {
+                    state
+                        .storage
+                        .store_with_cache_control(
+                            &path,
+                            data.as_slice(),
+                            "image/webp",
+                            Some("public, max-age=31536000, immutable"),
+                        )
+                        .await
+                }
+                Err(err) => Err(err),
+            };
+
+            if let Err(err) = result {
+                tracing::warn!(
+                    "failed to store egg repository banner {} for {}: {:?}",
+                    path,
+                    self.git_repository,
+                    err
+                );
+                failed_banners.insert(path);
+            }
+        }
+
+        for egg in exported_eggs.iter_mut() {
+            if egg
+                .banner
+                .as_ref()
+                .is_some_and(|banner| failed_banners.contains(banner))
+            {
+                egg.banner = None;
+            }
+        }
 
         super::egg_repository_egg::EggRepositoryEgg::delete_unused(
             &state.database,
@@ -499,6 +681,7 @@ impl EggRepository {
                 self.uuid,
                 egg.path.to_string_lossy(),
                 egg.readme.as_deref(),
+                egg.banner.as_deref(),
                 &egg.exported_egg,
                 egg.updated.naive_utc(),
             ));
@@ -522,6 +705,18 @@ impl EggRepository {
 
         Self::invalidate_cached(&state.database, self.uuid).await;
 
+        let current_banners: HashSet<String> =
+            super::egg_repository_egg::EggRepositoryEgg::banners_by_egg_repository_uuid(
+                &state.database,
+                self.uuid,
+            )
+            .await?
+            .into_iter()
+            .collect();
+        for banner in previous_banners.difference(&current_banners) {
+            state.storage.remove(Some(banner)).await?;
+        }
+
         Ok(exported_eggs.len())
     }
 }
@@ -540,6 +735,17 @@ impl IntoAdminApiObject for EggRepository {
 
         self.credentials.censor();
 
+        let default_nest = match self.default_nest {
+            Some(default_nest) => Some(
+                default_nest
+                    .fetch_cached(&state.database)
+                    .await?
+                    .into_admin_api_object(state, ())
+                    .await?,
+            ),
+            None => None,
+        };
+
         let api_object = finish_extendible!(
             AdminApiEggRepository {
                 uuid: self.uuid,
@@ -547,6 +753,8 @@ impl IntoAdminApiObject for EggRepository {
                 description: self.description,
                 git_repository: self.git_repository,
                 credentials: self.credentials,
+                default_nest,
+                auto_sync: self.auto_sync,
                 last_synced: self.last_synced.map(|dt| dt.and_utc()),
                 created: self.created.and_utc(),
             },
@@ -571,6 +779,11 @@ pub struct CreateEggRepositoryOptions {
     pub git_repository: compact_str::CompactString,
     #[garde(dive)]
     pub credentials: Option<EggRepositoryCredentials>,
+    #[garde(skip)]
+    pub default_nest_uuid: Option<uuid::Uuid>,
+    #[garde(skip)]
+    #[serde(default = "default_true")]
+    pub auto_sync: bool,
 }
 
 #[async_trait::async_trait]
@@ -603,11 +816,19 @@ impl CreatableModel for EggRepository {
         credentials.validate_key_material()?;
         credentials.encrypt(&state.database).await?;
 
+        if let Some(default_nest_uuid) = options.default_nest_uuid {
+            super::nest::Nest::by_uuid_optional_cached(&state.database, default_nest_uuid)
+                .await?
+                .ok_or(crate::database::InvalidRelationError("nest"))?;
+        }
+
         query_builder
             .set("name", &options.name)
             .set("description", &options.description)
             .set("git_repository", &options.git_repository)
-            .set("credentials", serde_json::to_value(&credentials)?);
+            .set("credentials", serde_json::to_value(&credentials)?)
+            .set("default_nest_uuid", options.default_nest_uuid)
+            .set("auto_sync", options.auto_sync);
 
         let row = query_builder
             .returning(&Self::columns_sql(None))
@@ -639,6 +860,15 @@ pub struct UpdateEggRepositoryOptions {
     pub git_repository: Option<compact_str::CompactString>,
     #[garde(dive)]
     pub credentials: Option<EggRepositoryCredentials>,
+    #[garde(skip)]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        with = "::serde_with::rust::double_option"
+    )]
+    pub default_nest_uuid: Option<Option<uuid::Uuid>>,
+    #[garde(skip)]
+    pub auto_sync: Option<bool>,
 }
 
 #[async_trait::async_trait]
@@ -679,6 +909,12 @@ impl UpdatableModel for EggRepository {
             None => self.credentials.validate_scheme_for_url(git_repository)?,
         }
 
+        if let Some(Some(default_nest_uuid)) = options.default_nest_uuid {
+            super::nest::Nest::by_uuid_optional_cached(&state.database, default_nest_uuid)
+                .await?
+                .ok_or(crate::database::InvalidRelationError("nest"))?;
+        }
+
         query_builder
             .set("name", options.name.as_ref())
             .set(
@@ -694,6 +930,11 @@ impl UpdatableModel for EggRepository {
                     .map(serde_json::to_value)
                     .transpose()?,
             )
+            .set(
+                "default_nest_uuid",
+                options.default_nest_uuid.as_ref().map(|o| o.as_ref()),
+            )
+            .set("auto_sync", options.auto_sync)
             .where_eq("uuid", self.uuid);
 
         query_builder.execute(&mut **transaction).await?;
@@ -709,6 +950,12 @@ impl UpdatableModel for EggRepository {
         }
         if let Some(credentials) = options.credentials {
             self.credentials = credentials;
+        }
+        if let Some(default_nest_uuid) = options.default_nest_uuid {
+            self.default_nest = default_nest_uuid.map(super::nest::Nest::get_fetchable);
+        }
+        if let Some(auto_sync) = options.auto_sync {
+            self.auto_sync = auto_sync;
         }
 
         self.run_after_update_handlers(state, transaction).await?;
@@ -793,6 +1040,37 @@ impl DeletableModel for EggRepository {
 
         Ok(())
     }
+    async fn delete(
+        &self,
+        state: &crate::State,
+        options: Self::DeleteOptions,
+    ) -> Result<(), anyhow::Error> {
+        let banners = super::egg_repository_egg::EggRepositoryEgg::banners_by_egg_repository_uuid(
+            &state.database,
+            self.uuid,
+        )
+        .await?;
+
+        let mut transaction = state.database.write().begin().await?;
+
+        if let Err(err) = self
+            .delete_with_transaction(state, options, &mut transaction)
+            .await
+        {
+            transaction.rollback().await?;
+            return Err(err);
+        }
+
+        transaction.commit().await?;
+
+        Self::invalidate_cached(&state.database, self.uuid).await;
+
+        for banner in banners {
+            state.storage.remove(Some(banner)).await?;
+        }
+
+        Ok(())
+    }
 }
 
 #[schema_extension_derive::extendible]
@@ -807,6 +1085,8 @@ pub struct AdminApiEggRepository {
     pub description: Option<compact_str::CompactString>,
     pub git_repository: compact_str::CompactString,
     pub credentials: EggRepositoryCredentials,
+    pub default_nest: Option<super::nest::AdminApiNest>,
+    pub auto_sync: bool,
 
     pub last_synced: Option<chrono::DateTime<chrono::Utc>>,
     pub created: chrono::DateTime<chrono::Utc>,

@@ -565,6 +565,45 @@ impl UpdatableModel for UserApiKey {
         &UPDATE_LISTENERS
     }
 
+    async fn update(
+        &mut self,
+        state: &crate::State,
+        options: Self::UpdateOptions,
+    ) -> Result<(), crate::database::DatabaseError> {
+        let scope_changed = options.allowed_ips.is_some()
+            || options.enabled.is_some()
+            || options.user_permissions.is_some()
+            || options.admin_permissions.is_some()
+            || options.server_permissions.is_some()
+            || options.expires.is_some();
+
+        let mut transaction = state.database.write().begin().await?;
+
+        if let Err(err) = self
+            .update_with_transaction(state, options, &mut transaction)
+            .await
+        {
+            transaction.rollback().await?;
+            return Err(err);
+        }
+
+        transaction.commit().await?;
+
+        super::invalidate_cache_keys(&state.database, &self.cache_invalidation_keys()).await;
+
+        if scope_changed {
+            super::node::Node::invalidate_permissions_everywhere(
+                &state.database,
+                super::node::PermissionsInvalidation {
+                    revoke_credentials: vec![self.uuid],
+                    ..Default::default()
+                },
+            );
+        }
+
+        Ok(())
+    }
+
     async fn update_with_transaction(
         &mut self,
         state: &crate::State,
@@ -734,6 +773,36 @@ impl DeletableModel for UserApiKey {
             LazyLock::new(|| Arc::new(ModelHandlerList::default()));
 
         &DELETE_LISTENERS
+    }
+
+    async fn delete(
+        &self,
+        state: &crate::State,
+        options: Self::DeleteOptions,
+    ) -> Result<(), anyhow::Error> {
+        let mut transaction = state.database.write().begin().await?;
+
+        if let Err(err) = self
+            .delete_with_transaction(state, options, &mut transaction)
+            .await
+        {
+            transaction.rollback().await?;
+            return Err(err);
+        }
+
+        transaction.commit().await?;
+
+        super::invalidate_cache_keys(&state.database, &self.cache_invalidation_keys()).await;
+
+        super::node::Node::invalidate_permissions_everywhere(
+            &state.database,
+            super::node::PermissionsInvalidation {
+                revoke_credentials: vec![self.uuid],
+                ..Default::default()
+            },
+        );
+
+        Ok(())
     }
 
     async fn delete_with_transaction(

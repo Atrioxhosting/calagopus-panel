@@ -32,6 +32,8 @@ mod post {
 
         permissions: Vec<&'a str>,
         ignored_files: &'a [compact_str::CompactString],
+
+        as_of: i64,
     }
 
     #[utoipa::path(post, path = "/", responses(
@@ -43,6 +45,8 @@ mod post {
         node: GetNode,
         shared::Payload(data): shared::Payload<Payload>,
     ) -> ApiResponseResult {
+        let as_of = chrono::Utc::now().timestamp_millis();
+
         let ratelimit = state
             .settings
             .get_as(|s| s.ratelimits.remote_sftp_auth)
@@ -110,26 +114,9 @@ mod post {
             }
         };
 
-        if user.suspended {
-            return ApiResponse::error("account is suspended")
-                .with_status(StatusCode::EXPECTATION_FAILED)
-                .ok();
-        }
-
-        let settings = state.settings.get().await?;
-        let two_factor_missing =
-            user.require_two_factor(&settings) && !user.satisfies_two_factor(&settings);
-        let email_unverified = user.require_email_verification(&settings) && !user.email_verified;
-        drop(settings);
-
-        if two_factor_missing {
-            return ApiResponse::error("two-factor authentication required")
-                .with_status(StatusCode::EXPECTATION_FAILED)
-                .ok();
-        }
-
-        if email_unverified {
-            return ApiResponse::error("email verification required")
+        let denial = user.wings_access_denial(&*state.settings.get().await?);
+        if let Some(denial) = denial {
+            return ApiResponse::error(denial)
                 .with_status(StatusCode::EXPECTATION_FAILED)
                 .ok();
         }
@@ -158,6 +145,7 @@ mod post {
                 &shared::models::user::CredentialScope::Session,
             ),
             ignored_files: server.subuser_ignored_files.as_deref().unwrap_or(&[]),
+            as_of,
         })
         .ok()
     }

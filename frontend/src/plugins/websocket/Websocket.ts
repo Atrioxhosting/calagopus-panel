@@ -1,5 +1,11 @@
 import { decode, encode } from '@msgpack/msgpack';
 import { EventEmitter } from 'events';
+import {
+  ServerWebsocketFrame,
+  ServerWebsocketMessageEvent,
+  ServerWebsocketSendEvent,
+  serverWebsocketProtocolEvents,
+} from 'shared';
 import { getTranslations } from '@/providers/TranslationProvider.tsx';
 
 export enum SocketState {
@@ -34,6 +40,12 @@ export interface SocketError {
   closeReason?: string;
 }
 
+function isForwardableFrame(frame: ServerWebsocketFrame): boolean {
+  return (
+    typeof frame.event === 'string' && Array.isArray(frame.args) && !serverWebsocketProtocolEvents.has(frame.event)
+  );
+}
+
 export class Websocket extends EventEmitter {
   private socket: WebSocket | null = null;
   private url: string | null = null;
@@ -51,6 +63,10 @@ export class Websocket extends EventEmitter {
   private readonly minBackoff = 1000;
   private readonly maxBackoff = 20000;
   private readonly maxReconnectAttempts = Infinity;
+
+  constructor(public readonly serverUuid: string) {
+    super();
+  }
 
   /**
    * Returns the current connection state.
@@ -121,7 +137,32 @@ export class Websocket extends EventEmitter {
       this.authGapped = false;
     }
 
-    this.emit(event, ...args);
+    const handlers = window.extensionContext.extensionRegistry.events.serverWebsocket.messageHandlers;
+    if (serverWebsocketProtocolEvents.has(event) || handlers.handlers.length === 0) {
+      this.emit(event, ...args);
+      return;
+    }
+
+    const message = handlers.emit(new ServerWebsocketMessageEvent(this.serverUuid, this, { event, args: [...args] }));
+    if (message.cancelled || !isForwardableFrame(message.data)) {
+      return;
+    }
+
+    this.emit(message.data.event, ...message.data.args);
+  }
+
+  private interceptSend(event: string, args: string[]): ServerWebsocketFrame | null {
+    const handlers = window.extensionContext.extensionRegistry.events.serverWebsocket.sendHandlers;
+    if (serverWebsocketProtocolEvents.has(event) || handlers.handlers.length === 0) {
+      return { event, args };
+    }
+
+    const send = handlers.emit(new ServerWebsocketSendEvent(this.serverUuid, this, { event, args: [...args] }));
+    if (send.cancelled || !isForwardableFrame(send.data)) {
+      return null;
+    }
+
+    return send.data;
   }
 
   /**
@@ -144,13 +185,16 @@ export class Websocket extends EventEmitter {
       return;
     }
 
-    const args = payload == null ? [] : Array.isArray(payload) ? payload : [payload];
+    const frame = this.interceptSend(event, payload == null ? [] : Array.isArray(payload) ? payload : [payload]);
+    if (!frame) {
+      return;
+    }
 
     try {
       if (this.useBinary) {
-        this.socket.send(encode([event, args]));
+        this.socket.send(encode([frame.event, frame.args]));
       } else {
-        this.socket.send(JSON.stringify({ event, args }));
+        this.socket.send(JSON.stringify({ event: frame.event, args: frame.args }));
       }
     } catch (err) {
       console.warn('Failed to send websocket message.', err);

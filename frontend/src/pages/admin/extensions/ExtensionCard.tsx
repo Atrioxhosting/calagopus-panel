@@ -22,6 +22,7 @@ export default function ExtensionCard({
   isRemoved,
   isDisabled,
   isPendingDisabled,
+  isBuildFailed,
   onRemove,
   onToggle,
 }: {
@@ -31,6 +32,7 @@ export default function ExtensionCard({
   isRemoved?: boolean;
   isDisabled?: boolean;
   isPendingDisabled?: boolean;
+  isBuildFailed?: boolean;
   onRemove?: () => void;
   onToggle?: (enabled: boolean) => void;
 }) {
@@ -47,6 +49,7 @@ export default function ExtensionCard({
     isPendingRemoval: !!isRemoved,
     isDisabled: !!isDisabled,
     isPendingDisabled: !!isPendingDisabled,
+    isBuildFailed: !!isBuildFailed,
   });
 
   const configureDisabled = !backendExtension || !!isDisabled || !extension?.cardConfigurationPage;

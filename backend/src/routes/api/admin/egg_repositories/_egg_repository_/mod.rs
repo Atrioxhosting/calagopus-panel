@@ -201,6 +201,8 @@ mod patch {
                     "name": egg_repository.name,
                     "description": egg_repository.description,
                     "git_repository": egg_repository.git_repository,
+                    "default_nest_uuid": egg_repository.default_nest.as_ref().map(|nest| nest.uuid),
+                    "auto_sync": egg_repository.auto_sync,
                 }),
             )
             .await;

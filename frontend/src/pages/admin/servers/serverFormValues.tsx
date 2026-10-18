@@ -14,12 +14,17 @@ import { AdminServer, AdminServerCreate, AdminServerUpdate } from '@/lib/schemas
 import { fullUserSchema } from '@/lib/schemas/user.ts';
 import { useSearchableResource } from '@/plugins/resource/useSearchableResource.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import EggInstallField from './EggInstallField.tsx';
 import OwnerCreateField from './OwnerCreateField.tsx';
 
 type TFunc = ReturnType<typeof useTranslations>['t'];
 type ServerCreateFormValues = AdminServerCreate;
 type ServerUpdateFormValues = AdminServerUpdate;
 type SearchableResource<T> = ReturnType<typeof useSearchableResource<T>>;
+type EggsResource = Pick<
+  SearchableResource<z.infer<typeof adminEggSchema>>,
+  'items' | 'loading' | 'search' | 'setSearch'
+>;
 
 export type ServerFormMode = 'create' | 'update';
 
@@ -94,7 +99,7 @@ interface ServerEggAssignmentFormValues extends Record<string, unknown> {
 
 export function useEggDefaults<T extends ServerEggAssignmentFormValues>(
   form: UseFormReturnType<T>,
-  eggs: SearchableResource<z.infer<typeof adminEggSchema>>,
+  eggs: EggsResource,
   selectedEggUuid: string,
   { skip = false }: { skip?: boolean } = {},
 ) {
@@ -305,7 +310,7 @@ function buildStartupField<T extends ServerEggAssignmentFormValues>(
     eggs,
   }: {
     form: UseFormReturnType<T>;
-    eggs: SearchableResource<z.infer<typeof adminEggSchema>>;
+    eggs: EggsResource;
   },
 ): FieldDef<T> {
   return {
@@ -382,7 +387,7 @@ interface ServerAssignmentOptions<T extends ServerEggAssignmentFormValues> {
   nodes?: SearchableResource<z.infer<typeof adminNodeSchema>>;
   users: SearchableResource<z.infer<typeof fullUserSchema>>;
   nests: SearchableResource<z.infer<typeof adminNestSchema>>;
-  eggs: SearchableResource<z.infer<typeof adminEggSchema>>;
+  eggs: EggsResource;
   backupConfigurations: SearchableResource<z.infer<typeof adminBackupConfigurationSchema>>;
   canReadNodes?: boolean;
   canReadUsers: boolean;
@@ -391,6 +396,26 @@ interface ServerAssignmentOptions<T extends ServerEggAssignmentFormValues> {
   canReadBackupConfigurations: boolean;
   selectedNestUuid: string | null;
   setSelectedNestUuid: (uuid: string | null) => void;
+  eggNests?: Map<string, z.infer<typeof adminNestSchema>>;
+  onEggInstallClick?: () => void;
+}
+
+/// Groups the egg options by nest so a cross-nest egg search still shows where each egg lives.
+function groupEggOptions(
+  eggs: z.infer<typeof adminEggSchema>[],
+  eggNests: Map<string, z.infer<typeof adminNestSchema>>,
+): { group: string; items: { label: string; value: string }[] }[] {
+  const groups = new Map<string, { group: string; items: { label: string; value: string }[] }>();
+
+  for (const egg of eggs) {
+    const nest = eggNests.get(egg.uuid);
+    const key = nest?.uuid ?? '';
+    const group = groups.get(key) ?? { group: nest?.name ?? '', items: [] };
+    group.items.push({ label: egg.name, value: egg.uuid });
+    groups.set(key, group);
+  }
+
+  return [...groups.values()];
 }
 
 function buildServerAssignmentFields<T extends ServerEggAssignmentFormValues>(
@@ -412,6 +437,8 @@ function buildServerAssignmentFields<T extends ServerEggAssignmentFormValues>(
     canReadBackupConfigurations,
     selectedNestUuid,
     setSelectedNestUuid,
+    eggNests,
+    onEggInstallClick,
   } = opts;
 
   const nodeField: FieldDef<T> = {
@@ -460,18 +487,29 @@ function buildServerAssignmentFields<T extends ServerEggAssignmentFormValues>(
   const nestField = buildNestSelectField<T>(t, { form, selectedNestUuid, setSelectedNestUuid, nests, canReadNests });
 
   const eggField: FieldDef<T> = {
-    type: 'select',
-    name: 'eggUuid',
-    label: t('pages.admin.servers.tabs.general.page.form.egg', {}),
-    required: true,
-    options: eggs.items.map((egg) => ({ label: egg.name, value: egg.uuid })),
-    props: {
-      searchable: true,
-      searchValue: eggs.search,
-      onSearchChange: eggs.setSearch,
-      loading: eggs.loading,
-      disabled: !canReadEggs || !selectedNestUuid,
-    },
+    type: 'custom',
+    name: '_eggSelect',
+    render: (f) => (
+      <div className='flex flex-col gap-1'>
+        <Select
+          withAsterisk
+          label={t('pages.admin.servers.tabs.general.page.form.egg', {})}
+          data={
+            eggNests
+              ? groupEggOptions(eggs.items, eggNests)
+              : eggs.items.map((egg) => ({ label: egg.name, value: egg.uuid }))
+          }
+          searchable
+          searchValue={eggs.search}
+          onSearchChange={eggs.setSearch}
+          loading={eggs.loading}
+          disabled={!canReadEggs || (!eggNests && !selectedNestUuid)}
+          key={f.key('eggUuid')}
+          {...f.getInputProps('eggUuid')}
+        />
+        {onEggInstallClick && <EggInstallField onClick={onEggInstallClick} />}
+      </div>
+    ),
   };
 
   const backupConfigField: FieldDef<T> = {
@@ -506,7 +544,7 @@ function buildServerConfigFields<T extends ServerEggAssignmentFormValues>(
   }: {
     mode: ServerFormMode;
     form: UseFormReturnType<T>;
-    eggs: SearchableResource<z.infer<typeof adminEggSchema>>;
+    eggs: EggsResource;
     eggImages: Record<string, string>;
   },
 ): FieldDef<T>[] {
@@ -604,7 +642,7 @@ export interface ServerFormFieldsOptions<T extends ServerEggAssignmentFormValues
   nodes?: SearchableResource<z.infer<typeof adminNodeSchema>>;
   users: SearchableResource<z.infer<typeof fullUserSchema>>;
   nests: SearchableResource<z.infer<typeof adminNestSchema>>;
-  eggs: SearchableResource<z.infer<typeof adminEggSchema>>;
+  eggs: EggsResource;
   backupConfigurations: SearchableResource<z.infer<typeof adminBackupConfigurationSchema>>;
   canReadNodes?: boolean;
   canReadUsers: boolean;
@@ -614,6 +652,8 @@ export interface ServerFormFieldsOptions<T extends ServerEggAssignmentFormValues
   selectedNestUuid: string | null;
   setSelectedNestUuid: (uuid: string | null) => void;
   eggImages: Record<string, string>;
+  eggNests?: Map<string, z.infer<typeof adminNestSchema>>;
+  onEggInstallClick?: () => void;
 }
 
 export function useServerFormFields<T extends ServerEggAssignmentFormValues>(opts: ServerFormFieldsOptions<T>) {
@@ -634,6 +674,8 @@ export function useServerFormFields<T extends ServerEggAssignmentFormValues>(opt
     selectedNestUuid,
     setSelectedNestUuid,
     eggImages,
+    eggNests,
+    onEggInstallClick,
   } = opts;
 
   const basicInfoFields = useMemo(() => buildBasicInfoFields<T>(t), [t]);
@@ -660,6 +702,8 @@ export function useServerFormFields<T extends ServerEggAssignmentFormValues>(opt
         canReadBackupConfigurations,
         selectedNestUuid,
         setSelectedNestUuid,
+        eggNests,
+        onEggInstallClick,
       }),
     [
       t,
@@ -677,6 +721,8 @@ export function useServerFormFields<T extends ServerEggAssignmentFormValues>(opt
       canReadBackupConfigurations,
       selectedNestUuid,
       setSelectedNestUuid,
+      eggNests,
+      onEggInstallClick,
     ],
   );
 

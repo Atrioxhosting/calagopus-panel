@@ -33,6 +33,7 @@ const extensionSupervisorStatusSchema = z.object({
   finishedAt: z.string().nullable(),
   exitCode: z.number().nullable(),
   failureReason: z.string().nullable(),
+  failedExtensions: z.array(z.string()).default([]),
   logLen: z.number(),
 });
 

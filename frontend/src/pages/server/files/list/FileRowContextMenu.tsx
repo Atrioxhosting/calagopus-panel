@@ -24,6 +24,7 @@ import { FileOpenMode } from 'shared/src/registries/pages/server/files';
 import { z } from 'zod';
 import downloadFiles from '@/api/server/files/downloadFiles.ts';
 import ContextMenu, { ContextMenuItem } from '@/elements/overlays/ContextMenu.tsx';
+import { isTrashEnabled } from '@/lib/domain/server.ts';
 import { fileOpenUrl, isArchiveType } from '@/lib/files/files.ts';
 import {
   cancelFileUpload,
@@ -37,6 +38,7 @@ import { streamingArchiveFormat } from '@/lib/schemas/generic.ts';
 import { serverDirectoryEntrySchema } from '@/lib/schemas/server/files.ts';
 import { FileUploadState } from '@/pages/server/files/hooks/useFileUpload.ts';
 import { buildDownloadAsMenuItems, downloadFilesWithToast } from '@/pages/server/files/list/downloadFilesWithToast.ts';
+import { isMountGateway } from '@/pages/server/files/list/mountGateway.ts';
 import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useToast } from '@/providers/contexts/toastContext.ts';
 import { useWindows } from '@/providers/contexts/windowContext.ts';
@@ -94,6 +96,9 @@ export default function FileRowContextMenu({
   const canUpdate = useServerCan('files.update');
   const canArchive = useServerCan('files.archive');
   const canDelete = useServerCan('files.delete');
+  const browsingPrimaryFilesystem = useFileManagerStore((state) => state.browsingPrimaryFilesystem);
+  const trashEnabled = isTrashEnabled(server, browsingPrimaryFilesystem);
+  const mountGateway = isMountGateway(file, browsingPrimaryFilesystem);
   const activeDirectory = directory ?? browsingDirectory;
   const activeWritableDirectory = writableDirectory ?? browsingWritableDirectory;
   const local = upload?.local ?? null;
@@ -231,7 +236,7 @@ export default function FileRowContextMenu({
           type: 'action',
           icon: faFilePen,
           label: t('pages.server.files.button.rename', {}),
-          hidden: !activeWritableDirectory || !!upload,
+          hidden: !activeWritableDirectory || !!upload || mountGateway,
           onClick: () => openModal('rename'),
           canAccess: canUpdate,
         },
@@ -266,7 +271,7 @@ export default function FileRowContextMenu({
           type: 'action',
           icon: faAnglesUp,
           label: t('common.button.move', {}),
-          hidden: !activeWritableDirectory || !!upload,
+          hidden: !activeWritableDirectory || !!upload || mountGateway,
           onClick: () => {
             prepareFileManager();
             store.getState().doActFiles('move', [file]);
@@ -343,10 +348,10 @@ export default function FileRowContextMenu({
         {
           type: 'action',
           icon: faTrash,
-          label: t('common.button.delete', {}),
-          hidden: !activeWritableDirectory || !!local,
+          label: t(trashEnabled ? 'pages.server.files.button.moveToTrash' : 'common.button.delete', {}),
+          hidden: !activeWritableDirectory || !!local || mountGateway,
           onClick: () => openModal('delete'),
-          color: 'red',
+          color: trashEnabled ? 'gray' : 'red',
           canAccess: canDelete,
         },
       ]}

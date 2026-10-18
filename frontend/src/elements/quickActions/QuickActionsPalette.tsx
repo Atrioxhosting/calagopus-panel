@@ -4,6 +4,7 @@ import { Combobox, useCombobox } from '@mantine/core';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { AdminRouteDefinition, RouteDefinition, ServerRouteDefinition } from 'shared';
+import { QuickActionSelectEvent } from 'shared';
 import { z } from 'zod';
 import getServers from '@/api/server/getServers.ts';
 import Spinner from '@/elements/feedback/Spinner.tsx';
@@ -384,7 +385,15 @@ function Palette() {
   }, [open, itemsKey]);
 
   const handleOptionSubmit = (value: string) => {
-    flatItems.find((item) => item.key === value)?.onSelect();
+    const item = flatItems.find((item) => item.key === value);
+    if (!item) return;
+
+    const event = window.extensionContext.extensionRegistry.events.quickActions.selectHandlers.emit(
+      new QuickActionSelectEvent(scope, serverId, mode?.id, { ...item }),
+    );
+    if (event.cancelled) return;
+
+    event.data.onSelect();
   };
 
   return (

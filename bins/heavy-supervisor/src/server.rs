@@ -41,6 +41,7 @@ pub enum Completion {
     Failed {
         reason: String,
         exit_code: Option<i32>,
+        failed_extensions: Vec<String>,
     },
 }
 
@@ -107,6 +108,7 @@ struct Finished {
     finished_at: String,
     exit_code: Option<i32>,
     failure_reason: Option<String>,
+    failed_extensions: Vec<String>,
 }
 
 struct Live {
@@ -164,6 +166,7 @@ impl Control {
                 finished_at: memo.finished_at.unwrap_or(memo.started_at),
                 exit_code: memo.exit_code,
                 failure_reason: memo.failure_reason,
+                failed_extensions: memo.failed_extensions,
             });
 
         Ok(Self {
@@ -264,9 +267,13 @@ impl Control {
             return;
         };
 
-        let (succeeded, exit_code, failure_reason) = match completion {
-            Completion::Succeeded => (true, Some(0), None),
-            Completion::Failed { reason, exit_code } => (false, exit_code, Some(reason)),
+        let (succeeded, exit_code, failure_reason, failed_extensions) = match completion {
+            Completion::Succeeded => (true, Some(0), None, Vec::new()),
+            Completion::Failed {
+                reason,
+                exit_code,
+                failed_extensions,
+            } => (false, exit_code, Some(reason), failed_extensions),
         };
         live.last = Some(Finished {
             build_id: running.build_id,
@@ -275,6 +282,7 @@ impl Control {
             finished_at: crate::store::record::now(),
             exit_code,
             failure_reason,
+            failed_extensions,
         });
     }
 
@@ -303,6 +311,7 @@ impl Control {
             finished_at: None,
             exit_code: None,
             failure_reason: None,
+            failed_extensions: Vec::new(),
             log_len: 0,
         };
 
@@ -331,6 +340,7 @@ impl Control {
                 status.finished_at = Some(last.finished_at.clone());
                 status.exit_code = last.exit_code;
                 status.failure_reason = last.failure_reason.clone();
+                status.failed_extensions = last.failed_extensions.clone();
             }
         }
 
@@ -629,6 +639,7 @@ impl Drop for Active<'_> {
             self.control.release(Completion::Failed {
                 reason: "the build ended without reporting an outcome".to_string(),
                 exit_code: None,
+                failed_extensions: Vec::new(),
             });
         }
     }

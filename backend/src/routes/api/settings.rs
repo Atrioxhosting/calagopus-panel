@@ -50,6 +50,7 @@ mod get {
 
         allow_overwriting_custom_docker_image: bool,
         allow_acknowledging_installation_failure: bool,
+        allow_changing_trash_settings: bool,
 
         container_prelude: &'a str,
     }
@@ -63,6 +64,7 @@ mod get {
         max_ssh_key_count: u64,
 
         allow_changing_language: bool,
+        allow_changing_avatar: bool,
 
         route_order: Option<&'a [shared::settings::RouteOrderItem]>,
     }
@@ -140,6 +142,7 @@ mod get {
                 allow_acknowledging_installation_failure: settings
                     .server
                     .allow_acknowledging_installation_failure,
+                allow_changing_trash_settings: settings.server.allow_changing_trash_settings,
                 container_prelude: &settings.server.container_prelude,
             },
             user: ResponseUser {
@@ -150,6 +153,7 @@ mod get {
                 max_ssh_key_count: settings.user.max_ssh_key_count,
 
                 allow_changing_language: settings.user.allow_changing_language,
+                allow_changing_avatar: settings.user.allow_changing_avatar,
 
                 route_order: settings.user.route_order.as_deref(),
             },

@@ -1552,6 +1552,7 @@ impl Validator<'_> {
             let options = CreateNestEggOptions {
                 nest_uuid,
                 egg_repository_egg_uuid: None,
+                egg_repository_egg_hash: None,
                 author: author.as_str().into(),
                 name: name.as_str().into(),
                 description: description.as_deref().map(Into::into),

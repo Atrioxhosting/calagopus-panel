@@ -12,6 +12,7 @@ export default function ExtensionStatusAlerts({
   supervisor,
   buildFailed,
   failureReason,
+  failedExtensions,
   pendingRestart,
   isBuilding,
   onRestart,
@@ -20,6 +21,7 @@ export default function ExtensionStatusAlerts({
   supervisor: ExtensionStatus['supervisor'];
   buildFailed: boolean;
   failureReason: string | null;
+  failedExtensions: string[];
   pendingRestart: boolean;
   isBuilding: boolean;
   onRestart: () => void;
@@ -62,6 +64,13 @@ export default function ExtensionStatusAlerts({
         >
           <div className='flex flex-col items-start gap-2'>
             {failureReason && <Code>{failureReason}</Code>}
+            {failedExtensions.length > 0 && (
+              <span>
+                {t('pages.admin.extensions.alert.buildFailed.failedExtensions', {
+                  extensions: failedExtensions.map((packageName) => `\`${packageName}\``).join(', '),
+                }).md()}
+              </span>
+            )}
             <span>{t('pages.admin.extensions.alert.buildFailed.content', {})}</span>
           </div>
         </Alert>

@@ -1,5 +1,14 @@
 import { decode, encode } from '@msgpack/msgpack';
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponseHeaders, RawAxiosResponseHeaders } from 'axios';
+import axios, {
+  AxiosError,
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponseHeaders,
+  InternalAxiosRequestConfig,
+  RawAxiosResponseHeaders,
+} from 'axios';
+import { API_REQUEST_CANCELLED_CODE, ApiRequestEvent, ApiResponseEvent, globalTranslationHandle } from 'shared';
+import { getTranslations } from '@/providers/contexts/translationContext.ts';
 import { getGlobalStore } from '@/stores/global.ts';
 
 function captureServerName(headers: RawAxiosResponseHeaders | AxiosResponseHeaders | undefined) {
@@ -49,11 +58,36 @@ export const msgpackConfig: AxiosRequestConfig = {
   transformRequest: [(data) => encode(data)],
 };
 
+function cancelledByExtension(config: InternalAxiosRequestConfig) {
+  const message = globalTranslationHandle
+    ? getTranslations().t('common.toast.requestBlockedByExtension', {})
+    : 'This request was blocked by an extension.';
+
+  return new AxiosError(message, API_REQUEST_CANCELLED_CODE, config);
+}
+
+axiosInstance.interceptors.request.use((config) => {
+  // settings are fetched before the extension context exists, they decide which extensions load
+  const handlers = window.extensionContext?.extensionRegistry.events.api.requestHandlers;
+  if (!handlers?.handlers.length) return config;
+
+  const event = handlers.emit(new ApiRequestEvent(config));
+  if (event.cancelled) throw cancelledByExtension(event.data);
+
+  return event.data;
+});
+
 axiosInstance.interceptors.response.use(
   (response) => {
     captureServerName(response.headers);
 
-    return response;
+    const handlers = window.extensionContext?.extensionRegistry.events.api.responseHandlers;
+    if (!handlers?.handlers.length) return response;
+
+    const event = handlers.emit(new ApiResponseEvent(response));
+    if (event.cancelled) return Promise.reject(cancelledByExtension(response.config));
+
+    return event.data;
   },
   (error) => {
     if (error.response) {
@@ -80,7 +114,7 @@ export function getImpersonatedUser(): string | null {
 
 /**
  * Sets (or clears) the impersonated user for this tab. The impersonation id lives in
- * per-tab sessionStorage and is applied as a default header on both axios instances, so
+ * per-tab sessionStorage and is applied as a default header on the axios instance, so
  * requests are always issued as the identity this tab's auth state actually reflects -
  * rather than reading origin-wide localStorage per request, which switched other tabs.
  */

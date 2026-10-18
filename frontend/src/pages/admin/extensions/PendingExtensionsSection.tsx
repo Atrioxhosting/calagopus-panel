@@ -16,6 +16,7 @@ export default function PendingExtensionsSection({
   phase,
   isBuilding,
   buildFailed,
+  failedExtensions,
   cancellingBuild,
   onCancelBuild,
   onRebuild,
@@ -25,6 +26,7 @@ export default function PendingExtensionsSection({
   phase: string | null;
   isBuilding: boolean;
   buildFailed: boolean;
+  failedExtensions: string[];
   cancellingBuild: number | null;
   onCancelBuild: () => void;
   onRebuild: (force: boolean) => void;
@@ -97,6 +99,7 @@ export default function PendingExtensionsSection({
               key={extension.metadataToml.packageName}
               backendExtension={extension}
               isPending
+              isBuildFailed={failedExtensions.includes(extension.metadataToml.packageName)}
               onRemove={() => onRemove(extension, false)}
             />
           ))}

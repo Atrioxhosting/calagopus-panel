@@ -83,6 +83,7 @@ export const publicSettingsSchema = z.object({
     maxDatabaseInstanceUserCount: z.number(),
     allowOverwritingCustomDockerImage: z.boolean(),
     allowAcknowledgingInstallationFailure: z.boolean(),
+    allowChangingTrashSettings: z.boolean(),
     containerPrelude: z.string(),
   }),
   user: z.object({
@@ -93,6 +94,7 @@ export const publicSettingsSchema = z.object({
     maxSshKeyCount: z.number(),
 
     allowChangingLanguage: z.boolean(),
+    allowChangingAvatar: z.boolean(),
 
     routeOrder: z.array(eggConfigurationRouteItemSchema).nullable(),
   }),

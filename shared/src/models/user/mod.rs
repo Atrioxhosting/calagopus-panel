@@ -729,7 +729,7 @@ impl User {
     /// Update the User password, `None` will disallow password login and not require one when changing
     pub async fn update_password(
         &mut self,
-        database: &crate::database::Database,
+        database: &Arc<crate::database::Database>,
         password: Option<&str>,
     ) -> Result<(), crate::database::DatabaseError> {
         if let Some(password) = password {
@@ -765,6 +765,13 @@ impl User {
         }
 
         Self::invalidate_cached(database, self.uuid).await;
+        super::node::Node::invalidate_permissions_everywhere(
+            database,
+            super::node::PermissionsInvalidation {
+                revoke_users: vec![self.uuid],
+                ..Default::default()
+            },
+        );
 
         Ok(())
     }
@@ -864,6 +871,22 @@ impl User {
             .two_factor_accepted_methods
             .iter()
             .any(|method| self.has_two_factor_method(*method, settings))
+    }
+
+    /// Why the user may not reach any server through wings right now, whatever the credential.
+    pub fn wings_access_denial(
+        &self,
+        settings: &crate::settings::AppSettings,
+    ) -> Option<&'static str> {
+        if self.suspended {
+            Some("account is suspended")
+        } else if self.require_two_factor(settings) && !self.satisfies_two_factor(settings) {
+            Some("two-factor authentication required")
+        } else if self.require_email_verification(settings) && !self.email_verified {
+            Some("email verification required")
+        } else {
+            None
+        }
     }
 
     pub fn can_login_with_password(&self, settings: &crate::settings::AppSettings) -> bool {
@@ -1262,6 +1285,54 @@ impl UpdatableModel for User {
         &UPDATE_LISTENERS
     }
 
+    async fn update(
+        &mut self,
+        state: &crate::State,
+        options: Self::UpdateOptions,
+    ) -> Result<(), crate::database::DatabaseError> {
+        let credentials_changed = options.password.is_some();
+        let access_changed = options
+            .suspended
+            .is_some_and(|suspended| suspended != self.suspended)
+            || options.admin.is_some_and(|admin| admin != self.admin)
+            || options
+                .role_uuid
+                .is_some_and(|role_uuid| role_uuid != self.role.as_ref().map(|role| role.uuid));
+
+        let mut transaction = state.database.write().begin().await?;
+
+        if let Err(err) = self
+            .update_with_transaction(state, options, &mut transaction)
+            .await
+        {
+            transaction.rollback().await?;
+            return Err(err);
+        }
+
+        transaction.commit().await?;
+
+        super::invalidate_cache_keys(&state.database, &self.cache_invalidation_keys()).await;
+
+        super::node::Node::invalidate_permissions_everywhere(
+            &state.database,
+            super::node::PermissionsInvalidation {
+                users: if access_changed && !credentials_changed {
+                    vec![self.uuid]
+                } else {
+                    Vec::new()
+                },
+                revoke_users: if credentials_changed {
+                    vec![self.uuid]
+                } else {
+                    Vec::new()
+                },
+                ..Default::default()
+            },
+        );
+
+        Ok(())
+    }
+
     async fn update_with_transaction(
         &mut self,
         state: &crate::State,
@@ -1393,6 +1464,13 @@ impl DeletableModel for User {
         transaction.commit().await?;
 
         Self::invalidate_cached(&state.database, self.uuid).await;
+        super::node::Node::invalidate_permissions_everywhere(
+            &state.database,
+            super::node::PermissionsInvalidation {
+                revoke_users: vec![self.uuid],
+                ..Default::default()
+            },
+        );
 
         state.storage.remove(self.avatar.as_deref()).await?;
 

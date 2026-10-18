@@ -337,6 +337,18 @@ impl UpdatableModel for Role {
         state: &crate::State,
         options: Self::UpdateOptions,
     ) -> Result<(), crate::database::DatabaseError> {
+        let access_changed = options
+            .admin_permissions
+            .as_ref()
+            .is_some_and(|permissions| permissions != self.admin_permissions.as_ref())
+            || options
+                .server_permissions
+                .as_ref()
+                .is_some_and(|permissions| permissions != self.server_permissions.as_ref())
+            || options
+                .require_two_factor
+                .is_some_and(|require_two_factor| require_two_factor != self.require_two_factor);
+
         let mut transaction = state.database.write().begin().await?;
 
         if let Err(err) = self
@@ -350,6 +362,21 @@ impl UpdatableModel for Role {
         transaction.commit().await?;
 
         self.invalidate_cached_with_users(&state.database).await?;
+
+        if access_changed {
+            match self.user_uuids(&state.database).await {
+                Ok(user_uuids) => super::node::Node::invalidate_permissions_everywhere(
+                    &state.database,
+                    super::node::PermissionsInvalidation {
+                        users: user_uuids,
+                        ..Default::default()
+                    },
+                ),
+                Err(err) => {
+                    tracing::error!(role = %self.uuid, "failed to invalidate permissions in wings: {:?}", err);
+                }
+            }
+        }
 
         Ok(())
     }
@@ -433,9 +460,16 @@ impl DeletableModel for Role {
         transaction.commit().await?;
 
         Self::invalidate_cached(&state.database, self.uuid).await;
-        for user_uuid in user_uuids {
+        for &user_uuid in &user_uuids {
             super::user::User::invalidate_cached(&state.database, user_uuid).await;
         }
+        super::node::Node::invalidate_permissions_everywhere(
+            &state.database,
+            super::node::PermissionsInvalidation {
+                users: user_uuids,
+                ..Default::default()
+            },
+        );
 
         Ok(())
     }

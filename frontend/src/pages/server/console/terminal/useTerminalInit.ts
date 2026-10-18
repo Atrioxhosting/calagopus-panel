@@ -4,7 +4,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { ITerminalInitOnlyOptions, ITerminalOptions, Terminal as XTerm } from '@xterm/xterm';
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
-import { handleRawCopyToClipboard } from '@/lib/clipboard/copy.ts';
+import { copyToClipboard, handleRawCopyToClipboard } from '@/lib/clipboard/copy.ts';
 import { getCellHeight, getXtermTheme } from '@/lib/editor/xterm.ts';
 import { eventKeyMatches } from '@/lib/quickActions/shortcuts.ts';
 import type { AddToast } from '@/providers/contexts/toastContext.ts';
@@ -138,7 +138,9 @@ export function useTerminalInit({
     term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && eventKeyMatches(e, 'c')) {
         if (term.hasSelection()) {
-          navigator.clipboard.writeText(term.getSelection());
+          copyToClipboard(term.getSelection())
+            .catch(() => undefined)
+            .finally(() => term.focus());
           term.clearSelection();
 
           return false;

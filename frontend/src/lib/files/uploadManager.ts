@@ -395,7 +395,7 @@ function settleBatches(): void {
   });
 }
 
-function isCancelledError(error: unknown): boolean {
+export function isCancelledError(error: unknown): boolean {
   return error instanceof AxiosError
     ? error.code === 'ERR_CANCELED' || error.code === 'CanceledError'
     : error instanceof Error && (error as Error & { code?: string }).code === 'ERR_CANCELED';

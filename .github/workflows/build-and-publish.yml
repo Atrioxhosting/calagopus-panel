@@ -1,0 +1,462 @@
+name: Build and Publish
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        description: Primary image tag (e.g. nightly, next, or a release version)
+        required: true
+        type: string
+      tag_latest:
+        description: Also move the stable tags (latest, aio, heavy, heavy-aio)
+        required: false
+        type: boolean
+        default: false
+      tag_latest_pre:
+        description: Also move the pre-release tags (latest-pre, aio-pre, ...)
+        required: false
+        type: boolean
+        default: false
+      wings_channel:
+        description: Wings build to embed in AIO binaries and images (nightly or release)
+        required: true
+        type: string
+      windows:
+        description: Also build the Windows binary
+        required: false
+        type: boolean
+        default: false
+
+env:
+  BIN_NAME: panel-rs
+  AIO_BIN_NAME: panel-rs-aio
+  PROJECT_NAME: panel-rs
+  GHCR_IMAGE: ghcr.io/${{ github.repository }}
+  DOCKERHUB_IMAGE: docker.io/${{ github.repository }}
+
+jobs:
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11
+          run_install: false
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          pnpm install
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          pnpm build:ci
+
+      - name: Upload frontend build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frontend-build
+          path: frontend/dist/
+
+  dist-linux:
+    name: Dist ${{ matrix.bin }} (${{ matrix.build }})
+    needs: [build-frontend]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        build: [x86_64-linux, aarch64-linux, riscv64-linux, ppc64le-linux]
+        bin: [panel-rs, panel-rs-aio]
+        include:
+          - build: x86_64-linux
+            target: x86_64-unknown-linux-musl
+            wings_platform: linux/amd64
+          - build: aarch64-linux
+            target: aarch64-unknown-linux-musl
+            wings_platform: linux/arm64
+          - build: riscv64-linux
+            target: riscv64gc-unknown-linux-musl
+            wings_platform: linux/riscv64
+          - build: ppc64le-linux
+            target: powerpc64le-unknown-linux-musl
+            wings_platform: linux/ppc64le
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download frontend build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: frontend-build
+          path: frontend/dist/
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          cache: false
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ matrix.target }}-${{ matrix.bin }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install cross
+        env:
+          CARGO_BUILD_WARNINGS: allow
+        run: cargo install cross --git https://github.com/cross-rs/cross --rev 8c1a8aa4b661711f4b7b6ac07c2e8929ce2f7d27 --locked
+
+      - name: Extract wings binary
+        if: matrix.bin == env.AIO_BIN_NAME
+        env:
+          WINGS_IMAGE: ghcr.io/calagopus/wings:${{ inputs.wings_channel == 'nightly' && 'nightly' || 'latest' }}
+        run: |
+          mkdir -p bins/all-in-one/bins
+          docker pull --platform ${{ matrix.wings_platform }} "$WINGS_IMAGE"
+          cid=$(docker create --platform ${{ matrix.wings_platform }} "$WINGS_IMAGE")
+          docker cp "$cid:/usr/bin/calagopus-wings" bins/all-in-one/bins/wings-${{ inputs.wings_channel }}-bin
+          docker rm "$cid"
+          chmod +x bins/all-in-one/bins/wings-${{ inputs.wings_channel }}-bin
+
+      - name: Build release binary
+        env:
+          WINGS_RELEASE: ${{ inputs.wings_channel == 'nightly' && 'nightly' || github.ref_name }}
+          WINGS_BINARY_PATH: bins/wings-${{ inputs.wings_channel }}-bin
+          # riscv64gc musl is not crt-static by default
+          # opt-level=z enables LLVM's MachineOutliner on aarch64/riscv64; its whole-module
+          # suffix tree under fat LTO + codegen-units=1 OOMs the 16GB runner.
+          RUSTFLAGS: "-C target-feature=+crt-static -C llvm-args=-enable-machine-outliner=never"
+        run: cross build --release --target ${{ matrix.target }} -p ${{ matrix.bin }}
+
+      - name: Prepare binary
+        run: |
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/${{ matrix.bin }}" "dist/${{ matrix.bin }}-${{ matrix.build }}"
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.bin }}-${{ matrix.build }}
+          path: dist/*
+
+  dist-windows:
+    name: Dist (x86_64-windows)
+    if: inputs.windows
+    needs: [build-frontend]
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download frontend build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: frontend-build
+          path: frontend/dist/
+
+      - name: Install NASM
+        run: |
+          choco install nasm
+          echo "C:\Program Files\NASM" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-msvc
+          cache: false
+
+      - name: Build release binary
+        env:
+          # vendored openssl ships no ossl_static.pdb, so link.exe floods LNK4099
+          RUSTFLAGS: "-A linker_messages"
+        run: cargo build --release --target x86_64-pc-windows-msvc -p $env:BIN_NAME
+
+      - name: Prepare binary
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item "target\x86_64-pc-windows-msvc\release\$env:BIN_NAME.exe" "dist\$env:BIN_NAME-x86_64-windows.exe"
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ env.BIN_NAME }}-x86_64-windows
+          path: dist/*.exe
+
+  generate-sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Generate source SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom-source.cyclonedx.json
+          artifact-name: sbom-source.cyclonedx.json
+          upload-artifact: true
+
+  create-multiarch-images:
+    name: Create multi-arch ${{ matrix.variant }} Docker image
+    needs: [dist-linux, generate-sbom]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: main
+            dockerfile: Dockerfile
+            tag_variant: ""
+            stable_tag: latest
+          - variant: aio
+            dockerfile: Dockerfile.aio
+            tag_variant: aio
+            stable_tag: aio
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download source SBOM
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sbom-source.cyclonedx.json
+          path: sbom
+
+      - name: Download binaries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: ${{ env.PROJECT_NAME }}-*-linux
+          path: dist
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Prepare binaries
+        run: |
+          for pair in x86_64:amd64 aarch64:arm64 riscv64:riscv64 ppc64le:ppc64le; do
+            build="${pair%%:*}-linux"
+            arch="${pair#*:}"
+            mkdir -p ".docker/$arch"
+            for bin in "$BIN_NAME" "$AIO_BIN_NAME"; do
+              cp "dist/$bin-$build/$bin-$build" ".docker/$arch/$bin"
+            done
+          done
+
+          chmod +x .docker/*/*
+
+      - name: Determine tags
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          TAG_VARIANT: ${{ matrix.tag_variant }}
+          STABLE_TAG: ${{ matrix.stable_tag }}
+          TAG_LATEST: ${{ inputs.tag_latest }}
+          TAG_LATEST_PRE: ${{ inputs.tag_latest_pre }}
+        run: |
+          SUFFIXES=("${IMAGE_TAG}${TAG_VARIANT:+-$TAG_VARIANT}")
+          [[ "$TAG_LATEST_PRE" == "true" ]] && SUFFIXES+=("${STABLE_TAG}-pre")
+          [[ "$TAG_LATEST" == "true" ]] && SUFFIXES+=("$STABLE_TAG")
+
+          IMAGE_TAGS=""
+          for t in "${SUFFIXES[@]}"; do
+            IMAGE_TAGS="${IMAGE_TAGS}${IMAGE_TAGS:+,}${GHCR_IMAGE}:${t},${DOCKERHUB_IMAGE}:${t}"
+          done
+          echo "IMAGE_TAGS=$IMAGE_TAGS" >> $GITHUB_ENV
+
+      - name: Build & push multi-arch image
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./docker/${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64,linux/riscv64,linux/ppc64le
+          push: true
+          tags: ${{ env.IMAGE_TAGS }}
+          sbom: true
+          provenance: true
+
+      - name: Attach source SBOM attestation to image (GHCR)
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.GHCR_IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: sbom/sbom-source.cyclonedx.json
+          push-to-registry: true
+
+      - name: Attach source SBOM attestation to image (Docker Hub)
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.DOCKERHUB_IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: sbom/sbom-source.cyclonedx.json
+          push-to-registry: true
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Sign image with cosign
+        run: |
+          cosign sign --yes ${{ env.GHCR_IMAGE }}@${{ steps.build.outputs.digest }}
+          cosign sign --yes ${{ env.DOCKERHUB_IMAGE }}@${{ steps.build.outputs.digest }}
+
+  build-heavy-images:
+    name: Build ${{ matrix.variant }} Docker image (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [heavy, heavy-aio]
+        arch: [amd64, arm64]
+        include:
+          - variant: heavy
+            dockerfile: Dockerfile.heavy
+          - variant: heavy-aio
+            dockerfile: Dockerfile.heavy.aio
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push platform image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./docker/${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platform }}
+          # Only Dockerfile.heavy.aio declares WINGS_SOURCE; buildx ignores it elsewhere.
+          build-args: WINGS_SOURCE=${{ inputs.wings_channel }}
+          push: true
+          tags: |
+            ${{ env.GHCR_IMAGE }}:${{ inputs.image_tag }}-${{ matrix.variant }}-${{ matrix.arch }}
+            ${{ env.DOCKERHUB_IMAGE }}:${{ inputs.image_tag }}-${{ matrix.variant }}-${{ matrix.arch }}
+          sbom: scan-stages=true
+          provenance: true
+          cache-from: type=gha,scope=${{ matrix.variant }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}-${{ matrix.arch }}
+
+  merge-heavy-images:
+    name: Merge ${{ matrix.variant }} Docker manifest
+    needs: [build-heavy-images]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [heavy, heavy-aio]
+
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Create, push and sign multi-arch manifests
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          VARIANT: ${{ matrix.variant }}
+          TAG_LATEST: ${{ inputs.tag_latest }}
+          TAG_LATEST_PRE: ${{ inputs.tag_latest_pre }}
+        run: |
+          SUFFIXES=("${IMAGE_TAG}-${VARIANT}")
+          [[ "$TAG_LATEST_PRE" == "true" ]] && SUFFIXES+=("${VARIANT}-pre")
+          [[ "$TAG_LATEST" == "true" ]] && SUFFIXES+=("$VARIANT")
+
+          for IMAGE in "$GHCR_IMAGE" "$DOCKERHUB_IMAGE"; do
+            for t in "${SUFFIXES[@]}"; do
+              docker buildx imagetools create -t "$IMAGE:$t" \
+                "$IMAGE:${IMAGE_TAG}-${VARIANT}-amd64" \
+                "$IMAGE:${IMAGE_TAG}-${VARIANT}-arm64"
+            done
+            cosign sign --yes "$IMAGE:${SUFFIXES[0]}"
+          done

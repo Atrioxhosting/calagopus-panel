@@ -4,6 +4,7 @@ use shared::models::{
     admin_activity::AdminActivity,
     announcement::Announcement,
     backup_configuration::BackupConfiguration,
+    egg_repository::EggRepository,
     node::Node,
     oauth_provider_mapping::OAuthProviderMapping,
     server::Server,
@@ -562,6 +563,32 @@ pub async fn define_background_tasks(
                         .await?;
                 if pruned > 0 {
                     tracing::info!("pruned {} backups outside their group retention", pruned);
+                }
+
+                Ok(())
+            },
+        )
+        .await;
+    background_task_builder
+        .add_cron_task(
+            "sync_egg_repositories",
+            croner::Cron::from_str("0 0 3 * * *").unwrap(),
+            async |state| {
+                for egg_repository in EggRepository::all_auto_sync(&state.database).await? {
+                    match egg_repository.sync(&state).await {
+                        Ok(found) => tracing::info!(
+                            egg_repository = %egg_repository.uuid,
+                            "synced egg repository {}, found {} eggs",
+                            egg_repository.name,
+                            found
+                        ),
+                        Err(err) => tracing::error!(
+                            egg_repository = %egg_repository.uuid,
+                            "failed to sync egg repository {}: {:#?}",
+                            egg_repository.name,
+                            err
+                        ),
+                    }
                 }
 
                 Ok(())

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { z } from 'zod';
 import createEggRepository from '@/api/admin/egg-repositories/createEggRepository.ts';
 import syncEggRepository from '@/api/admin/egg-repositories/syncEggRepository.ts';
+import createNest from '@/api/admin/nests/createNest.ts';
+import getNests from '@/api/admin/nests/getNests.ts';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import AlertError from '@/elements/alerts/AlertError.tsx';
 import Button from '@/elements/buttons/Button.tsx';
@@ -14,30 +16,58 @@ import Paper from '@/elements/layout/Paper.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import Title from '@/elements/typography/Title.tsx';
-import { adminEggRepositoryUpdateSchema } from '@/lib/schemas/admin/eggRepositories.ts';
+import { adminNestSchema } from '@/lib/schemas/admin/nests.ts';
+import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { OobeComponentProps } from '@/routers/OobeRouter.tsx';
 
+interface DefaultRepository {
+  name: string;
+  description: string;
+  gitRepository: string;
+  nestName: string;
+}
+
 export default function OobeRepositories({ onNext, onBack, canGoBack, skipFrom, data }: OobeComponentProps) {
   const { t } = useTranslations();
+  const { user } = useAuth();
 
-  const repositories: z.infer<typeof adminEggRepositoryUpdateSchema>[] = [
+  const repositories: DefaultRepository[] = [
     {
       name: t('pages.oobe.eggRepositories.repositories.pterodactylGame.title', {}),
       description: t('pages.oobe.eggRepositories.repositories.pterodactylGame.description', {}),
       gitRepository: 'https://github.com/pterodactyl/game-eggs',
+      nestName: t('pages.oobe.eggRepositories.repositories.pterodactylGame.nest', {}),
     },
     {
       name: t('pages.oobe.eggRepositories.repositories.pterodactylApplication.title', {}),
       description: t('pages.oobe.eggRepositories.repositories.pterodactylApplication.description', {}),
       gitRepository: 'https://github.com/pterodactyl/application-eggs',
+      nestName: t('pages.oobe.eggRepositories.repositories.pterodactylApplication.nest', {}),
     },
     {
       name: t('pages.oobe.eggRepositories.repositories.pterodactylGeneral.title', {}),
       description: t('pages.oobe.eggRepositories.repositories.pterodactylGeneral.description', {}),
       gitRepository: 'https://github.com/pterodactyl/generic-eggs',
+      nestName: t('pages.oobe.eggRepositories.repositories.pterodactylGeneral.nest', {}),
     },
   ];
+
+  // A nest with the default name may already exist when the wizard is rerun, so reuse it instead of failing.
+  const ensureNest = async (name: string): Promise<z.infer<typeof adminNestSchema>> => {
+    try {
+      return await createNest({ author: user!.email, name, description: null });
+    } catch (err) {
+      const existing = await getNests(1, name).then((nests) =>
+        nests.data.find((nest) => nest.name.toLowerCase() === name.toLowerCase()),
+      );
+      if (!existing) {
+        throw err;
+      }
+
+      return existing;
+    }
+  };
 
   const installedGitUrls = new Set(data.eggRepositories.map((r) => r.gitRepository));
 
@@ -62,7 +92,14 @@ export default function OobeRepositories({ onNext, onBack, canGoBack, skipFrom, 
           const repo = repositories.find((r) => r.gitRepository === selected);
           if (!repo) return;
 
-          const repository = await createEggRepository(repo);
+          const nest = await ensureNest(repo.nestName);
+          const repository = await createEggRepository({
+            name: repo.name,
+            description: repo.description,
+            gitRepository: repo.gitRepository,
+            defaultNestUuid: nest.uuid,
+            autoSync: true,
+          });
           await syncEggRepository(repository.uuid);
         });
 

@@ -193,6 +193,7 @@ mod delete {
         ApiError, GetState,
         models::{
             ByUuid,
+            node::{Node, PermissionsInvalidation},
             user::{GetPermissionManager, GetUser, User},
             user_activity::GetUserActivityLogger,
             user_recovery_code::UserRecoveryCode,
@@ -308,6 +309,13 @@ mod delete {
         .await?;
 
         User::invalidate_cached(&state.database, user.uuid).await;
+        Node::invalidate_permissions_everywhere(
+            &state.database,
+            PermissionsInvalidation {
+                users: vec![user.uuid],
+                ..Default::default()
+            },
+        );
 
         activity_logger
             .log("account:two-factor.disable", serde_json::json!({}))

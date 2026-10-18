@@ -21,7 +21,7 @@ import ExtensionSlot from '@/elements/ExtensionSlot.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import RedactedText from '@/elements/typography/RedactedText.tsx';
-import { serverStatusInfo } from '@/lib/domain/server.ts';
+import { formatTrashSettings, serverStatusInfo } from '@/lib/domain/server.ts';
 import { bytesToString, mbToBytes, trafficBytesToString } from '@/lib/format/size.ts';
 import { formatDateTime } from '@/lib/format/time.ts';
 import { AdminServer } from '@/lib/schemas/admin/servers.ts';
@@ -299,6 +299,19 @@ export default function ServerOverview({ server }: { server: Server }) {
                         seconds: server.autoKill.seconds,
                       })
                     : t('pages.admin.servers.tabs.overview.page.label.autoKillDisabled', {})}
+                </Text>
+              </InfoRow>
+              <InfoRow label={t('pages.admin.servers.tabs.overview.page.label.trash', {})}>
+                <Text size='sm'>
+                  {server.trash === null ? (
+                    <Text span c='dimmed' size='sm'>
+                      {t('common.elements.trashSettings.default', {
+                        summary: formatTrashSettings(server.trashDefaults),
+                      })}
+                    </Text>
+                  ) : (
+                    formatTrashSettings(server.trash)
+                  )}
                 </Text>
               </InfoRow>
               <InfoRow label={t('pages.admin.servers.tabs.overview.page.label.labels', {})}>

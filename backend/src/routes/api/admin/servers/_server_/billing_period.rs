@@ -80,7 +80,7 @@ mod post {
         transaction.commit().await?;
         Server::invalidate_cached(&state.database, server.uuid).await;
         let current = Server::by_uuid(&state.database, server.uuid).await?;
-        if let Err(err) = current.sync(&state.database).await {
+        if let Err(err) = current.sync(&state).await {
             tracing::error!(server = %server.uuid, error = %err, "failed to deliver Paymenter billing period to Wings");
             return ApiResponse::error(
                 "period stored but Wings delivery failed; retry with the same period identifier",

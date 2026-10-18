@@ -75,7 +75,10 @@ mod post {
                 .ok();
         }
 
-        match egg.import_update(&state.database, exported_egg).await {
+        match egg
+            .import_update(&state.database, exported_egg, false)
+            .await
+        {
             Ok(_) => {}
             Err(err) if err.is_unique_violation() => {
                 return ApiResponse::error("egg with name already exists")

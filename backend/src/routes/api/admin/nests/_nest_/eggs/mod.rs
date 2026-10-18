@@ -177,6 +177,7 @@ mod post {
         let options = CreateNestEggOptions {
             nest_uuid: nest.uuid,
             egg_repository_egg_uuid: data.egg_repository_egg_uuid,
+            egg_repository_egg_hash: None,
             author: data.author,
             name: data.name,
             description: data.description,

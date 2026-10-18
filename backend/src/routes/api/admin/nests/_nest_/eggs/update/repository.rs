@@ -61,7 +61,7 @@ mod post {
             };
 
             match nest_egg
-                .import_update(&state.database, egg_repository_egg.exported_egg)
+                .import_update(&state.database, egg_repository_egg.exported_egg, true)
                 .await
             {
                 Ok(_) => {}

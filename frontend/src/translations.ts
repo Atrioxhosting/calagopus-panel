@@ -144,6 +144,8 @@ const baseTranslations = defineTranslations({
           matches: '{count} matched',
           noMatches: 'No matches',
           exception: 'Exception',
+          invalid: 'Invalid pattern',
+          unavailable: 'Count unavailable',
           tooManyPatterns: 'Matching is not counted automatically for more than {max} patterns.',
           unanchoredException:
             '`{pattern}` matches at any depth, use `{anchored}` to only match it in the root directory.',
@@ -158,6 +160,22 @@ const baseTranslations = defineTranslations({
             weekday: 'Weekday',
           },
           nextRun: 'Next run is {timestamp}.',
+        },
+        trashRetention: {
+          days: 'days',
+        },
+        trashSettings: {
+          custom: 'Use custom trash settings for this server',
+          default: 'Panel default: {summary}',
+          summary: {
+            disabled: 'Disabled',
+            withThreshold: '{retention}, cleared at {threshold}% disk usage',
+          },
+          retention: 'Retention',
+          retentionDescription: 'How long deleted files stay in the trash. Set to 0 to disable the trash.',
+          usageThreshold: 'Clear at Disk Usage',
+          usageThresholdDescription:
+            'Clear the oldest trash entries once disk usage reaches this percentage of the limit. Set to 0 to only clear the trash when a write would exceed the limit.',
         },
         backupRetention: {
           title: 'Retention',
@@ -217,6 +235,7 @@ const baseTranslations = defineTranslations({
       toast: {
         duplicated: '{resource} duplicated.',
         failedBackupDeletionStarted: 'Deleting {count} failed backups in the background.',
+        requestBlockedByExtension: 'This request was blocked by an extension.',
       },
       settingScope: {
         account: 'Sync With Account',
@@ -305,6 +324,7 @@ const baseTranslations = defineTranslations({
         mount: 'Mount',
         device: 'Device',
         nest: 'Nest',
+        nestCreateHint: "Can't find one? Create a new nest",
         lines: 'Lines',
         databaseHost: 'Database Host',
         databaseAgentHost: 'Database Agent Host',
@@ -443,6 +463,7 @@ const baseTranslations = defineTranslations({
         successful: 'Successful',
         failed: 'Failed',
         installed: 'Installed',
+        updateAvailable: 'Update Available',
         systemBackup: 'System',
       },
       label: {
@@ -1065,14 +1086,17 @@ const baseTranslations = defineTranslations({
             pterodactylGame: {
               title: 'Pterodactyl Game Eggs',
               description: 'Eggs for games like Minecraft, Terraria, and a lot more.',
+              nest: 'Games',
             },
             pterodactylApplication: {
               title: 'Pterodactyl Application Eggs',
               description: 'Eggs for applications like Grafana, Meilisearch, and various databases.',
+              nest: 'Applications',
             },
             pterodactylGeneral: {
               title: 'Pterodactyl Generic Eggs',
               description: 'Eggs for generic application runtimes like Node JS, Java, and Rust.',
+              nest: 'Generic',
             },
           },
         },
@@ -2087,6 +2111,13 @@ const baseTranslations = defineTranslations({
                   passwordLoginEnabledDescription:
                     'Let users sign in with a username and password. Turning this off leaves OAuth providers and security keys as the only way in, and also stops local registration, password resets and SFTP password authentication.',
                 },
+                section: {
+                  general: 'General',
+                  branding: 'Branding',
+                  authentication: 'Authentication',
+                  sessions: 'Sessions',
+                  telemetry: 'Telemetry',
+                },
                 enum: {
                   twoFactorMethod: {
                     totp: 'Authenticator App (TOTP)',
@@ -2397,9 +2428,26 @@ const baseTranslations = defineTranslations({
                   allowViewingTransferProgress: 'Allow Viewing Transfer Progress',
                   allowViewingTransferProgressDescription:
                     'If enabled, users with console read permissions will also be able to view transfer progress logs via the websocket connection. If disabled, transfer progress logs will only be available for admins.',
+                  trashRetention: 'Trash Retention',
+                  trashRetentionDescription:
+                    'How long deleted files stay in a server trash before they are removed permanently. Set to 0 to disable the trash. Files in the trash count towards the server disk limit. Each server can use its own trash settings instead.',
+                  trashUsageThreshold: 'Clear Trash at Disk Usage',
+                  trashUsageThresholdDescription:
+                    'Clear the oldest trash entries once a server reaches this percentage of its disk limit. Set to 0 to only clear the trash when a write would exceed the limit.',
+                  allowChangingTrashSettings: 'Allow Changing Trash Settings',
+                  allowChangingTrashSettingsDescription:
+                    'If enabled, users will be able to set custom trash settings for their servers. If disabled, only admins can change them. Custom settings already set on a server stay in effect.',
                   containerPrelude: 'Container Prelude',
                   containerPreludeDescription:
                     'The terminal prelude used for some status-related messages in the server console.',
+                },
+                section: {
+                  fileManager: 'File Manager',
+                  limits: 'Limits',
+                  networking: 'Networking',
+                  databaseInstances: 'Database Instances',
+                  lifecycle: 'Console & Lifecycle',
+                  trash: 'Trash',
                 },
                 toast: {
                   updated: 'Server settings updated.',
@@ -2421,6 +2469,12 @@ const baseTranslations = defineTranslations({
                   allowChangingLanguage: 'Allow Changing Language',
                   allowChangingLanguageDescription:
                     'If enabled, users will be able to change their language preferences.',
+                  allowChangingAvatar: 'Allow Changing Avatar',
+                  allowChangingAvatarDescription: 'If enabled, users will be able to upload and remove their avatar.',
+                },
+                section: {
+                  limits: 'Limits',
+                  permissions: 'Permissions',
                 },
                 routeOrder: {
                   title: 'Client Route Order',
@@ -2585,6 +2639,7 @@ const baseTranslations = defineTranslations({
               title: 'The last extension build failed',
               content:
                 'These extensions are not built again until they change, or until you retry the build explicitly.',
+              failedExtensions: 'The build failed in {extensions}. Update or remove them, then retry the build.',
             },
             pendingRestart: {
               title: 'Some extensions were enabled or disabled',
@@ -2635,9 +2690,11 @@ const baseTranslations = defineTranslations({
             frontendMissing: 'Frontend missing',
             backendMissing: 'Backend missing',
             pendingBuild: 'Pending build',
+            buildFailed: 'Build failed',
             pendingRemoval: 'Pending removal',
             pendingRestart: 'Pending restart',
             disabled: 'Disabled',
+            processing: 'Processing',
           },
           card: {
             version: 'Version',
@@ -3586,6 +3643,7 @@ const baseTranslations = defineTranslations({
                   unlimited: 'Unlimited',
                   autoKillSeconds: '{seconds}s',
                   autoKillDisabled: 'Disabled',
+                  trash: 'Trash',
                   labels: 'Labels',
                   uuid: 'UUID',
                 },
@@ -3616,12 +3674,21 @@ const baseTranslations = defineTranslations({
                 badge: {
                   serverSuspended: 'Server Suspended',
                 },
+                empty: {
+                  noEggs: {
+                    title: 'No eggs installed yet',
+                    description:
+                      'Servers are created from eggs. Install one from an egg repository and it will be selected for this server right away.',
+                    button: 'Install from Repository',
+                  },
+                },
                 form: {
                   serverNamePlaceholder: 'My Game Server',
                   externalIdPlaceholder: 'Optional external identifier',
                   descriptionPlaceholder: 'Server description',
                   owner: 'Owner',
                   ownerCreateHint: "Can't find them? Create a new user",
+                  eggInstallHint: "Can't find it? Install one from a repository",
                   egg: 'Egg',
                   backupConfigurationPlaceholder: 'Inherit from Node/Location',
                   cpuLimit: 'CPU Limit (%)',
@@ -3801,6 +3868,12 @@ const baseTranslations = defineTranslations({
               title: 'Management',
               page: {
                 title: 'Server Management',
+                trash: {
+                  title: 'Trash',
+                  toast: {
+                    updated: 'Server trash settings updated.',
+                  },
+                },
                 transfer: {
                   title: 'Transfer',
                   content: "Transfer this server and it's data to another node within this system.",
@@ -4253,6 +4326,50 @@ const baseTranslations = defineTranslations({
             },
           },
         },
+        eggLibrary: {
+          title: 'Egg Library',
+          tabs: {
+            installed: {
+              title: 'Installed',
+              page: {
+                title: 'Installed Eggs',
+                empty: {
+                  title: 'No eggs installed yet',
+                  description:
+                    'Eggs installed from repositories or imported by hand show up here. Browse the available eggs to install your first one.',
+                  button: 'Browse Available Eggs',
+                },
+                toast: {
+                  updated: '{egg} updated from its repository.',
+                },
+              },
+            },
+            available: {
+              title: 'Available',
+              page: {
+                title: 'Available Eggs',
+                empty: {
+                  title: 'No eggs available',
+                  description:
+                    'Add an egg repository and it is synced automatically, the eggs you can install show up here.',
+                  button: 'Go to Egg Repositories',
+                },
+              },
+            },
+          },
+          card: {
+            repository: 'Repository',
+            author: 'Author',
+            installedIn: 'Installed in',
+          },
+          badge: {
+            manual: 'Manual',
+          },
+          button: {
+            open: 'Open',
+            readme: 'README',
+          },
+        },
         eggRepositories: {
           title: 'Egg Repositories',
           resourceName: 'Egg Repository',
@@ -4273,6 +4390,12 @@ const baseTranslations = defineTranslations({
                   password: 'Password or Access Token',
                   privateKey: 'Private Key',
                   passphrase: 'Passphrase',
+                  defaultNest: 'Default Nest',
+                  defaultNestDescription:
+                    'Eggs installed from this repository go into this nest unless another one is chosen.',
+                  autoSync: 'Automatic Sync',
+                  autoSyncDescription:
+                    'Re-sync this repository once a day so new and updated eggs show up without pressing Sync.',
                 },
                 enum: {
                   credentialType: {
@@ -4301,15 +4424,29 @@ const baseTranslations = defineTranslations({
                 table: {
                   columns: {
                     path: 'Path',
+                    repository: 'Repository',
+                    installedIn: 'Installed In',
                   },
                 },
                 toast: {
                   installed: '{eggs} installed.',
+                  alreadyInstalled: 'This egg was already installed in {nest}, the existing egg was used.',
                 },
                 modal: {
                   install: {
                     title: 'Install {eggs}',
                     button: 'Install {eggs}',
+                  },
+                  catalog: {
+                    title: 'Install Egg from Repository',
+                    searchPlaceholder: 'Search eggs in every repository...',
+                    selected: 'Selected: **{egg}**',
+                    moreResults: 'Showing {shown} of {total} eggs, keep typing to narrow it down.',
+                    installingInto: 'The egg will be installed into **{nest}**.',
+                    noEggs:
+                      'No eggs are available yet. Add an egg repository under Egg Repositories, it is synced automatically.',
+                    button: 'Install',
+                    buttonSelect: 'Install & Select',
                   },
                 },
                 drawer: {
@@ -5561,6 +5698,12 @@ const baseTranslations = defineTranslations({
             extract: 'Extract',
             archive: 'Archive',
             more: 'More',
+            moveToTrash: 'Move to Trash',
+            deletePermanently: 'Delete Permanently',
+            trash: 'Trash',
+            emptyTrash: 'Empty Trash',
+            backToFiles: 'Back to Files',
+            restoreTo: 'Restore to...',
             remoteCopy: 'Remote Copy',
             search: 'Search',
             exitBackup: 'Exit Backup',
@@ -5607,6 +5750,8 @@ const baseTranslations = defineTranslations({
             permissionsSelection: 'Change Permissions',
             fingerprintSelection: 'Show File Fingerprint',
             deleteSelection: 'Delete Selection',
+            trashSelection: 'Move Selection to Trash',
+            openTrash: 'Open Trash',
             saveFile: 'Save File',
             createFile: 'Create File',
           },
@@ -5681,6 +5826,10 @@ const baseTranslations = defineTranslations({
             moveCouldNotBeUndone: 'Move could not be undone.',
             downloadStarted: 'Download started.',
             filesDeleted: 'Files have been deleted.',
+            filesTrashed: '{files} moved to the trash.',
+            filesTrashedPartiallyDeleted: '{files} moved to the trash, {deleted} deleted permanently.',
+            trashUndone: '{files} restored from the trash.',
+            trashCouldNotBeUndone: 'Files could not be restored from the trash.',
             archiveCreationStarted: 'Archive creation has begun.',
             decompressionStarted: 'Archive extraction has started.',
             fileCopyingStarted: 'File copying has started.',
@@ -5739,6 +5888,55 @@ const baseTranslations = defineTranslations({
                 original: 'Revision',
                 current: 'Current',
               },
+            },
+          },
+          trash: {
+            title: 'Trash',
+            subtitle: 'Deleted files are kept for {retention} before they are removed permanently.',
+            subtitleDisabled:
+              'The trash is disabled for this server. Existing entries stay until they are restored or deleted.',
+            table: {
+              columns: {
+                originalLocation: 'Original Location',
+                deletedAt: 'Deleted',
+              },
+            },
+            empty: {
+              title: 'The trash is empty',
+              description: 'Files you delete are moved here and can be restored until they expire.',
+            },
+            modal: {
+              deleteEntries: {
+                title: 'Delete Permanently',
+                content: 'Are you sure you want to permanently delete {entries} from the trash? This cannot be undone.',
+              },
+              deleteEntry: {
+                title: 'Delete Permanently',
+                content:
+                  'Are you sure you want to permanently delete **{name}** from the trash? This cannot be undone.',
+              },
+              emptyTrash: {
+                title: 'Empty Trash',
+                content: 'Are you sure you want to permanently delete everything in the trash? This cannot be undone.',
+              },
+              restoreTo: {
+                title: 'Restore to Directory',
+                destination: 'Destination Directory',
+                restoredAs: 'This file will be restored as ',
+              },
+              restoreConflict: {
+                title: 'Resolve Restore Conflicts',
+                description: 'Something already exists where the following {files} would be restored.',
+                confirm: 'Restore {files}',
+              },
+            },
+            toast: {
+              restored: '{entries} restored.',
+              nothingRestored: 'Nothing could be restored.',
+              restoreUndone: '{files} moved back to the trash.',
+              restoreCouldNotBeUndone: 'Restore could not be undone.',
+              deleted: '{entries} permanently deleted.',
+              emptied: 'The trash has been emptied.',
             },
           },
           modal: {
@@ -5824,8 +6022,12 @@ const baseTranslations = defineTranslations({
             },
             deleteFile: {
               title: 'Delete File',
-              singleFileWarning: 'You will not be able to recover the contents of {file} once deleted.',
+              singleFileWarning: 'You will not be able to recover the contents of **{file}** once deleted.',
               multipleFilesWarning: 'You will not be able to recover the contents of the following files once deleted.',
+              trashTitle: 'Move to Trash',
+              singleFileTrash: '**{file}** will be moved to the trash and can be restored for {retention}.',
+              multipleFilesTrash: 'The following files will be moved to the trash and can be restored for {retention}.',
+              permanent: 'Delete permanently instead of moving to the trash',
             },
             createFile: {
               title: 'Create File',
@@ -7095,12 +7297,17 @@ const baseTranslations = defineTranslations({
               description: 'Delete files or folders.',
               form: {
                 filesToDelete: 'Files to Delete',
+                trash: 'Move to Trash',
+                trashDescription:
+                  'Move the files to the trash instead of deleting them permanently. Needs the trash to be enabled for this server.',
               },
               renderer: {
                 compact: 'Delete {files}',
+                compactTrash: 'Move {files} to the trash',
                 detail: {
                   root: 'Root: {root}',
                   files: 'Files: {files}',
+                  trash: 'Move to Trash: {value}',
                 },
               },
             },
@@ -7800,6 +8007,12 @@ const baseTranslations = defineTranslations({
             },
             toast: {
               updated: 'Server auto-kill updated.',
+            },
+          },
+          trash: {
+            title: 'Trash',
+            toast: {
+              updated: 'Server trash settings updated.',
             },
           },
           autostart: {

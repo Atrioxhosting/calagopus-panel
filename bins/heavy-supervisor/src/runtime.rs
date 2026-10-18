@@ -181,6 +181,7 @@ fn record_stock_entry(config: &Config, version: &str, key: &str) -> anyhow::Resu
             finished_at: Some(crate::store::record::now()),
             exit_code: Some(0),
             failure_reason: None,
+            failed_extensions: Vec::new(),
         },
     )?;
 
@@ -441,9 +442,14 @@ async fn run_build(
             )
             .await;
 
+            let (exit_code, failed_extensions) = memo
+                .map(|record| (record.exit_code, record.failed_extensions))
+                .unwrap_or_default();
+
             return crate::server::Completion::Failed {
-                exit_code: memo.and_then(|record| record.exit_code),
+                exit_code,
                 reason,
+                failed_extensions,
             };
         }
         Err(err) => return failed(format!("the build could not be planned: {err:#}")),
@@ -476,6 +482,7 @@ async fn run_build(
             reason: record
                 .failure_reason
                 .unwrap_or_else(|| "the build failed without saying why".to_string()),
+            failed_extensions: record.failed_extensions,
         },
         Err(err) => failed(format!("{err:#}")),
     }
@@ -516,6 +523,7 @@ fn failed(reason: String) -> crate::server::Completion {
     crate::server::Completion::Failed {
         reason,
         exit_code: None,
+        failed_extensions: Vec::new(),
     }
 }
 

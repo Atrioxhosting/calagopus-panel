@@ -25,6 +25,7 @@ export interface ServerRouteDefinition extends RouteDefinition {
   permission?: string | string[] | null;
 }
 
+export * from './events.ts';
 export * from './extension.ts';
 export * from './overrides.ts';
 export * from './registries/forms/index.ts';

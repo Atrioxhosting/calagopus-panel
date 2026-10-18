@@ -8,7 +8,9 @@ import rebuildExtensions from '@/api/admin/extensions/manage/rebuildExtensions.t
 import removeExtension from '@/api/admin/extensions/manage/removeExtension.ts';
 import restartPanel from '@/api/admin/extensions/manage/restartPanel.ts';
 import setExtensionEnabled from '@/api/admin/extensions/setExtensionEnabled.ts';
+import { httpErrorToHuman } from '@/api/axios.ts';
 import { computePendingRestart, getBuildPhase, removeByPackageName, upsertByPackageName } from '@/lib/extensions.ts';
+import { isCancelledError } from '@/lib/files/uploadManager.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { AdminBackendExtension } from '@/lib/schemas/admin/backendExtension.ts';
 import { useImportDragAndDrop } from '@/plugins/import/useImportDragAndDrop.ts';
@@ -22,6 +24,14 @@ type PendingLicense = {
   file: File;
   extension: Awaited<ReturnType<typeof addExtension>>['extension'];
 };
+
+export type ExtensionUpload = {
+  file: File;
+  loaded: number;
+  controller: AbortController;
+};
+
+const PROGRESS_FLUSH_MS = 100;
 
 export function useExtensionManagement() {
   const { t } = useTranslations();
@@ -47,12 +57,15 @@ export function useExtensionManagement() {
   const [openModal, setOpenModal] = useState<'logs' | null>(null);
   const [cancellingBuild, setCancellingBuild] = useState<number | null>(null);
   const watchedBuildRef = useRef<number | null>(null);
+  const [uploads, setUploads] = useState<Map<number, ExtensionUpload>>(new Map());
+  const uploadIdRef = useRef(0);
 
   const supervisor = extensionStatus?.supervisor ?? null;
   const supervisorState = supervisor?.state ?? null;
   const buildId = supervisor?.buildId ?? null;
   const buildFailed = supervisorState?.type === 'failed';
   const failureReason = supervisor?.failureReason ?? null;
+  const failedExtensions = buildFailed ? (supervisor?.failedExtensions ?? []) : [];
   const isBuilding = extensionStatus?.isBuilding ?? false;
   const phase = supervisorState ? getBuildPhase(t, supervisorState) : null;
   const pendingRestart = useMemo(() => computePendingRestart(adminExtensions), [adminExtensions]);
@@ -178,14 +191,47 @@ export function useExtensionManagement() {
     });
   };
 
-  const handleAdd = (file: File, acceptLicense = false) => {
-    mutate(addExtension(file, acceptLicense), ({ extension, needsLicenseAcceptance }) => {
-      if (needsLicenseAcceptance) {
-        setPendingLicense({ file, extension });
-        return;
-      }
-      applyExtension(extension);
+  const setUploadLoaded = (id: number, loaded: number) => {
+    setUploads((prev) => {
+      const entry = prev.get(id);
+      if (!entry || entry.loaded === loaded) return prev;
+      return new Map(prev).set(id, { ...entry, loaded });
     });
+  };
+
+  const handleAdd = (file: File, acceptLicense = false) => {
+    const id = ++uploadIdRef.current;
+    const controller = new AbortController();
+    let lastFlush = 0;
+    setUploads((prev) => new Map(prev).set(id, { file, loaded: 0, controller }));
+
+    addExtension(file, acceptLicense, controller.signal, (event) => {
+      const now = Date.now();
+      if (event.loaded < file.size && now - lastFlush < PROGRESS_FLUSH_MS) return;
+      lastFlush = now;
+      setUploadLoaded(id, Math.min(event.loaded, file.size));
+    })
+      .then(({ extension, needsLicenseAcceptance }) => {
+        if (needsLicenseAcceptance) {
+          setPendingLicense({ file, extension });
+          return;
+        }
+        applyExtension(extension);
+      })
+      .catch((error) => {
+        if (!isCancelledError(error)) addToast(httpErrorToHuman(error), 'error');
+      })
+      .finally(() => {
+        setUploads((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+      });
+  };
+
+  const handleCancelUpload = (id: number) => {
+    uploads.get(id)?.controller.abort();
   };
 
   const handleLicenseAccept = () => {
@@ -215,6 +261,7 @@ export function useExtensionManagement() {
     buildId,
     buildFailed,
     failureReason,
+    failedExtensions,
     isBuilding,
     phase,
     pendingRestart,
@@ -233,6 +280,8 @@ export function useExtensionManagement() {
     handleAdd,
     handleLicenseAccept,
     handleFileUpload,
+    uploads,
+    handleCancelUpload,
     isDragging,
   };
 }

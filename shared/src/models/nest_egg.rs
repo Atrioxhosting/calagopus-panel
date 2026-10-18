@@ -8,6 +8,7 @@ use futures_util::TryStreamExt;
 use garde::Validate;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use sha2::Digest;
 use sqlx::{Row, postgres::PgRow};
 use std::{
     collections::{BTreeMap, HashSet},
@@ -27,6 +28,12 @@ pub fn validate_startup_commands(
 
     let mut seen_commands = HashSet::new();
     for command in startup_commands.values() {
+        if command.trim().is_empty() {
+            return Err(garde::Error::new(compact_str::format_compact!(
+                "startup commands cannot be empty"
+            )));
+        }
+
         if !seen_commands.insert(command) {
             return Err(garde::Error::new(compact_str::format_compact!(
                 "duplicate startup command: {}",
@@ -44,6 +51,12 @@ pub fn validate_docker_images(
 ) -> Result<(), garde::Error> {
     let mut seen_images = HashSet::new();
     for image in docker_images.values() {
+        if image.trim().is_empty() {
+            return Err(garde::Error::new(compact_str::format_compact!(
+                "docker images cannot be empty"
+            )));
+        }
+
         if !seen_images.insert(image) {
             return Err(garde::Error::new(compact_str::format_compact!(
                 "duplicate docker image: {}",
@@ -230,6 +243,23 @@ pub struct ExportedNestEgg {
 }
 
 impl ExportedNestEgg {
+    /// Hashes the egg definition itself, ignoring the uuid, which is regenerated whenever a
+    /// repository file without one is parsed.
+    pub fn content_hash(&self) -> compact_str::CompactString {
+        let mut egg = self.clone();
+        egg.uuid = uuid::Uuid::nil();
+
+        let serialized = match serde_json::to_vec(&egg) {
+            Ok(serialized) => serialized,
+            Err(err) => {
+                tracing::warn!("failed to serialize exported egg for hashing: {:?}", err);
+                Vec::new()
+            }
+        };
+
+        hex::encode(sha2::Sha256::digest(&serialized)).into()
+    }
+
     pub async fn fetch(state: &crate::State, url: &reqwest::Url) -> Result<Self, anyhow::Error> {
         let response = crate::net::outbound_request(&state.env, reqwest::Method::GET, url.clone())?
             .send()
@@ -268,6 +298,7 @@ pub struct NestEgg {
     pub uuid: uuid::Uuid,
     pub nest: Fetchable<super::nest::Nest>,
     pub egg_repository_egg: Option<Fetchable<super::egg_repository_egg::EggRepositoryEgg>>,
+    pub egg_repository_egg_hash: Option<compact_str::CompactString>,
 
     pub name: compact_str::CompactString,
     pub description: Option<compact_str::CompactString>,
@@ -321,6 +352,10 @@ impl BaseModel for NestEgg {
             (
                 "nest_eggs.egg_repository_egg_uuid",
                 compact_str::format_compact!("{prefix}egg_repository_egg_uuid"),
+            ),
+            (
+                "nest_eggs.egg_repository_egg_hash",
+                compact_str::format_compact!("{prefix}egg_repository_egg_hash"),
             ),
             (
                 "nest_eggs.name",
@@ -395,6 +430,9 @@ impl BaseModel for NestEgg {
                     compact_str::format_compact!("{prefix}egg_repository_egg_uuid").as_str(),
                 )?
                 .map(super::egg_repository_egg::EggRepositoryEgg::get_fetchable),
+            egg_repository_egg_hash: row.try_get(
+                compact_str::format_compact!("{prefix}egg_repository_egg_hash").as_str(),
+            )?,
             name: row.try_get(compact_str::format_compact!("{prefix}name").as_str())?,
             description: row
                 .try_get(compact_str::format_compact!("{prefix}description").as_str())?,
@@ -445,14 +483,15 @@ impl NestEgg {
     pub async fn import(
         state: &crate::State,
         nest_uuid: uuid::Uuid,
-        egg_repository_egg_uuid: Option<uuid::Uuid>,
+        egg_repository_egg: Option<&super::egg_repository_egg::EggRepositoryEgg>,
         exported_egg: ExportedNestEgg,
     ) -> Result<Self, crate::database::DatabaseError> {
         let egg = Self::create(
             state,
             CreateNestEggOptions {
                 nest_uuid,
-                egg_repository_egg_uuid,
+                egg_repository_egg_uuid: egg_repository_egg.map(|egg| egg.uuid),
+                egg_repository_egg_hash: egg_repository_egg.map(|_| exported_egg.content_hash()),
                 author: exported_egg.author,
                 name: exported_egg.name,
                 description: exported_egg.description,
@@ -515,11 +554,16 @@ impl NestEgg {
         Ok(egg)
     }
 
+    /// `from_repository` records the imported definition's hash so a later repository sync can
+    /// tell whether the egg has changed upstream; a file or url update leaves it unknown.
     pub async fn import_update(
         &self,
         database: &crate::database::Database,
         mut exported_egg: ExportedNestEgg,
+        from_repository: bool,
     ) -> Result<(), crate::database::DatabaseError> {
+        let exported_egg_hash = exported_egg.content_hash();
+
         sqlx::query!(
             "UPDATE nest_eggs
             SET
@@ -527,7 +571,8 @@ impl NestEgg {
                 config_files = $5, config_startup = $6, config_stop = $7,
                 config_script = $8, startup_commands = $9::json,
                 force_outgoing_ip = $10, separate_port = $11, features = $12,
-                docker_images = $13::json, file_denylist = $14
+                docker_images = $13::json, file_denylist = $14,
+                egg_repository_egg_hash = $15
             WHERE nest_eggs.uuid = $1",
             self.uuid,
             &exported_egg.author,
@@ -563,6 +608,7 @@ impl NestEgg {
                 .into_iter()
                 .map(|f| f.into())
                 .collect::<Vec<_>>(),
+            from_repository.then(|| exported_egg_hash.as_str()),
         )
         .execute(database.write())
         .await?;
@@ -677,6 +723,46 @@ impl NestEgg {
         rows.into_iter()
             .map(|row| Self::map(None, &row))
             .try_collect_vec()
+    }
+
+    pub async fn all_with_pagination(
+        database: &crate::database::Database,
+        nest_uuid: Option<uuid::Uuid>,
+        page: i64,
+        per_page: i64,
+        search: Option<&str>,
+    ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
+        let offset = (page - 1) * per_page;
+
+        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
+            r#"
+            SELECT {}, COUNT(*) OVER() AS total_count
+            FROM nest_eggs
+            WHERE ($1::uuid IS NULL OR nest_eggs.nest_uuid = $1) AND {search}
+            ORDER BY nest_eggs.name, nest_eggs.created
+            LIMIT $3 OFFSET $4
+            "#,
+            Self::columns_sql(None),
+            search = super::search_sql(2, &["nest_eggs.name"], &["nest_eggs.uuid"])
+        )))
+        .bind(nest_uuid)
+        .bind(search)
+        .bind(per_page)
+        .bind(offset)
+        .fetch_all(database.read())
+        .await?;
+
+        Ok(super::Pagination {
+            total: rows
+                .first()
+                .map_or(Ok(0), |row| row.try_get("total_count"))?,
+            per_page,
+            page,
+            data: rows
+                .into_iter()
+                .map(|row| Self::map(None, &row))
+                .try_collect_vec()?,
+        })
     }
 
     pub async fn by_nest_uuid_with_pagination(
@@ -920,6 +1006,7 @@ impl IntoAdminApiObject for NestEgg {
                     ),
                     None => None,
                 },
+                egg_repository_egg_hash: self.egg_repository_egg_hash,
                 name: self.name,
                 description: self.description,
                 author: self.author,
@@ -1021,6 +1108,9 @@ pub struct CreateNestEggOptions {
     pub nest_uuid: uuid::Uuid,
     #[garde(skip)]
     pub egg_repository_egg_uuid: Option<uuid::Uuid>,
+    #[garde(skip)]
+    #[serde(default)]
+    pub egg_repository_egg_hash: Option<compact_str::CompactString>,
     #[garde(length(chars, min = 2, max = 255))]
     #[schema(min_length = 2, max_length = 255)]
     pub author: compact_str::CompactString,
@@ -1091,6 +1181,7 @@ impl CreatableModel for NestEgg {
         query_builder
             .set("nest_uuid", options.nest_uuid)
             .set("egg_repository_egg_uuid", options.egg_repository_egg_uuid)
+            .set("egg_repository_egg_hash", &options.egg_repository_egg_hash)
             .set("author", &options.author)
             .set("name", &options.name)
             .set("description", &options.description)
@@ -1221,6 +1312,13 @@ impl UpdatableModel for NestEgg {
                 "egg_repository_egg_uuid",
                 options.egg_repository_egg_uuid.as_ref().map(|o| o.as_ref()),
             )
+            .set(
+                "egg_repository_egg_hash",
+                options
+                    .egg_repository_egg_uuid
+                    .as_ref()
+                    .map(|_| None::<&str>),
+            )
             .set("author", options.author.as_ref())
             .set("name", options.name.as_ref())
             .set(
@@ -1277,6 +1375,7 @@ impl UpdatableModel for NestEgg {
 
         if let Some(egg_repository_egg) = egg_repository_egg {
             self.egg_repository_egg = egg_repository_egg;
+            self.egg_repository_egg_hash = None;
         }
         if let Some(author) = options.author {
             self.author = author;
@@ -1476,6 +1575,7 @@ impl DuplicableModel for NestEgg {
 pub struct AdminApiNestEgg {
     pub uuid: uuid::Uuid,
     pub egg_repository_egg: Option<super::egg_repository_egg::AdminApiEggEggRepositoryEgg>,
+    pub egg_repository_egg_hash: Option<compact_str::CompactString>,
 
     pub name: compact_str::CompactString,
     pub description: Option<compact_str::CompactString>,

@@ -23,7 +23,7 @@ export default function EggRepositoryEggDrawer({
   onClose,
   ...props
 }: DrawerProps & {
-  eggRepository: z.infer<typeof adminEggRepositorySchema>;
+  eggRepository: z.infer<typeof adminEggRepositorySchema> | null;
   egg: z.infer<typeof adminEggRepositoryEggSchema> | null;
 }) {
   const { t } = useTranslations();
@@ -50,21 +50,33 @@ export default function EggRepositoryEggDrawer({
     >
       {displayEgg && (
         <>
-          <AdminCan action={['eggs.create', 'nests.read']}>
-            <EggRepositoryEggInstallModal
-              eggRepository={eggRepository}
-              eggs={[displayEgg]}
-              opened={installOpen}
-              onClose={() => setInstallOpen(false)}
-            />
-          </AdminCan>
+          {eggRepository && (
+            <AdminCan action={['eggs.create', 'nests.read']}>
+              <EggRepositoryEggInstallModal
+                eggRepository={eggRepository}
+                eggs={[displayEgg]}
+                opened={installOpen}
+                onClose={() => setInstallOpen(false)}
+              />
+            </AdminCan>
+          )}
 
           <Stack gap='md' className='h-full'>
-            <AdminCan action={['eggs.create', 'nests.read']}>
-              <Button leftSection={<FontAwesomeIcon icon={faDownload} />} onClick={() => setInstallOpen(true)}>
-                {t('common.button.install', {})}
-              </Button>
-            </AdminCan>
+            {displayEgg.banner && (
+              <img
+                src={displayEgg.banner}
+                alt={displayEgg.exportedEgg.name}
+                className='mx-auto max-h-60 max-w-full rounded-md'
+              />
+            )}
+
+            {eggRepository && (
+              <AdminCan action={['eggs.create', 'nests.read']}>
+                <Button leftSection={<FontAwesomeIcon icon={faDownload} />} onClick={() => setInstallOpen(true)}>
+                  {t('common.button.install', {})}
+                </Button>
+              </AdminCan>
+            )}
 
             <ScrollArea className='flex-1' offsetScrollbars>
               {displayEgg.readme ? (

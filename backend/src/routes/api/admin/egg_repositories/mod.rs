@@ -2,6 +2,7 @@ use super::State;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 mod _egg_repository_;
+mod eggs;
 
 mod get {
     use axum::{extract::Query, http::StatusCode};
@@ -123,9 +124,24 @@ mod post {
                     "name": egg_repository.name,
                     "description": egg_repository.description,
                     "git_repository": egg_repository.git_repository,
+                    "default_nest_uuid": egg_repository.default_nest.as_ref().map(|nest| nest.uuid),
+                    "auto_sync": egg_repository.auto_sync,
                 }),
             )
             .await;
+
+        let sync_state = state.0.clone();
+        let sync_egg_repository = egg_repository.clone();
+
+        tokio::spawn(async move {
+            if let Err(err) = sync_egg_repository.sync(&sync_state).await {
+                tracing::error!(
+                    egg_repository = %sync_egg_repository.uuid,
+                    "failed to sync newly created egg repository: {:#?}",
+                    err
+                );
+            }
+        });
 
         ApiResponse::new_serialized(Response {
             egg_repository: egg_repository.into_admin_api_object(&state, ()).await?,
@@ -139,5 +155,6 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .routes(routes!(get::route))
         .routes(routes!(post::route))
         .nest("/{egg_repository}", _egg_repository_::router(state))
+        .nest("/eggs", eggs::router(state))
         .with_state(state.clone())
 }

@@ -1072,6 +1072,14 @@ impl<'a> SettingsWriteGuard<'a> {
             .cached_index
             .store(buffer_index, Ordering::Release);
 
+        crate::models::node::Node::invalidate_permissions_everywhere(
+            &self.parent.database,
+            crate::models::node::PermissionsInvalidation {
+                servers: Some(wings_api::ServerSelector::All),
+                ..Default::default()
+            },
+        );
+
         Ok(())
     }
 

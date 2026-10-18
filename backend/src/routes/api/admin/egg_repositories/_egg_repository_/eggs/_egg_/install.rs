@@ -18,17 +18,22 @@ mod post {
 
     #[derive(ToSchema, Deserialize)]
     pub struct Payload {
-        nest_uuid: uuid::Uuid,
+        /// Falls back to the egg repository's default nest when omitted.
+        nest_uuid: Option<uuid::Uuid>,
     }
 
     #[derive(ToSchema, Serialize)]
     struct Response {
         egg: shared::models::nest_egg::AdminApiNestEgg,
+        /// `false` when an egg with the same name already existed in the nest and was returned instead.
+        created: bool,
     }
 
     #[utoipa::path(post, path = "/", responses(
         (status = OK, body = inline(Response)),
+        (status = BAD_REQUEST, body = ApiError),
         (status = NOT_FOUND, body = ApiError),
+        (status = CONFLICT, body = ApiError),
     ), params(
         (
             "egg_repository" = uuid::Uuid,
@@ -66,7 +71,21 @@ mod post {
             }
         };
 
-        let nest = match Nest::by_uuid_optional(&state.database, data.nest_uuid).await? {
+        let nest_uuid = match data
+            .nest_uuid
+            .or(egg_repository.default_nest.as_ref().map(|nest| nest.uuid))
+        {
+            Some(nest_uuid) => nest_uuid,
+            None => {
+                return ApiResponse::error(
+                    "no nest specified and the egg repository has no default nest",
+                )
+                .with_status(StatusCode::BAD_REQUEST)
+                .ok();
+            }
+        };
+
+        let nest = match Nest::by_uuid_optional(&state.database, nest_uuid).await? {
             Some(nest) => nest,
             None => {
                 return ApiResponse::error("nest not found")
@@ -75,53 +94,67 @@ mod post {
             }
         };
 
-        let egg = match NestEgg::import(
+        let (egg, created) = match NestEgg::import(
             &state,
             nest.uuid,
-            Some(egg_repository_egg.uuid),
-            egg_repository_egg.exported_egg,
+            Some(&egg_repository_egg),
+            egg_repository_egg.exported_egg.clone(),
         )
         .await
         {
-            Ok(egg) => egg,
+            Ok(egg) => (egg, true),
             Err(err) if err.is_unique_violation() => {
-                return ApiResponse::error("egg with name already exists")
-                    .with_status(StatusCode::CONFLICT)
-                    .ok();
+                match NestEgg::by_nest_uuid_name(
+                    &state.database,
+                    nest.uuid,
+                    &egg_repository_egg.exported_egg.name,
+                )
+                .await?
+                {
+                    Some(egg) => (egg, false),
+                    None => {
+                        return ApiResponse::error("egg with name already exists")
+                            .with_status(StatusCode::CONFLICT)
+                            .ok();
+                    }
+                }
             }
             Err(err) => return ApiResponse::from(err).ok(),
         };
 
-        activity_logger
-            .log(
-                "nest:egg.create",
-                serde_json::json!({
-                    "uuid": egg.uuid,
-                    "nest_uuid": nest.uuid,
-                    "egg_repository_egg_uuid": egg_repository_egg.uuid,
+        if created {
+            activity_logger
+                .log(
+                    "nest:egg.create",
+                    serde_json::json!({
+                        "uuid": egg.uuid,
+                        "nest_uuid": nest.uuid,
+                        "egg_repository_egg_uuid": egg_repository_egg.uuid,
 
-                    "author": egg.author,
-                    "name": egg.name,
-                    "description": egg.description,
+                        "author": egg.author,
+                        "name": egg.name,
+                        "description": egg.description,
 
-                    "config_files": egg.config_files,
-                    "config_startup": egg.config_startup,
-                    "config_stop": egg.config_stop,
-                    "config_script": egg.config_script,
+                        "config_files": egg.config_files,
+                        "config_startup": egg.config_startup,
+                        "config_stop": egg.config_stop,
+                        "config_script": egg.config_script,
 
-                    "startup_commands": egg.startup_commands,
-                    "force_outgoing_ip": egg.force_outgoing_ip,
-                    "separate_port": egg.separate_port,
+                        "startup_commands": egg.startup_commands,
+                        "force_outgoing_ip": egg.force_outgoing_ip,
+                        "separate_port": egg.separate_port,
 
-                    "features": egg.features,
-                    "docker_images": egg.docker_images,
-                    "file_denylist": egg.file_denylist,
-                }),
-            )
-            .await;
+                        "features": egg.features,
+                        "docker_images": egg.docker_images,
+                        "file_denylist": egg.file_denylist,
+                    }),
+                )
+                .await;
+        }
 
         ApiResponse::new_serialized(Response {
             egg: egg.into_admin_api_object(&state, ()).await?,
+            created,
         })
         .ok()
     }

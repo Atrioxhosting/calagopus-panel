@@ -1,7 +1,16 @@
+import { ClipboardCancelledError, ClipboardCopyEvent } from 'shared';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { getTranslations } from '@/providers/TranslationProvider.tsx';
 
 export function copyToClipboard(text: string) {
+  const handlers = window.extensionContext.extensionRegistry.events.clipboard.copyHandlers;
+  if (handlers.handlers.length) {
+    const event = handlers.emit(new ClipboardCopyEvent(text));
+    if (event.cancelled) return Promise.reject(new ClipboardCancelledError());
+
+    text = event.data;
+  }
+
   if (!window.isSecureContext) {
     const textArea = document.createElement('textarea');
     textArea.value = text;
@@ -33,6 +42,8 @@ export function handleRawCopyToClipboard(text: string, addToast?: ReturnType<typ
       addToast?.(getTranslations().t('elements.copyOnClick.toast.copied', {}), 'success');
     })
     .catch((err) => {
+      if (err instanceof ClipboardCancelledError) return;
+
       console.error(err);
       addToast?.(getTranslations().t('elements.copyOnClick.toast.failed', {}), 'error');
     });

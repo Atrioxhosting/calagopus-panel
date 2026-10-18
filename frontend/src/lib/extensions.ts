@@ -85,6 +85,7 @@ export interface ExtensionCardFlags {
   isPendingRemoval: boolean;
   isDisabled: boolean;
   isPendingDisabled: boolean;
+  isBuildFailed: boolean;
 }
 
 export interface ExtensionBadge {
@@ -96,6 +97,9 @@ export interface ExtensionBadge {
 export function getExtensionBadges(t: TFunc, flags: ExtensionCardFlags): ExtensionBadge[] {
   const badges: ExtensionBadge[] = [];
 
+  if (flags.isBuildFailed) {
+    badges.push({ key: 'buildFailed', color: 'red', label: t('pages.admin.extensions.badge.buildFailed', {}) });
+  }
   if (flags.isDisabled) {
     badges.push({ key: 'disabled', color: 'gray', label: t('pages.admin.extensions.badge.disabled', {}) });
   }

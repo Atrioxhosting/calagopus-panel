@@ -1,5 +1,7 @@
 import {
   faAddressCard,
+  faDownload,
+  faEgg,
   faIcons,
   faInfoCircle,
   faNetworkWired,
@@ -8,10 +10,10 @@ import {
   faWrench,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import getBackupConfigurations from '@/api/admin/backup-configurations/getBackupConfigurations.ts';
-import getEggs from '@/api/admin/nests/eggs/getEggs.ts';
+import searchEggs, { adminEggWithNestSchema } from '@/api/admin/eggs/searchEggs.ts';
 import getEggVariables from '@/api/admin/nests/eggs/variables/getEggVariables.ts';
 import getNests from '@/api/admin/nests/getNests.ts';
 import getAvailableNodeAllocations from '@/api/admin/nodes/allocations/getAvailableNodeAllocations.ts';
@@ -24,6 +26,7 @@ import { AdminCan } from '@/elements/Can.tsx';
 import AdminContentContainer from '@/elements/containers/AdminContentContainer.tsx';
 import TitleCard from '@/elements/data-display/TitleCard.tsx';
 import Alert from '@/elements/feedback/Alert.tsx';
+import EmptyState from '@/elements/feedback/EmptyState.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import { AdvancedModeToggle, FormEngine, useFormEngine } from '@/elements/form-engine/index.ts';
 import MultiSelect from '@/elements/input/MultiSelect.tsx';
@@ -35,11 +38,14 @@ import VariableContainer from '@/elements/VariableContainer.tsx';
 import { formatAllocation } from '@/lib/domain/server.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminBackupConfigurationSchema } from '@/lib/schemas/admin/backupConfigurations.ts';
-import { adminEggSchema, adminEggVariableSchema } from '@/lib/schemas/admin/eggs.ts';
+import { adminEggVariableSchema } from '@/lib/schemas/admin/eggs.ts';
 import { adminNestSchema } from '@/lib/schemas/admin/nests.ts';
 import { adminNodeAllocationSchema, adminNodeSchema } from '@/lib/schemas/admin/nodes.ts';
 import { AdminServer, adminServerCreateSchema } from '@/lib/schemas/admin/servers.ts';
 import { fullUserSchema } from '@/lib/schemas/user.ts';
+import EggRepositoryCatalogModal, {
+  EggRepositoryCatalogInstallResult,
+} from '@/pages/admin/egg-repositories/eggs/modals/EggRepositoryCatalogModal.tsx';
 import { useResourceForm } from '@/plugins/resource/useResourceForm.ts';
 import { useSearchableResource } from '@/plugins/resource/useSearchableResource.ts';
 import { useAdminCan } from '@/plugins/usePermissions.ts';
@@ -91,10 +97,19 @@ export default function ServerCreate() {
   const [eggVariablesLoading, setEggVariablesLoading] = useState(false);
   const [selectedNestUuid, setSelectedNestUuid] = useState<string | null>('');
   const [eggVariables, setEggVariables] = useState<z.infer<typeof adminEggVariableSchema>[]>([]);
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   const [selectedEggUuid, setSelectedEggUuid] = useState('');
   const [selectedNodeUuid, setSelectedNodeUuid] = useState('');
-  form.watch('eggUuid', ({ value }) => setSelectedEggUuid(value));
+  const eggsWithNestsRef = useRef<z.infer<typeof adminEggWithNestSchema>[]>([]);
+  form.watch('eggUuid', ({ value }) => {
+    setSelectedEggUuid(value);
+
+    const item = eggsWithNestsRef.current.find((item) => item.egg.uuid === value);
+    if (item) {
+      setSelectedNestUuid(item.nest.uuid);
+    }
+  });
   form.watch('nodeUuid', ({ value }) => setSelectedNodeUuid(value));
 
   const nodes = useSearchableResource<z.infer<typeof adminNodeSchema>>({
@@ -112,13 +127,41 @@ export default function ServerCreate() {
     fetcher: (search) => getNests(1, search),
     canRequest: canReadNests,
   });
-  const eggs = useSearchableResource<z.infer<typeof adminEggSchema>>({
-    queryKey: selectedNestUuid ? queryKeys.admin.nests.eggs(selectedNestUuid) : ['admin', 'nests', 'eggs'],
-    fetcher: (search) =>
-      selectedNestUuid ? getEggs(selectedNestUuid, 1, search) : Promise.resolve(getEmptyPaginationSet()),
-    deps: [selectedNestUuid],
+  const eggsWithNests = useSearchableResource<z.infer<typeof adminEggWithNestSchema>>({
+    queryKey: queryKeys.admin.eggs.list(selectedNestUuid),
+    fetcher: (search) => searchEggs(selectedNestUuid || null, 1, search),
     canRequest: canReadEggs,
   });
+  useEffect(() => {
+    eggsWithNestsRef.current = eggsWithNests.items;
+  }, [eggsWithNests.items]);
+  const eggs = useMemo(
+    () => ({
+      items: eggsWithNests.items.map((item) => item.egg),
+      loading: eggsWithNests.loading,
+      search: eggsWithNests.search,
+      setSearch: eggsWithNests.setSearch,
+    }),
+    [eggsWithNests.items, eggsWithNests.loading, eggsWithNests.search, eggsWithNests.setSearch],
+  );
+  const eggNests = useMemo(
+    () => new Map(eggsWithNests.items.map((item) => [item.egg.uuid, item.nest])),
+    [eggsWithNests.items],
+  );
+  const noEggsInstalled =
+    canReadEggs &&
+    !eggsWithNests.loading &&
+    eggsWithNests.items.length === 0 &&
+    !eggsWithNests.search &&
+    !selectedNestUuid;
+
+  const onEggInstalled = ({ egg, nest }: EggRepositoryCatalogInstallResult) => {
+    setSelectedNestUuid(nest.uuid);
+    eggsWithNests.setSearch(egg.name);
+    form.setFieldValue('eggUuid', egg.uuid);
+    form.setFieldValue('image', Object.values(egg.dockerImages)[0] ?? '');
+    form.setFieldValue('startup', egg.startupCommands['Default'] || Object.values(egg.startupCommands)[0] || '');
+  };
   const availablePrimaryAllocations = useSearchableResource<z.infer<typeof adminNodeAllocationSchema>>({
     queryKey: selectedNodeUuid
       ? queryKeys.admin.nodes.availableAllocations(selectedNodeUuid)
@@ -184,6 +227,8 @@ export default function ServerCreate() {
       selectedNestUuid,
       setSelectedNestUuid,
       eggImages,
+      eggNests,
+      onEggInstallClick: () => setCatalogOpen(true),
     });
 
   return (
@@ -206,8 +251,29 @@ export default function ServerCreate() {
         {t('pages.admin.servers.tabs.general.page.modal.confirmNoAllocation.content', {})}
       </ConfirmationModal>
 
+      <EggRepositoryCatalogModal
+        opened={catalogOpen}
+        onClose={() => setCatalogOpen(false)}
+        confirmLabel={t('pages.admin.eggRepositories.tabs.eggs.page.modal.catalog.buttonSelect', {})}
+        onInstalled={onEggInstalled}
+      />
+
       <form onSubmit={form.onSubmit(() => doSave(false))}>
         <Stack mt='16'>
+          {noEggsInstalled && (
+            <EmptyState
+              icon={faEgg}
+              title={t('pages.admin.servers.tabs.general.page.empty.noEggs.title', {})}
+              description={t('pages.admin.servers.tabs.general.page.empty.noEggs.description', {})}
+            >
+              <AdminCan action={['eggs.create', 'egg-repositories.read']}>
+                <Button leftSection={<FontAwesomeIcon icon={faDownload} />} onClick={() => setCatalogOpen(true)}>
+                  {t('pages.admin.servers.tabs.general.page.empty.noEggs.button', {})}
+                </Button>
+              </AdminCan>
+            </EmptyState>
+          )}
+
           <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
             <TitleCard
               title={t('pages.admin.servers.tabs.general.page.card.basicInformation', {})}

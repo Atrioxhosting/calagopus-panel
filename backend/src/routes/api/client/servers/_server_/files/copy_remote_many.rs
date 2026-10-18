@@ -31,6 +31,9 @@ mod post {
         destination: compact_str::CompactString,
         #[schema(min_items = 1, max_items = 25)]
         destination_servers: Vec<uuid::Uuid>,
+
+        #[serde(default)]
+        overwrite: bool,
     }
 
     #[derive(ToSchema, Serialize)]
@@ -38,6 +41,7 @@ mod post {
         server: uuid::Uuid,
         identifier: Option<uuid::Uuid>,
         error: Option<String>,
+        skipped: Vec<wings_api::DirectoryEntry>,
     }
 
     #[derive(ToSchema, Serialize)]
@@ -229,6 +233,11 @@ mod post {
             jobs.push((destination_server, request_body));
         }
 
+        let extra = wings_api::servers_server_files_copy_remote::post::Extra {
+            overwrite: data.overwrite,
+            ..Default::default()
+        };
+
         tokio::spawn(async move {
             let source_ignored = server.0.subuser_ignored_files.clone().unwrap_or_default();
 
@@ -248,16 +257,16 @@ mod post {
                             .clone()
                             .unwrap_or_default(),
                     )
-                    .post_servers_server_files_copy_remote(server.0.uuid, &request_body)
+                    .post_servers_server_files_copy_remote_with(server.0.uuid, &request_body, &extra)
                     .await;
 
                 let result = match result {
-                    Ok(wings_api::servers_server_files_copy_remote::post::Response::Ok(_)) => {
-                        Ok(None)
+                    Ok(wings_api::servers_server_files_copy_remote::post::Response::Ok(data)) => {
+                        Ok((None, data.skipped))
                     }
                     Ok(wings_api::servers_server_files_copy_remote::post::Response::Accepted(
                         data,
-                    )) => Ok(Some(data.identifier)),
+                    )) => Ok((Some(data.identifier), data.skipped)),
                     Err(wings_api::client::ApiHttpError::Http(
                         StatusCode::NOT_FOUND | StatusCode::EXPECTATION_FAILED,
                         err,
@@ -274,13 +283,22 @@ mod post {
                     }
                 };
 
-                if result.is_ok() {
+                let copied_files = match &result {
+                    Ok((_, skipped)) => request_body
+                        .files
+                        .iter()
+                        .filter(|file| !skipped.iter().any(|entry| entry.name == file.to))
+                        .collect::<Vec<_>>(),
+                    Err(_) => Vec::new(),
+                };
+
+                if !copied_files.is_empty() {
                     activity_logger
                         .log(
                             "server:file.copy-remote",
                             serde_json::json!({
                                 "directory": request_body.root,
-                                "files": request_body.files.iter().collect::<Vec<_>>(),
+                                "files": copied_files,
 
                                 "destination_server": destination_server.uuid,
                                 "destination_path": request_body.destination_path,
@@ -295,7 +313,7 @@ mod post {
                             "server:file.copy-remote",
                             serde_json::json!({
                                 "directory": request_body.root,
-                                "files": request_body.files.iter().collect::<Vec<_>>(),
+                                "files": copied_files,
 
                                 "source_server": server.0.uuid,
                                 "destination_path": request_body.destination_path,
@@ -325,15 +343,17 @@ mod post {
                 results: results
                     .into_iter()
                     .map(|(_, server, result)| match result {
-                        Ok(identifier) => ResponseResult {
+                        Ok((identifier, skipped)) => ResponseResult {
                             server,
                             identifier,
                             error: None,
+                            skipped,
                         },
                         Err(error) => ResponseResult {
                             server,
                             identifier: None,
                             error: Some(error),
+                            skipped: Vec::new(),
                         },
                     })
                     .collect(),

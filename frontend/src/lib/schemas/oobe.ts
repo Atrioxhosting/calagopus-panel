@@ -63,7 +63,7 @@ export const oobeRegister = z
   });
 
 export const oobeServerSchema = z.object({
-  nestName: z.string().min(3).max(255),
+  nestName: z.preprocess(nullableString, z.string().min(3).max(255).nullable()),
   name: z.string().min(3).max(255),
   limits: z.lazy(() =>
     adminServerLimitsSchema.omit({

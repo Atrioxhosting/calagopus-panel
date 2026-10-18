@@ -192,11 +192,13 @@ export default function FileTreeEditorPane({
     setSaving(false);
     return wasSaving;
   };
+  const compressed = !!selection && !selection.file.editable && selection.file.innerEditable;
+  const writable = !!selection?.writable && !compressed;
   const collab = useFileCollab({
-    enabled: selection?.action === 'edit' && selection.primary && !loading,
+    enabled: selection?.action === 'edit' && selection.primary && !compressed && !loading,
     engine: editorEngine,
     filePath,
-    restoreContent: canUpdate && selection?.writable ? (restoreContent ?? draftContent ?? restoreOnConnect) : undefined,
+    restoreContent: canUpdate && writable ? (restoreContent ?? draftContent ?? restoreOnConnect) : undefined,
     onRestoreContent: () => {
       setRestoreOnConnect(undefined);
       if (activeTabId) onRestoreContent(activeTabId);
@@ -225,7 +227,7 @@ export default function FileTreeEditorPane({
       addToast(message, 'error');
     },
   });
-  const contentWritable = !!selection && selection.writable && (collab.active ? canUpdate : canCreate);
+  const contentWritable = writable && (collab.active ? canUpdate : canCreate);
   const canEdit = contentWritable && editableText;
   const canSave =
     canEdit &&
@@ -452,7 +454,7 @@ export default function FileTreeEditorPane({
     saveEnabled: canSave,
     action: selection?.action,
     fileName: selection?.file.name ?? '',
-    writable: selection?.writable ?? false,
+    writable,
     primary: selection?.primary ?? false,
     saving,
     dirty,
@@ -512,9 +514,9 @@ export default function FileTreeEditorPane({
     (collab.active ? canUpdate : canReadContent) &&
     dirty &&
     selection.action === 'edit' &&
-    selection.writable &&
+    writable &&
     !collab.conflict?.deleted;
-  const showHistoryAction = canReadContent && selection.action === 'edit' && selection.primary;
+  const showHistoryAction = canReadContent && selection.action === 'edit' && selection.primary && !compressed;
 
   return (
     <Card p={0} data-file-manager-editor className='flex h-full w-full min-w-0 flex-1 flex-col overflow-hidden'>

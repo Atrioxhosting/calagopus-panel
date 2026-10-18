@@ -1,3 +1,4 @@
+import { AxiosProgressEvent } from 'axios';
 import { z } from 'zod';
 import { axiosInstance } from '@/api/axios.ts';
 import { adminBackendExtensionSchema } from '@/lib/schemas/admin/backendExtension.ts';
@@ -6,11 +7,15 @@ import { parseFromApi } from '@/lib/serialization/api-transform.ts';
 export default async (
   extension: File,
   acceptLicense = false,
+  signal?: AbortSignal,
+  onUploadProgress?: (event: AxiosProgressEvent) => void,
 ): Promise<{
   extension: z.infer<typeof adminBackendExtensionSchema>;
   needsLicenseAcceptance: boolean;
 }> => {
   const { data } = await axiosInstance.put('/api/admin/extensions/manage/add', extension, {
+    signal,
+    onUploadProgress,
     headers: {
       'Content-Type': 'application/zip',
     },

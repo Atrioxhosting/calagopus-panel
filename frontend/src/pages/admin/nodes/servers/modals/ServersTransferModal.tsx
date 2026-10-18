@@ -14,11 +14,9 @@ import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import { Modal, ModalFooter } from '@/elements/modals/Modal.tsx';
 import { MAX_TRANSFER_MULTIPLEX_CHANNELS } from '@/lib/domain/node.ts';
 import { compressionLevelLabelMapping, mappingToSelectData, transferArchiveFormatLabelMapping } from '@/lib/enums.ts';
-import { ObjectSet } from '@/lib/objectSet.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminNodeSchema } from '@/lib/schemas/admin/nodes.ts';
-import { adminServerSchema } from '@/lib/schemas/admin/servers.ts';
-import { transferArchiveFormat } from '@/lib/schemas/generic.ts';
+import { serverSelectorSchema, transferArchiveFormat } from '@/lib/schemas/generic.ts';
 import { compressionLevel as compressionLevelEnum } from '@/lib/schemas/server/files.ts';
 import { useSearchableResource } from '@/plugins/resource/useSearchableResource.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
@@ -26,12 +24,14 @@ import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
 export default function ServersTransferModal({
   contextNode,
-  servers,
+  selector,
+  count,
   clearSelected,
   ...props
 }: ModalProps & {
   contextNode: z.infer<typeof adminNodeSchema>;
-  servers: ObjectSet<z.infer<typeof adminServerSchema>, 'uuid'>;
+  selector: z.infer<typeof serverSelectorSchema>;
+  count: number;
   clearSelected: () => void;
 }) {
   const { t, tItem } = useTranslations();
@@ -59,7 +59,7 @@ export default function ServersTransferModal({
 
   const doTransfer = async () => {
     await postTransfers(contextNode.uuid, {
-      servers: { type: 'uuids', uuids: servers.keys() },
+      servers: selector,
       nodeUuid: selectedNodeUuid!,
       allocationMode,
       transferBackups,
@@ -94,7 +94,7 @@ export default function ServersTransferModal({
         onConfirmed={doTransfer}
       >
         {t('pages.admin.nodes.tabs.servers.page.modal.transfer.confirm.content', {
-          count: servers.size,
+          count,
           from: contextNode.name,
           to: nodes.items.find((n) => n.uuid === selectedNodeUuid)?.name ?? '',
         }).md()}

@@ -6,13 +6,13 @@ import { parseFromApi } from '@/lib/serialization/api-transform.ts';
 export default async (
   eggRepositoryUuid: string,
   eggRepositoryEggUuid: string,
-  nestUuid: string,
-): Promise<z.infer<typeof adminEggSchema>> => {
+  nestUuid: string | null,
+): Promise<{ egg: z.infer<typeof adminEggSchema>; created: boolean }> => {
   const { data } = await axiosInstance.post(
     `/api/admin/egg-repositories/${eggRepositoryUuid}/eggs/${eggRepositoryEggUuid}/install`,
     {
       nest_uuid: nestUuid,
     },
   );
-  return parseFromApi(adminEggSchema, data.egg);
+  return { egg: parseFromApi(adminEggSchema, data.egg), created: data.created };
 };

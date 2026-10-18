@@ -1,15 +1,15 @@
 import { Ref, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
-import getNodeServers from '@/api/admin/nodes/servers/getNodeServers.ts';
 import correctNodeBandwidth from '@/api/admin/nodes/servers/correctNodeBandwidth.ts';
+import getNodeServers from '@/api/admin/nodes/servers/getNodeServers.ts';
 import sendNodeServersPowerAction from '@/api/admin/nodes/servers/sendNodeServersPowerAction.ts';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import Button from '@/elements/buttons/Button.tsx';
-import NumberInput from '@/elements/input/NumberInput.tsx';
 import { AdminCan } from '@/elements/Can.tsx';
 import AdminSubContentContainer from '@/elements/containers/AdminSubContentContainer.tsx';
 import Table, { tableSelectionHeader } from '@/elements/data-display/Table.tsx';
 import SelectionArea from '@/elements/dnd/SelectionArea.tsx';
+import NumberInput from '@/elements/input/NumberInput.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
@@ -48,6 +48,7 @@ export default function AdminNodeServers({ node }: { node: AdminNode }) {
   const [bandwidthDelta, setBandwidthDelta] = useState<number | string>(0);
   const [bandwidthWorking, setBandwidthWorking] = useState(false);
   const pendingBandwidthCorrection = useRef<{ delta: number; id: string } | null>(null);
+  const [transferScope, setTransferScope] = useState<'bulk' | 'all' | null>(null);
   const [confirmPowerAction, setConfirmPowerAction] = useState<{ action: PowerAction; scope: 'bulk' | 'all' } | null>(
     null,
   );
@@ -155,7 +156,10 @@ export default function AdminNodeServers({ node }: { node: AdminNode }) {
       }
       const results = await correctNodeBandwidth(node.uuid, pendingBandwidthCorrection.current.id, bandwidthDelta);
       const failed = results.filter((result) => !result.applied);
-      addToast(`${results.length - failed.length} bandwidth corrections applied, ${failed.length} failed`, failed.length ? 'warning' : 'success');
+      addToast(
+        `${results.length - failed.length} bandwidth corrections applied, ${failed.length} failed`,
+        failed.length ? 'warning' : 'success',
+      );
       if (failed.length === 0) {
         pendingBandwidthCorrection.current = null;
         setOpenModal(null);
@@ -202,10 +206,11 @@ export default function AdminNodeServers({ node }: { node: AdminNode }) {
       <AdminCan action='nodes.transfers'>
         <ServersTransferModal
           contextNode={node}
-          servers={selectedServers}
+          selector={transferScope === 'all' ? { type: 'all' } : { type: 'uuids', uuids: selectedServers.keys() }}
+          count={transferScope === 'all' ? (nodeServers?.total ?? 0) : selectedServers.size}
           clearSelected={clearSelectedServers}
-          opened={openModal === 'transfer'}
-          onClose={() => setOpenModal(null)}
+          opened={transferScope !== null}
+          onClose={() => setTransferScope(null)}
         />
       </AdminCan>
 
@@ -231,7 +236,13 @@ export default function AdminNodeServers({ node }: { node: AdminNode }) {
         confirm='Apply correction'
         onConfirmed={() => void applyBulkBandwidthCorrection()}
       >
-        <NumberInput label='Signed bytes per service' value={bandwidthDelta} onChange={setBandwidthDelta} allowDecimal={false} disabled={bandwidthWorking} />
+        <NumberInput
+          label='Signed bytes per service'
+          value={bandwidthDelta}
+          onChange={setBandwidthDelta}
+          allowDecimal={false}
+          disabled={bandwidthWorking}
+        />
       </ConfirmationModal>
 
       <AdminSubContentContainer
@@ -244,7 +255,11 @@ export default function AdminNodeServers({ node }: { node: AdminNode }) {
         contentRight={
           <Group gap='sm'>
             <AdminCan action='servers.update'>
-              <Button color='gray' onClick={() => setOpenModal('bandwidth')} disabled={!nodeServers?.total || bandwidthWorking}>
+              <Button
+                color='gray'
+                onClick={() => setOpenModal('bandwidth')}
+                disabled={!nodeServers?.total || bandwidthWorking}
+              >
                 Correct bandwidth ({nodeServers?.total ?? 0})
               </Button>
             </AdminCan>
@@ -257,7 +272,7 @@ export default function AdminNodeServers({ node }: { node: AdminNode }) {
             <AdminCan action='nodes.transfers'>
               <Button
                 color='gray'
-                onClick={() => setOpenModal('transfer')}
+                onClick={() => setTransferScope('all')}
                 disabled={allActionLoading !== null || nodeServers?.total === 0}
               >
                 {t('common.button.transfer', {})} ({nodeServers?.total})
@@ -290,7 +305,7 @@ export default function AdminNodeServers({ node }: { node: AdminNode }) {
         selectedCount={selectedServers.size}
         onClear={clearSelectedServers}
         onPowerAction={(action) => setConfirmPowerAction({ action, scope: 'bulk' })}
-        onTransfer={() => setOpenModal('transfer')}
+        onTransfer={() => setTransferScope('bulk')}
         loading={bulkActionLoading}
       />
     </>

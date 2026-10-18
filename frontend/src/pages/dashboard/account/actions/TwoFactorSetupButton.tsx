@@ -1,4 +1,4 @@
-import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
+import { faDownload, faExclamationTriangle } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useModalsStack } from '@mantine/core';
 import { useForm } from '@mantine/form';
@@ -22,6 +22,7 @@ import { Modal, ModalFooter } from '@/elements/modals/Modal.tsx';
 import Code from '@/elements/typography/Code.tsx';
 import Text from '@/elements/typography/Text.tsx';
 import { withTwoFactorMethod } from '@/lib/auth/twoFactor.ts';
+import { downloadTextFile } from '@/lib/download/download.ts';
 import { dashboardTwoFactorEnableSchema } from '@/lib/schemas/dashboard.ts';
 import { liveValidation } from '@/plugins/form/liveValidation.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
@@ -200,6 +201,12 @@ export default function TwoFactorSetupButton() {
             </CopyOnClick>
 
             <ModalFooter>
+              <Button
+                leftSection={<FontAwesomeIcon icon={faDownload} />}
+                onClick={() => downloadTextFile(recoveryCodes.join('\n'), 'recovery-codes.txt')}
+              >
+                {t('common.button.download', {})}
+              </Button>
               <Button
                 variant='default'
                 onClick={() => {

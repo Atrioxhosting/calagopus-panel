@@ -87,6 +87,8 @@ pub struct Status {
     pub finished_at: Option<String>,
     pub exit_code: Option<i32>,
     pub failure_reason: Option<String>,
+    #[serde(default)]
+    pub failed_extensions: Vec<String>,
     pub log_len: u64,
 }
 

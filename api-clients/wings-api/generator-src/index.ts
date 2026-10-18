@@ -50,16 +50,20 @@ const compatBodyProperties: Record<string, Record<string, 'client' | 'extra'>> =
     'post /api/servers/{server}/files/compress': { ignored: 'client' },
     'post /api/servers/{server}/files/copy': { ignored: 'client' },
     'post /api/servers/{server}/files/copy-many': { ignored: 'client' },
-    'post /api/servers/{server}/files/copy-remote': { ignored: 'client', destination_ignored: 'client' },
+    'post /api/servers/{server}/files/copy-remote': { ignored: 'client', destination_ignored: 'client', overwrite: 'extra' },
     'post /api/servers/{server}/files/create-directory': { ignored: 'client' },
     'post /api/servers/{server}/files/create-symlink': { ignored: 'client' },
     'post /api/servers/{server}/files/decompress': { ignored: 'client' },
     'post /api/servers/{server}/files/delete': { ignored: 'client' },
+    'post /api/servers/{server}/files/ignore-matches': { ignored: 'client' },
     'post /api/servers/{server}/files/pull': { ignored: 'client' },
     'put /api/servers/{server}/files/rename': { ignored: 'client', create_directories: 'extra' },
     'post /api/servers/{server}/files/search': { match_context: 'extra' },
     'post /api/servers/{server}/files/sqlite-query': { ignored: 'client' },
     'post /api/servers/{server}/files/stat': { ignored: 'client' },
+    'post /api/servers/{server}/files/trash': { ignored: 'client' },
+    'post /api/servers/{server}/files/trash/restore': { ignored: 'client' },
+    'post /api/servers/{server}/files/trash/purge': { ignored: 'client' },
     'post /api/servers/{server}/reinstall': { start_on_completion: 'extra' },
 }
 
@@ -71,6 +75,7 @@ const serdeDefaultProperties: Record<string, string[]> = {
 /** The same, for properties of a route's inline response bodies. */
 const serdeDefaultResponseProperties: Record<string, string[]> = {
     'get /api/servers/{server}/files/list': ['uploads'],
+    'post /api/servers/{server}/files/copy-remote': ['skipped'],
 }
 
 const openapi: oas31.OpenAPIObject = JSON.parse(fs.readFileSync('../openapi.json', 'utf-8'))

@@ -7,12 +7,20 @@ const copyFileSchema = z.object({ from: z.string(), to: z.string() });
 
 export default async (
   uuid: string,
-  copyData: z.infer<typeof serverFilesCopyRemoteManySchema> & { root: string; files: z.infer<typeof copyFileSchema>[] },
+  copyData: z.infer<typeof serverFilesCopyRemoteManySchema> & {
+    root: string;
+    files: z.infer<typeof copyFileSchema>[];
+    overwrite: boolean;
+  },
 ): Promise<z.infer<typeof serverFilesCopyRemoteManyResultSchema>[]> => {
   const { data } = await axiosInstance.post(
     `/api/client/servers/${uuid}/files/copy-remote-many`,
     serializeForApi(
-      serverFilesCopyRemoteManySchema.extend({ root: z.string(), files: z.array(copyFileSchema) }),
+      serverFilesCopyRemoteManySchema.extend({
+        root: z.string(),
+        files: z.array(copyFileSchema),
+        overwrite: z.boolean(),
+      }),
       copyData,
     ),
   );

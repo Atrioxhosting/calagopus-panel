@@ -915,7 +915,7 @@ dependencies = [
 
 [[package]]
 name = "backend"
-version = "1.2.5+atriox.1"
+version = "1.2.6+atriox.1"
 dependencies = [
  "aes 0.9.3",
  "anyhow",
@@ -2065,7 +2065,7 @@ checksum = "4583a4551df46e2792f82ceeac45e850d2e2d5debba0b91f102385cda5b11f06"
 
 [[package]]
 name = "database-migrator"
-version = "1.2.5+atriox.1"
+version = "1.2.6+atriox.1"
 dependencies = [
  "chrono",
  "clap",
@@ -2084,7 +2084,7 @@ dependencies = [
 
 [[package]]
 name = "db-agent-api"
-version = "1.2.5+atriox.1"
+version = "1.2.6+atriox.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2508,7 +2508,7 @@ checksum = "e079f19b08ca6239f47f8ba8509c11cf3ea30095831f7fed61441475edd8c449"
 
 [[package]]
 name = "embedded-assets"
-version = "1.2.5+atriox.1"
+version = "1.2.6+atriox.1"
 dependencies = [
  "database-migrator",
  "flate2",
@@ -2625,7 +2625,7 @@ dependencies = [
 
 [[package]]
 name = "extension-internal-list"
-version = "1.2.5+atriox.1"
+version = "1.2.6+atriox.1"
 dependencies = [
  "semver",
  "shared",
@@ -4018,7 +4018,7 @@ dependencies = [
 
 [[package]]
 name = "heavy-supervisor"
-version = "1.2.5+atriox.1"
+version = "1.2.6+atriox.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -4217,7 +4217,7 @@ dependencies = [
 
 [[package]]
 name = "http-client"
-version = "1.2.5+atriox.1"
+version = "1.2.6+atriox.1"
 dependencies = [
  "reqwest",
 ]
@@ -5815,7 +5815,7 @@ dependencies = [
 
 [[package]]
 name = "panel-rs"
-version = "1.2.5+atriox.1"
+version = "1.2.6+atriox.1"
 dependencies = [
  "axum",
  "backend",
@@ -5833,7 +5833,7 @@ dependencies = [
 
 [[package]]
 name = "panel-rs-aio"
-version = "1.2.5+atriox.1"
+version = "1.2.6+atriox.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -6711,7 +6711,7 @@ dependencies = [
 
 [[package]]
 name = "rule-validator"
-version = "1.2.5+atriox.1"
+version = "1.2.6+atriox.1"
 dependencies = [
  "chrono",
  "chrono-tz",
@@ -7613,7 +7613,7 @@ dependencies = [
 
 [[package]]
 name = "shared"
-version = "1.2.5+atriox.1"
+version = "1.2.6+atriox.1"
 dependencies = [
  "accept-header",
  "anyhow",
@@ -9625,7 +9625,7 @@ checksum = "d6bbff5f0aada427a1e5a6da5f1f98158182f26556f345ac9e04d36d0ebed650"
 
 [[package]]
 name = "wings-api"
-version = "1.2.5+atriox.1"
+version = "1.2.6+atriox.1"
 dependencies = [
  "anyhow",
  "chrono",

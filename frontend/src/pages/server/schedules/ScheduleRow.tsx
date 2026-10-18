@@ -121,6 +121,7 @@ const ScheduleRow = forwardRef<HTMLTableRowElement, ScheduleRowProps>(function S
                 color: 'gray',
               },
             ],
+            disabled: !schedule.enabled,
             canAccess: useServerCan('schedules.update'),
           },
           {

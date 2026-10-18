@@ -94,6 +94,31 @@ impl BaseModel for ServerSubuser {
 }
 
 impl ServerSubuser {
+    async fn invalidate_wings_permissions(&self, database: &Arc<crate::database::Database>) {
+        let node = async {
+            self.server
+                .fetch_cached(database)
+                .await?
+                .node
+                .fetch_cached(database)
+                .await
+        }
+        .await;
+
+        match node {
+            Ok(node) => node.invalidate_permissions(
+                database,
+                super::node::PermissionsInvalidation {
+                    users: vec![self.user.uuid],
+                    ..Default::default()
+                },
+            ),
+            Err(err) => {
+                tracing::error!(server = %self.server.uuid, "failed to invalidate permissions in wings: {:?}", err);
+            }
+        }
+    }
+
     fn permissions_cache_key(
         server_uuid: uuid::Uuid,
         user_uuid: uuid::Uuid,
@@ -308,6 +333,8 @@ impl CreatableModel for ServerSubuser {
 
         super::invalidate_cache_keys(&state.database, &result.cache_invalidation_keys()).await;
 
+        result.invalidate_wings_permissions(&state.database).await;
+
         Ok(result)
     }
 
@@ -450,6 +477,30 @@ impl UpdatableModel for ServerSubuser {
         &UPDATE_LISTENERS
     }
 
+    async fn update(
+        &mut self,
+        state: &crate::State,
+        options: Self::UpdateOptions,
+    ) -> Result<(), crate::database::DatabaseError> {
+        let mut transaction = state.database.write().begin().await?;
+
+        if let Err(err) = self
+            .update_with_transaction(state, options, &mut transaction)
+            .await
+        {
+            transaction.rollback().await?;
+            return Err(err);
+        }
+
+        transaction.commit().await?;
+
+        super::invalidate_cache_keys(&state.database, &self.cache_invalidation_keys()).await;
+
+        self.invalidate_wings_permissions(&state.database).await;
+
+        Ok(())
+    }
+
     async fn update_with_transaction(
         &mut self,
         state: &crate::State,
@@ -493,6 +544,30 @@ impl DeletableModel for ServerSubuser {
             LazyLock::new(|| Arc::new(ModelHandlerList::default()));
 
         &DELETE_LISTENERS
+    }
+
+    async fn delete(
+        &self,
+        state: &crate::State,
+        options: Self::DeleteOptions,
+    ) -> Result<(), anyhow::Error> {
+        let mut transaction = state.database.write().begin().await?;
+
+        if let Err(err) = self
+            .delete_with_transaction(state, options, &mut transaction)
+            .await
+        {
+            transaction.rollback().await?;
+            return Err(err);
+        }
+
+        transaction.commit().await?;
+
+        super::invalidate_cache_keys(&state.database, &self.cache_invalidation_keys()).await;
+
+        self.invalidate_wings_permissions(&state.database).await;
+
+        Ok(())
     }
 
     async fn delete_with_transaction(

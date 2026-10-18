@@ -267,7 +267,7 @@ mod patch {
                     let count = servers.data.len();
                     for server in servers.data {
                         let server_uuid = server.uuid;
-                        if let Err(err) = server.sync(&state.database).await {
+                        if let Err(err) = server.sync(&state).await {
                             tracing::error!(%node_uuid, %server_uuid, ?err, "failed bandwidth configuration sync");
                         }
                     }

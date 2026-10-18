@@ -13,6 +13,7 @@ import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import EggRepositoryEggDrawer from './drawers/EggRepositoryEggDrawer.tsx';
 import EggActionBar from './EggActionBar.tsx';
 import EggRepositoryEggRow from './EggRepositoryEggRow.tsx';
+import EggRepositoryEggInstallModal from './modals/EggRepositoryEggInstallModal.tsx';
 
 export default function EggRepositoryEggs({
   contextEggRepository,
@@ -21,6 +22,7 @@ export default function EggRepositoryEggs({
 }) {
   const { t } = useTranslations();
   const [drawerEgg, setDrawerEgg] = useState<z.infer<typeof adminEggRepositoryEggSchema> | null>(null);
+  const [installEgg, setInstallEgg] = useState<z.infer<typeof adminEggRepositoryEggSchema> | null>(null);
 
   const {
     data: eggRepositoryEggs,
@@ -56,6 +58,13 @@ export default function EggRepositoryEggs({
         onClose={() => setDrawerEgg(null)}
       />
 
+      <EggRepositoryEggInstallModal
+        eggRepository={contextEggRepository}
+        eggs={installEgg ? [installEgg] : []}
+        opened={installEgg !== null}
+        onClose={() => setInstallEgg(null)}
+      />
+
       <SelectionArea {...selectionAreaProps} disabled={drawerEgg !== null}>
         <Table
           columns={[
@@ -81,6 +90,7 @@ export default function EggRepositoryEggs({
                   isSelected={selected.has(eggRepositoryEgg.uuid)}
                   onSelectionChange={(isSelected) => (isSelected ? add(eggRepositoryEgg) : remove(eggRepositoryEgg))}
                   onOpen={() => setDrawerEgg(eggRepositoryEgg)}
+                  onInstall={() => setInstallEgg(eggRepositoryEgg)}
                 />
               )}
             </SelectionArea.Selectable>

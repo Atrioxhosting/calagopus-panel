@@ -15,12 +15,14 @@ import Stack from '@/elements/layout/Stack.tsx';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import { useGlobalStore } from '@/stores/global.ts';
 import { AccountCardProps } from './DashboardAccount.tsx';
 
 export default function AvatarContainer({ requireTwoFactorActivation }: AccountCardProps) {
   const { t } = useTranslations();
   const { addToast } = useToast();
   const { user, setUser } = useAuth();
+  const allowChangingAvatar = useGlobalStore((state) => state.settings.user.allowChangingAvatar);
   const [file, setFile] = useState<File | null>(null);
   const editor = useRef<AvatarEditorRef>(null);
 
@@ -51,6 +53,8 @@ export default function AvatarContainer({ requireTwoFactorActivation }: AccountC
 
     editor.current?.getImageScaledToCanvas().toBlob((blob) => blob && updateMutation.mutate(blob), 'image/webp', 0.9);
   };
+
+  if (!allowChangingAvatar) return null;
 
   return (
     <TitleCard

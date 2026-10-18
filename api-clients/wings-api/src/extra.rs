@@ -502,6 +502,9 @@ pub enum ScheduleActionInner {
         #[garde(skip)]
         #[serde(default)]
         ignore_failure: bool,
+        #[garde(skip)]
+        #[serde(default)]
+        trash: bool,
 
         #[garde(dive)]
         root: ScheduleDynamicParameter,

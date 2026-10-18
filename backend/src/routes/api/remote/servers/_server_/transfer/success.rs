@@ -215,7 +215,7 @@ mod post {
         // the source node's multiplier. Recompute its quota from the committed
         // destination node before the transfer lock is released.
         let transferred = Server::by_uuid(&state.database, server.uuid).await?;
-        if let Err(err) = transferred.sync(&state.database).await {
+        if let Err(err) = transferred.sync(&state).await {
             tracing::error!(server = %server.uuid, error = ?err, "failed to sync destination quota after bandwidth handoff");
         }
 

@@ -336,6 +336,8 @@
           "matches": "{count} Treffer",
           "noMatches": "Keine Treffer",
           "exception": "Ausnahme",
+          "invalid": "Ungültiges Muster",
+          "unavailable": "Zählung nicht verfügbar",
           "tooManyPatterns": "Bei mehr als {max} Mustern werden Treffer nicht automatisch gezählt.",
           "unanchoredException": "`{pattern}` trifft in jeder Tiefe zu, verwende `{anchored}`, um nur im Hauptverzeichnis zu treffen."
         },
@@ -349,6 +351,21 @@
             "weekday": "Wochentag"
           },
           "nextRun": "Nächste Ausführung ist {timestamp}."
+        },
+        "trashRetention": {
+          "days": "Tage"
+        },
+        "trashSettings": {
+          "custom": "Eigene Papierkorb-Einstellungen für diesen Server verwenden",
+          "default": "Panel-Standard: {summary}",
+          "summary": {
+            "disabled": "Deaktiviert",
+            "withThreshold": "{retention}, geleert bei {threshold}% Speichernutzung"
+          },
+          "retention": "Aufbewahrung",
+          "retentionDescription": "Wie lange gelöschte Dateien im Papierkorb bleiben. 0 deaktiviert den Papierkorb.",
+          "usageThreshold": "Leeren bei Speichernutzung",
+          "usageThresholdDescription": "Die ältesten Papierkorb-Einträge entfernen, sobald die Speichernutzung diesen Prozentsatz des Limits erreicht. 0 leert den Papierkorb nur, wenn ein Schreibvorgang das Limit überschreiten würde."
         },
         "backupRetention": {
           "title": "Aufbewahrung",
@@ -401,7 +418,8 @@
       },
       "toast": {
         "duplicated": "{resource} dupliziert.",
-        "failedBackupDeletionStarted": "{count} fehlgeschlagene Backups werden im Hintergrund gelöscht."
+        "failedBackupDeletionStarted": "{count} fehlgeschlagene Backups werden im Hintergrund gelöscht.",
+        "requestBlockedByExtension": "Diese Anfrage wurde von einer Erweiterung blockiert."
       },
       "settingScope": {
         "account": "Mit Konto synchronisieren",
@@ -488,6 +506,7 @@
         "mount": "Mount",
         "device": "Gerät",
         "nest": "Nest",
+        "nestCreateHint": "Keins gefunden? Erstelle ein neues Nest",
         "lines": "Zeilen",
         "databaseHost": "Datenbank-Host",
         "databaseAgentHost": "Datenbank-Agent-Host",
@@ -625,6 +644,7 @@
         "successful": "Erfolgreich",
         "failed": "Fehlgeschlagen",
         "installed": "Installiert",
+        "updateAvailable": "Update verfügbar",
         "systemBackup": "System"
       },
       "label": {
@@ -1223,15 +1243,18 @@
           "repositories": {
             "pterodactylGame": {
               "title": "Pterodactyl Game Eggs",
-              "description": "Eggs für Spiele wie Minecraft, Terraria und viele mehr."
+              "description": "Eggs für Spiele wie Minecraft, Terraria und viele mehr.",
+              "nest": "Spiele"
             },
             "pterodactylApplication": {
               "title": "Pterodactyl Application Eggs",
-              "description": "Eggs für Anwendungen wie Grafana, Meilisearch und verschiedene Datenbanken."
+              "description": "Eggs für Anwendungen wie Grafana, Meilisearch und verschiedene Datenbanken.",
+              "nest": "Anwendungen"
             },
             "pterodactylGeneral": {
               "title": "Pterodactyl Generic Eggs",
-              "description": "Eggs für generische Laufzeitumgebungen wie Node JS, Java und Rust."
+              "description": "Eggs für generische Laufzeitumgebungen wie Node JS, Java und Rust.",
+              "nest": "Allgemein"
             }
           }
         },
@@ -2211,6 +2234,13 @@
                   "passwordLoginEnabled": "Passwort-Anmeldung aktivieren",
                   "passwordLoginEnabledDescription": "Erlaube Benutzern, sich mit Benutzername und Passwort anzumelden. Wenn du dies deaktivierst, bleiben nur OAuth-Anbieter und Sicherheitsschlüssel als Zugang, und die lokale Registrierung, das Zurücksetzen von Passwörtern sowie die SFTP-Anmeldung mit Passwort werden ebenfalls gestoppt."
                 },
+                "section": {
+                  "general": "Allgemein",
+                  "branding": "Branding",
+                  "authentication": "Authentifizierung",
+                  "sessions": "Sitzungen",
+                  "telemetry": "Telemetrie"
+                },
                 "enum": {
                   "twoFactorMethod": {
                     "totp": "Authenticator-App (TOTP)",
@@ -2502,8 +2532,22 @@
                   "allowAcknowledgingInstallationFailureDescription": "Wenn aktiviert, können Benutzer Installationsfehler für Server bestätigen, die sich im Zustand „Install Failed“ befinden, und versuchen, den Server zu starten, anstatt auf einen Admin warten zu müssen. Wenn deaktiviert, können nur Admins Installationsfehler bestätigen.",
                   "allowViewingTransferProgress": "Anzeigen des Übertragungsfortschritts erlauben",
                   "allowViewingTransferProgressDescription": "Wenn aktiviert, können Benutzer mit Lesezugriff auf die Konsole auch Übertragungsfortschritts-Protokolle über die WebSocket-Verbindung sehen. Wenn deaktiviert, sind Übertragungsfortschritts-Protokolle nur für Admins verfügbar.",
+                  "trashRetention": "Papierkorb-Aufbewahrung",
+                  "trashRetentionDescription": "Wie lange gelöschte Dateien im Papierkorb eines Servers bleiben, bevor sie endgültig entfernt werden. 0 deaktiviert den Papierkorb. Dateien im Papierkorb zählen zum Speicherlimit des Servers. Jeder Server kann stattdessen eigene Papierkorb-Einstellungen verwenden.",
+                  "trashUsageThreshold": "Papierkorb leeren bei Speichernutzung",
+                  "trashUsageThresholdDescription": "Die ältesten Papierkorb-Einträge entfernen, sobald ein Server diesen Prozentsatz seines Speicherlimits erreicht. 0 leert den Papierkorb nur, wenn ein Schreibvorgang das Limit überschreiten würde.",
+                  "allowChangingTrashSettings": "Ändern der Papierkorb-Einstellungen erlauben",
+                  "allowChangingTrashSettingsDescription": "Wenn aktiviert, können Benutzer eigene Papierkorb-Einstellungen für ihre Server festlegen. Wenn deaktiviert, können nur Admins sie ändern. Bereits für einen Server festgelegte eigene Einstellungen bleiben bestehen.",
                   "containerPrelude": "Container-Präludium",
                   "containerPreludeDescription": "Das Terminal-Präludium, das für einige statusbezogene Nachrichten in der Server-Konsole verwendet wird."
+                },
+                "section": {
+                  "fileManager": "Dateimanager",
+                  "limits": "Limits",
+                  "networking": "Netzwerk",
+                  "databaseInstances": "Datenbankinstanzen",
+                  "lifecycle": "Konsole & Lebenszyklus",
+                  "trash": "Papierkorb"
                 },
                 "toast": {
                   "updated": "Server-Einstellungen aktualisiert."
@@ -2523,7 +2567,13 @@
                   "maxSettingsCount": "Max. synchronisierte Einstellungen",
                   "maxSettingsValueBytes": "Max. Größe synchronisierter Einstellungen (Bytes)",
                   "allowChangingLanguage": "Sprache ändern erlauben",
-                  "allowChangingLanguageDescription": "Wenn aktiviert, können Benutzer ihre Spracheinstellungen ändern."
+                  "allowChangingLanguageDescription": "Wenn aktiviert, können Benutzer ihre Spracheinstellungen ändern.",
+                  "allowChangingAvatar": "Avatar ändern erlauben",
+                  "allowChangingAvatarDescription": "Wenn aktiviert, können Benutzer ihren Avatar hochladen und entfernen."
+                },
+                "section": {
+                  "limits": "Limits",
+                  "permissions": "Berechtigungen"
                 },
                 "routeOrder": {
                   "title": "Client-Routenreihenfolge"
@@ -2679,7 +2729,8 @@
             },
             "buildFailed": {
               "title": "Der letzte Erweiterungs-Build ist fehlgeschlagen",
-              "content": "Diese Erweiterungen werden erst wieder erstellt, wenn sie sich ändern oder du den Build ausdrücklich erneut startest."
+              "content": "Diese Erweiterungen werden erst wieder erstellt, wenn sie sich ändern oder du den Build ausdrücklich erneut startest.",
+              "failedExtensions": "Der Build ist in {extensions} fehlgeschlagen. Aktualisiere oder entferne sie und starte den Build dann erneut."
             },
             "pendingRestart": {
               "title": "Einige Erweiterungen wurden aktiviert oder deaktiviert",
@@ -2729,9 +2780,11 @@
             "frontendMissing": "Frontend fehlt",
             "backendMissing": "Backend fehlt",
             "pendingBuild": "Build ausstehend",
+            "buildFailed": "Build fehlgeschlagen",
             "pendingRemoval": "Entfernung ausstehend",
             "pendingRestart": "Neustart ausstehend",
-            "disabled": "Deaktiviert"
+            "disabled": "Deaktiviert",
+            "processing": "Wird verarbeitet"
           },
           "card": {
             "version": "Version",
@@ -3628,6 +3681,7 @@
                   "unlimited": "Unendlich",
                   "autoKillSeconds": "{seconds}s",
                   "autoKillDisabled": "Deaktiviert",
+                  "trash": "Papierkorb",
                   "labels": "Labels",
                   "uuid": "UUID"
                 },
@@ -3658,12 +3712,20 @@
                 "badge": {
                   "serverSuspended": "Server suspendiert"
                 },
+                "empty": {
+                  "noEggs": {
+                    "title": "Noch keine Eggs installiert",
+                    "description": "Server werden aus Eggs erstellt. Installiere eins aus einem Egg-Repository, es wird direkt für diesen Server ausgewählt.",
+                    "button": "Aus Repository installieren"
+                  }
+                },
                 "form": {
                   "serverNamePlaceholder": "Mein Spieleserver",
                   "externalIdPlaceholder": "Optionaler externer Bezeichner",
                   "descriptionPlaceholder": "Serverbeschreibung",
                   "owner": "Besitzer",
                   "ownerCreateHint": "Nicht gefunden? Erstelle einen neuen Benutzer",
+                  "eggInstallHint": "Nicht gefunden? Installiere eins aus einem Repository",
                   "egg": "Egg",
                   "backupConfigurationPlaceholder": "Von Node/Standort erben",
                   "cpuLimit": "CPU-Limit (%)",
@@ -3838,6 +3900,12 @@
               "title": "Verwaltung",
               "page": {
                 "title": "Server-Verwaltung",
+                "trash": {
+                  "title": "Papierkorb",
+                  "toast": {
+                    "updated": "Papierkorb-Einstellungen des Servers aktualisiert."
+                  }
+                },
                 "transfer": {
                   "title": "Transfer",
                   "content": "Übertrage diesen Server und seine Daten auf eine andere Node innerhalb dieses Systems.",
@@ -4269,6 +4337,48 @@
             }
           }
         },
+        "eggLibrary": {
+          "title": "Egg-Bibliothek",
+          "tabs": {
+            "installed": {
+              "title": "Installiert",
+              "page": {
+                "title": "Installierte Eggs",
+                "empty": {
+                  "title": "Noch keine Eggs installiert",
+                  "description": "Eggs aus Repositories oder manuell importierte Eggs erscheinen hier. Durchsuche die verfügbaren Eggs, um dein erstes zu installieren.",
+                  "button": "Verfügbare Eggs durchsuchen"
+                },
+                "toast": {
+                  "updated": "{egg} wurde aus dem Repository aktualisiert."
+                }
+              }
+            },
+            "available": {
+              "title": "Verfügbar",
+              "page": {
+                "title": "Verfügbare Eggs",
+                "empty": {
+                  "title": "Keine Eggs verfügbar",
+                  "description": "Füge ein Egg-Repository hinzu, es wird automatisch synchronisiert und die installierbaren Eggs erscheinen hier.",
+                  "button": "Zu den Egg-Repositories"
+                }
+              }
+            }
+          },
+          "card": {
+            "repository": "Repository",
+            "author": "Autor",
+            "installedIn": "Installiert in"
+          },
+          "badge": {
+            "manual": "Manuell"
+          },
+          "button": {
+            "open": "Öffnen",
+            "readme": "README"
+          }
+        },
         "eggRepositories": {
           "title": "Egg-Repositories",
           "resourceName": "Egg Repository",
@@ -4288,7 +4398,11 @@
                   "credentialType": "Art der Zugangsdaten",
                   "password": "Passwort oder Zugriffstoken",
                   "privateKey": "Privater Schlüssel",
-                  "passphrase": "Passphrase"
+                  "passphrase": "Passphrase",
+                  "defaultNest": "Standard-Nest",
+                  "defaultNestDescription": "Eggs aus diesem Repository werden in dieses Nest installiert, sofern kein anderes gewählt wird.",
+                  "autoSync": "Automatische Synchronisation",
+                  "autoSyncDescription": "Synchronisiert dieses Repository einmal täglich, damit neue und aktualisierte Eggs ohne manuelles Sync erscheinen."
                 },
                 "enum": {
                   "credentialType": {
@@ -4316,16 +4430,29 @@
                 "title": "Egg Repository Eggs",
                 "table": {
                   "columns": {
-                    "path": "Pfad"
+                    "path": "Pfad",
+                    "repository": "Repository",
+                    "installedIn": "Installiert in"
                   }
                 },
                 "toast": {
-                  "installed": "{eggs} installiert."
+                  "installed": "{eggs} installiert.",
+                  "alreadyInstalled": "Dieses Egg war bereits in {nest} installiert, das vorhandene Egg wurde verwendet."
                 },
                 "modal": {
                   "install": {
                     "title": "{eggs} installieren",
                     "button": "{eggs} installieren"
+                  },
+                  "catalog": {
+                    "title": "Egg aus Repository installieren",
+                    "searchPlaceholder": "Eggs in allen Repositories durchsuchen...",
+                    "selected": "Ausgewählt: **{egg}**",
+                    "moreResults": "{shown} von {total} Eggs angezeigt, tippe weiter, um die Auswahl einzugrenzen.",
+                    "installingInto": "Das Egg wird in **{nest}** installiert.",
+                    "noEggs": "Noch keine Eggs verfügbar. Füge unter Egg-Repositories ein Repository hinzu, es wird automatisch synchronisiert.",
+                    "button": "Installieren",
+                    "buttonSelect": "Installieren & auswählen"
                   }
                 },
                 "drawer": {
@@ -5469,14 +5596,6 @@
             "restricted": "Berechtigung für Dateiinhalte erforderlich"
           },
           "tree": {
-            "closeOtherTabs": "Andere schließen",
-            "closeTabsToRight": "Rechts davon schließen",
-            "closeSavedTabs": "Gespeicherte schließen",
-            "closeAllTabs": "Alle schließen",
-            "revealInTree": "Im Dateibaum anzeigen",
-            "revealNotFound": "{path} konnte im Dateibaum nicht gefunden werden.",
-            "selectPane": "Editorbereich auswählen",
-            "editorPane": "Editorbereich {number}",
             "empty": "Dieser Ordner ist leer",
             "loadMore": "Mehr laden",
             "retry": "Erneut versuchen",
@@ -5494,9 +5613,17 @@
             "noEditorAvailable": "Für diesen Dateityp ist kein Editor verfügbar.",
             "editorTabsLabel": "Geöffnete Dateien",
             "closeEditorTab": "{name} schließen",
+            "closeOtherTabs": "Andere schließen",
+            "closeTabsToRight": "Rechts davon schließen",
+            "closeSavedTabs": "Gespeicherte schließen",
+            "closeAllTabs": "Alle schließen",
+            "revealInTree": "Im Dateibaum anzeigen",
+            "revealNotFound": "{path} konnte im Dateibaum nicht gefunden werden.",
             "unsavedTab": "{name} hat ungespeicherte Änderungen",
             "dropToSplit": "Hier ablegen, um in einem neuen Editorbereich zu öffnen",
-            "resizeEditorPanes": "Größe der Editorbereiche ändern"
+            "resizeEditorPanes": "Größe der Editorbereiche ändern",
+            "selectPane": "Editorbereich auswählen",
+            "editorPane": "Editorbereich {number}"
           },
           "titleEditorViewing": "Betrachte {file}",
           "titleEditorPlaying": "Spiele {file} ab",
@@ -5528,6 +5655,12 @@
             "extract": "Entpacken",
             "archive": "Archivieren",
             "more": "Mehr",
+            "moveToTrash": "In den Papierkorb verschieben",
+            "deletePermanently": "Endgültig löschen",
+            "trash": "Papierkorb",
+            "emptyTrash": "Papierkorb leeren",
+            "backToFiles": "Zurück zu den Dateien",
+            "restoreTo": "Wiederherstellen nach...",
             "remoteCopy": "Remote-Kopie",
             "search": "Suchen",
             "exitBackup": "Backup verlassen",
@@ -5574,6 +5707,8 @@
             "permissionsSelection": "Berechtigungen ändern",
             "fingerprintSelection": "Dateifingerabdruck anzeigen",
             "deleteSelection": "Auswahl löschen",
+            "trashSelection": "Auswahl in den Papierkorb verschieben",
+            "openTrash": "Papierkorb öffnen",
             "saveFile": "Datei speichern",
             "createFile": "Datei erstellen"
           },
@@ -5648,6 +5783,10 @@
             "moveCouldNotBeUndone": "Verschieben konnte nicht rückgängig gemacht werden.",
             "downloadStarted": "Download gestartet.",
             "filesDeleted": "Dateien wurden gelöscht.",
+            "filesTrashed": "{files} in den Papierkorb verschoben.",
+            "filesTrashedPartiallyDeleted": "{files} in den Papierkorb verschoben, {deleted} endgültig gelöscht.",
+            "trashUndone": "{files} aus dem Papierkorb wiederhergestellt.",
+            "trashCouldNotBeUndone": "Dateien konnten nicht aus dem Papierkorb wiederhergestellt werden.",
             "archiveCreationStarted": "Archiverstellung hat begonnen.",
             "decompressionStarted": "Das Entpacken des Archivs hat begonnen.",
             "fileCopyingStarted": "Dateikopiervorgang hat begonnen.",
@@ -5658,6 +5797,7 @@
             "fileRenamed": "Datei wurde umbenannt.",
             "fileCouldNotBeRenamed": "Datei konnte nicht umbenannt werden.",
             "closeDestinationBeforeRename": "Schließe den Editor-Tab der Zieldatei, bevor du sie umbenennst.",
+            "closeDestinationBeforeCreate": "Schließe den Editor-Tab der Zieldatei, bevor du diese Datei erstellst.",
             "closeTabsBeforeBulkRename": "Schließe die betroffenen Editor-Tabs, bevor du überlappende Pfade umbenennst.",
             "filesRenamed": "{files} umbenannt.",
             "renameUndone": "Umbenennung rückgängig gemacht.",
@@ -5668,7 +5808,6 @@
             "permissionsRestored": "Berechtigungen wiederhergestellt.",
             "permissionsCouldNotBeRestored": "Berechtigungen konnten nicht wiederhergestellt werden.",
             "fileSaved": "Datei wurde gespeichert.",
-            "closeDestinationBeforeCreate": "Schließe den Editor-Tab der Zieldatei, bevor du diese Datei erstellst.",
             "collabSaveTimeout": "Die Datei konnte nicht gespeichert werden, der Daemon hat nicht rechtzeitig geantwortet.",
             "fileTooLargeToOpen": "Diese Datei ist zu groß, um sie im Dateimanager zu öffnen."
           },
@@ -5706,6 +5845,53 @@
                 "original": "Revision",
                 "current": "Aktuell"
               }
+            }
+          },
+          "trash": {
+            "title": "Papierkorb",
+            "subtitle": "Gelöschte Dateien werden {retention} lang aufbewahrt, bevor sie endgültig entfernt werden.",
+            "subtitleDisabled": "Der Papierkorb ist für diesen Server deaktiviert. Vorhandene Einträge bleiben erhalten, bis sie wiederhergestellt oder gelöscht werden.",
+            "table": {
+              "columns": {
+                "originalLocation": "Ursprünglicher Ort",
+                "deletedAt": "Gelöscht"
+              }
+            },
+            "empty": {
+              "title": "Der Papierkorb ist leer",
+              "description": "Gelöschte Dateien landen hier und können wiederhergestellt werden, bis sie ablaufen."
+            },
+            "modal": {
+              "deleteEntries": {
+                "title": "Endgültig löschen",
+                "content": "Bist du sicher, dass du {entries} endgültig aus dem Papierkorb löschen möchtest? Dies kann nicht rückgängig gemacht werden."
+              },
+              "deleteEntry": {
+                "title": "Endgültig löschen",
+                "content": "Bist du sicher, dass du **{name}** endgültig aus dem Papierkorb löschen möchtest? Dies kann nicht rückgängig gemacht werden."
+              },
+              "emptyTrash": {
+                "title": "Papierkorb leeren",
+                "content": "Bist du sicher, dass du alles im Papierkorb endgültig löschen möchtest? Dies kann nicht rückgängig gemacht werden."
+              },
+              "restoreTo": {
+                "title": "In Verzeichnis wiederherstellen",
+                "destination": "Zielverzeichnis",
+                "restoredAs": "Diese Datei wird wiederhergestellt als "
+              },
+              "restoreConflict": {
+                "title": "Wiederherstellungskonflikte auflösen",
+                "description": "An der Stelle, an der die folgenden {files} wiederhergestellt würden, existiert bereits etwas.",
+                "confirm": "{files} wiederherstellen"
+              }
+            },
+            "toast": {
+              "restored": "{entries} wiederhergestellt.",
+              "nothingRestored": "Nichts konnte wiederhergestellt werden.",
+              "restoreUndone": "{files} zurück in den Papierkorb verschoben.",
+              "restoreCouldNotBeUndone": "Die Wiederherstellung konnte nicht rückgängig gemacht werden.",
+              "deleted": "{entries} endgültig gelöscht.",
+              "emptied": "Der Papierkorb wurde geleert."
             }
           },
           "modal": {
@@ -5787,8 +5973,12 @@
             },
             "deleteFile": {
               "title": "Datei löschen",
-              "singleFileWarning": "Du wirst den Inhalt von {file} nach dem Löschen nicht mehr wiederherstellen können.",
-              "multipleFilesWarning": "Du wirst den Inhalt der folgenden Dateien nach dem Löschen nicht mehr wiederherstellen können."
+              "singleFileWarning": "Du wirst den Inhalt von **{file}** nach dem Löschen nicht mehr wiederherstellen können.",
+              "multipleFilesWarning": "Du wirst den Inhalt der folgenden Dateien nach dem Löschen nicht mehr wiederherstellen können.",
+              "trashTitle": "In den Papierkorb verschieben",
+              "singleFileTrash": "**{file}** wird in den Papierkorb verschoben und kann {retention} lang wiederhergestellt werden.",
+              "multipleFilesTrash": "Die folgenden Dateien werden in den Papierkorb verschoben und können {retention} lang wiederhergestellt werden.",
+              "permanent": "Endgültig löschen, statt in den Papierkorb zu verschieben"
             },
             "createFile": {
               "title": "Datei erstellen"
@@ -7023,13 +7213,17 @@
               "title": "Dateien löschen",
               "description": "Löscht Dateien oder Ordner.",
               "form": {
-                "filesToDelete": "Zu löschende Dateien"
+                "filesToDelete": "Zu löschende Dateien",
+                "trash": "In den Papierkorb verschieben",
+                "trashDescription": "Die Dateien in den Papierkorb verschieben, statt sie endgültig zu löschen. Der Papierkorb muss für diesen Server aktiviert sein."
               },
               "renderer": {
                 "compact": "Lösche {files}",
+                "compactTrash": "{files} in den Papierkorb verschieben",
                 "detail": {
                   "root": "Root: {root}",
-                  "files": "Dateien: {files}"
+                  "files": "Dateien: {files}",
+                  "trash": "In den Papierkorb verschieben: {value}"
                 }
               }
             },
@@ -7698,6 +7892,12 @@
             },
             "toast": {
               "updated": "Server Auto-Kill aktualisiert."
+            }
+          },
+          "trash": {
+            "title": "Papierkorb",
+            "toast": {
+              "updated": "Papierkorb-Einstellungen des Servers aktualisiert."
             }
           },
           "autostart": {

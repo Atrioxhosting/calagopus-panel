@@ -51,7 +51,7 @@ mod post {
 
         permissions.has_admin_permission("eggs.update")?;
 
-        match egg.import_update(&state.database, data).await {
+        match egg.import_update(&state.database, data, false).await {
             Ok(_) => {}
             Err(err) if err.is_unique_violation() => {
                 return ApiResponse::error("egg with name already exists")

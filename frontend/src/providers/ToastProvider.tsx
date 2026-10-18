@@ -2,6 +2,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import classNames from 'classnames';
 import { AnimatePresence, LazyMotion, m } from 'motion/react';
 import { FC, MouseEvent as ReactMouseEvent, ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { ToastDismissEvent, ToastDismissReason, ToastShowData, ToastShowEvent, ToastUpdateEvent } from 'shared';
 import { z } from 'zod';
 import ActionIcon from '@/elements/buttons/ActionIcon.tsx';
 import Notification from '@/elements/feedback/Notification.tsx';
@@ -109,73 +110,119 @@ const getToastPositionInitial = (position: z.infer<typeof userToastPosition>) =>
 const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [toastPosition] = useToastPosition();
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastsRef = useRef<Toast[]>([]);
   const toastId = useRef(1);
+
+  const setToastList = useCallback((update: (prev: Toast[]) => Toast[]) => {
+    const next = update(toastsRef.current);
+    if (next === toastsRef.current) return;
+
+    toastsRef.current = next;
+    setToasts(next);
+  }, []);
+
+  const dismissToastWithReason = useCallback(
+    (id: number, reason: ToastDismissReason) => {
+      const toast = toastsRef.current.find((t) => t.id === id);
+      if (!toast) return;
+
+      const event = window.extensionContext.extensionRegistry.events.toast.dismissHandlers.emit(
+        new ToastDismissEvent(id, Object.freeze({ ...toast }), reason),
+      );
+      if (event.cancelled) return;
+
+      setToastList((prev) => prev.filter((t) => t.id !== id));
+    },
+    [setToastList],
+  );
+
+  const showToast = useCallback(
+    (kind: ToastShowEvent['kind'], data: ToastShowData) => {
+      const id = toastId.current++;
+
+      const event = window.extensionContext.extensionRegistry.events.toast.showHandlers.emit(
+        new ToastShowEvent(id, kind, data),
+      );
+      if (event.cancelled) return { id, shown: false };
+
+      setToastList((prev) => [...prev, { ...event.data, id }]);
+
+      return { id, shown: true };
+    },
+    [setToastList],
+  );
 
   const addToast = useCallback(
     (message: ReactNode, typeOrActions?: ToastType | ToastAction[], maybeActions?: ToastAction[]) => {
       const type = Array.isArray(typeOrActions) ? 'success' : (typeOrActions ?? 'success');
       const actions = Array.isArray(typeOrActions) ? typeOrActions : maybeActions;
 
-      const id = toastId.current++;
-      setToasts((prev) => [...prev, { id, message, type, actions, withCloseButton: true }]);
+      const { id, shown } = showToast('toast', { message, type, actions, withCloseButton: true });
 
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, toastTimeout);
+      if (shown) {
+        setTimeout(() => dismissToastWithReason(id, 'timeout'), toastTimeout);
+      }
 
       return id;
     },
-    [],
+    [showToast, dismissToastWithReason],
   );
 
-  const addProgressToast = useCallback((message: ReactNode, options?: ProgressToastOptions) => {
-    const id = toastId.current++;
-    setToasts((prev) => [
-      ...prev,
-      {
-        id,
+  const addProgressToast = useCallback(
+    (message: ReactNode, options?: ProgressToastOptions) =>
+      showToast('progress', {
         message,
         type: options?.type ?? 'info',
         actions: options?.actions,
         progress: options?.progress ?? null,
         withCloseButton: options?.withCloseButton ?? false,
         onClose: options?.onClose,
-      },
-    ]);
+      }).id,
+    [showToast],
+  );
 
-    return id;
-  }, []);
+  const updateToast = useCallback(
+    (id: number, update: ToastUpdate) => {
+      const current = toastsRef.current.find((t) => t.id === id);
+      if (!current) return;
 
-  const updateToast = useCallback((id: number, update: ToastUpdate) => {
-    setToasts((prev) => {
-      const index = prev.findIndex((t) => t.id === id);
-      if (index === -1) return prev;
+      const event = window.extensionContext.extensionRegistry.events.toast.updateHandlers.emit(
+        new ToastUpdateEvent(id, Object.freeze({ ...current }), { ...update }),
+      );
+      if (event.cancelled) return;
 
-      const toast = prev[index];
-      const message = update.message === undefined ? toast.message : update.message;
-      const type = update.type ?? toast.type;
-      const actions = update.actions ?? toast.actions;
-      const progress = update.progress === undefined ? toast.progress : update.progress;
+      setToastList((prev) => {
+        const index = prev.findIndex((t) => t.id === id);
+        if (index === -1) return prev;
 
-      if (
-        message === toast.message &&
-        type === toast.type &&
-        actions === toast.actions &&
-        progress === toast.progress
-      ) {
-        return prev;
-      }
+        const toast = prev[index];
+        const message = event.data.message === undefined ? toast.message : event.data.message;
+        const type = event.data.type ?? toast.type;
+        const actions = event.data.actions ?? toast.actions;
+        const progress = event.data.progress === undefined ? toast.progress : event.data.progress;
 
-      const next = [...prev];
-      next[index] = { ...toast, message, type, actions, progress };
+        if (
+          message === toast.message &&
+          type === toast.type &&
+          actions === toast.actions &&
+          progress === toast.progress
+        ) {
+          return prev;
+        }
 
-      return next;
-    });
-  }, []);
+        const next = [...prev];
+        next[index] = { ...toast, message, type, actions, progress };
 
-  const dismissToast = useCallback((id: number) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+        return next;
+      });
+    },
+    [setToastList],
+  );
+
+  const dismissToast = useCallback(
+    (id: number) => dismissToastWithReason(id, 'programmatic'),
+    [dismissToastWithReason],
+  );
 
   const contextValue = useMemo(
     () => ({
@@ -210,7 +257,7 @@ const ToastProvider: FC<{ children: ReactNode }> = ({ children }) => {
                     <Notification
                       color={getToastColor(toast.type)}
                       withCloseButton={toast.withCloseButton}
-                      onClose={() => (toast.onClose ? toast.onClose() : dismissToast(toast.id))}
+                      onClose={() => (toast.onClose ? toast.onClose() : dismissToastWithReason(toast.id, 'close'))}
                       styles={
                         !hasProgress && toast.actions?.length
                           ? { description: { paddingInlineEnd: toast.actions.length * 30 } }

@@ -263,6 +263,7 @@ mod patch {
                     "image": server.image,
                     "labels": server.labels,
                     "timezone": server.timezone,
+                    "trash": server.trash,
 
                     "hugepages_passthrough_enabled": server.hugepages_passthrough_enabled,
                     "kvm_passthrough_enabled": server.kvm_passthrough_enabled,
@@ -277,7 +278,7 @@ mod patch {
         }
 
         tokio::spawn(async move {
-            if let Err(err) = server.0.sync(&state.database).await {
+            if let Err(err) = server.0.sync(&state).await {
                 tracing::error!("failed to sync server on node: {:?}", err);
             }
         });

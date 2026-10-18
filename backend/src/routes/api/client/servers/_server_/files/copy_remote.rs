@@ -31,14 +31,19 @@ mod post {
 
         #[serde(default)]
         foreground: bool,
+        #[serde(default)]
+        overwrite: bool,
     }
 
     #[derive(ToSchema, Serialize)]
-    struct Response {}
+    struct Response {
+        skipped: Vec<wings_api::DirectoryEntry>,
+    }
 
     #[derive(ToSchema, Serialize)]
     struct ResponseAccepted {
         identifier: uuid::Uuid,
+        skipped: Vec<wings_api::DirectoryEntry>,
     }
 
     #[utoipa::path(post, path = "/", responses(
@@ -155,6 +160,10 @@ mod post {
 
         let url = destination_node.url("/api/transfers/files");
 
+        let extra = wings_api::servers_server_files_copy_remote::post::Extra {
+            overwrite: data.overwrite,
+            ..Default::default()
+        };
         let request_body = wings_api::servers_server_files_copy_remote::post::RequestBody {
             url: if server.node.uuid == destination_node.uuid {
                 "".to_compact_string()
@@ -176,7 +185,7 @@ mod post {
         };
 
         tokio::spawn(async move {
-            let response = match server
+            let (identifier, skipped) = match server
                 .0
                 .node
                 .fetch_cached(&state.database)
@@ -185,18 +194,14 @@ mod post {
                 .await?
                 .ignoring(server.0.subuser_ignored_files.unwrap_or_default())
                 .ignoring_destination(destination_server.subuser_ignored_files.unwrap_or_default())
-                .post_servers_server_files_copy_remote(server.0.uuid, &request_body)
+                .post_servers_server_files_copy_remote_with(server.0.uuid, &request_body, &extra)
                 .await
             {
-                Ok(wings_api::servers_server_files_copy_remote::post::Response::Ok(_)) => {
-                    ApiResponse::new_serialized(Response {}).ok()
+                Ok(wings_api::servers_server_files_copy_remote::post::Response::Ok(data)) => {
+                    (None, data.skipped)
                 }
                 Ok(wings_api::servers_server_files_copy_remote::post::Response::Accepted(data)) => {
-                    ApiResponse::new_serialized(ResponseAccepted {
-                        identifier: data.identifier,
-                    })
-                    .with_status(StatusCode::ACCEPTED)
-                    .ok()
+                    (Some(data.identifier), data.skipped)
                 }
                 Err(wings_api::client::ApiHttpError::Http(StatusCode::NOT_FOUND, err)) => {
                     return ApiResponse::new_serialized(ApiError::new_wings_value(err))
@@ -211,12 +216,21 @@ mod post {
                 Err(err) => return Err(err.into()),
             };
 
+            let copied_files = request_body
+                .files
+                .iter()
+                .filter(|file| !skipped.iter().any(|entry| entry.name == file.to))
+                .collect::<Vec<_>>();
+            if copied_files.is_empty() {
+                return ApiResponse::new_serialized(Response { skipped }).ok();
+            }
+
             activity_logger
                 .log(
                     "server:file.copy-remote",
                     serde_json::json!({
                         "directory": request_body.root,
-                        "files": request_body.files.iter().collect::<Vec<_>>(),
+                        "files": copied_files,
 
                         "destination_server": destination_server.uuid,
                         "destination_path": request_body.destination_path,
@@ -230,7 +244,7 @@ mod post {
                     "server:file.copy-remote",
                     serde_json::json!({
                         "directory": request_body.root,
-                        "files": request_body.files.iter().collect::<Vec<_>>(),
+                        "files": copied_files,
 
                         "source_server": server.0.uuid,
                         "destination_path": request_body.destination_path,
@@ -238,7 +252,15 @@ mod post {
                 )
                 .await;
 
-            response
+            match identifier {
+                Some(identifier) => ApiResponse::new_serialized(ResponseAccepted {
+                    identifier,
+                    skipped,
+                })
+                .with_status(StatusCode::ACCEPTED)
+                .ok(),
+                None => ApiResponse::new_serialized(Response { skipped }).ok(),
+            }
         })
         .await?
     }

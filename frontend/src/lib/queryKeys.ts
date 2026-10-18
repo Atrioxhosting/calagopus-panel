@@ -65,6 +65,8 @@ const admin = {
 
   eggs: {
     all: () => ['admin', 'eggs'] as const,
+    list: (nestUuid?: string | null) =>
+      nestUuid ? (['admin', 'eggs', 'list', nestUuid] as const) : (['admin', 'eggs', 'list'] as const),
     grouped: () => ['admin', 'eggs', 'grouped'] as const,
     detail: (uuid: string) => ['admin', 'eggs', { uuid }] as const,
     servers: (eggUuid: string) => ['admin', 'eggs', eggUuid, 'servers'] as const,
@@ -286,10 +288,11 @@ const server = (serverUuid: string) => ({
     fileLines: (path: string, startLine: number, endLine: number, modified: string, size: number) =>
       ['server', serverUuid, 'files', 'lines', path, { startLine, endLine, modified, size }] as const,
     fileRevisions: (path: string) => ['server', serverUuid, 'files', 'revisions', path] as const,
-    ignoreMatches: (pattern: string) => ['server', serverUuid, 'files', 'ignore-matches', pattern] as const,
+    ignoreMatches: (patterns: string[]) => ['server', serverUuid, 'files', 'ignore-matches', patterns] as const,
     pathSuggestions: (directory: string) => ['server', serverUuid, 'files', 'path-suggestions', directory] as const,
     pathStat: (directory: string, names: string[]) =>
       ['server', serverUuid, 'files', 'path-stat', directory, names] as const,
+    trash: () => ['server', serverUuid, 'files', 'trash'] as const,
   },
   firewall: {
     all: () => ['server', serverUuid, 'firewall'] as const,

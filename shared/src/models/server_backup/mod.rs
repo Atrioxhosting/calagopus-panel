@@ -1268,6 +1268,7 @@ impl ServerBackup {
         state: &crate::State,
         request_host: Option<&str>,
         user: &super::user::User,
+        credential: Option<uuid::Uuid>,
         node: &super::node::Node,
         archive_format: wings_api::StreamableArchiveFormat,
     ) -> Result<String, anyhow::Error> {
@@ -1331,6 +1332,7 @@ impl ServerBackup {
             server_uuid: Option<uuid::Uuid>,
             unique_id: uuid::Uuid,
             database: bool,
+            credential: Option<uuid::Uuid>,
         }
 
         let token = node
@@ -1341,17 +1343,18 @@ impl ServerBackup {
                     base: BasePayload {
                         scope: "backup-download".into(),
                         issuer: "panel".into(),
-                        subject: None,
+                        subject: Some(user.uuid.to_compact_string()),
                         audience: Vec::new(),
                         expiration_time: Some(chrono::Utc::now().timestamp() + 900),
                         not_before: None,
                         issued_at: Some(chrono::Utc::now().timestamp()),
-                        jwt_id: user.uuid.to_compact_string(),
+                        jwt_id: uuid::Uuid::new_v4().to_compact_string(),
                     },
                     backup_uuid: self.uuid,
                     server_uuid: self.server.as_ref().map(|server| server.uuid),
                     unique_id: uuid::Uuid::new_v4(),
                     database: self.kind == ServerBackupKind::DatabaseInstance,
+                    credential,
                 },
             )
             .await?;

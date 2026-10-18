@@ -617,7 +617,7 @@ impl DisabledFeatures {
         )
         .await?
         {
-            server.batch_sync(&state.database).await;
+            server.batch_sync(state).await;
         }
 
         Ok(())

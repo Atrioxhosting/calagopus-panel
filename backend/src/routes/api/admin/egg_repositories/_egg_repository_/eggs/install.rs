@@ -21,7 +21,8 @@ mod post {
     pub struct Payload {
         egg_uuids: HashSet<uuid::Uuid>,
 
-        nest_uuid: uuid::Uuid,
+        /// Falls back to the egg repository's default nest when omitted.
+        nest_uuid: Option<uuid::Uuid>,
     }
 
     #[derive(ToSchema, Serialize)]
@@ -31,6 +32,7 @@ mod post {
 
     #[utoipa::path(post, path = "/", responses(
         (status = OK, body = inline(Response)),
+        (status = BAD_REQUEST, body = ApiError),
         (status = NOT_FOUND, body = ApiError),
     ), params(
         (
@@ -48,7 +50,21 @@ mod post {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("eggs.create")?;
 
-        let nest = match Nest::by_uuid_optional(&state.database, data.nest_uuid).await? {
+        let nest_uuid = match data
+            .nest_uuid
+            .or(egg_repository.default_nest.as_ref().map(|nest| nest.uuid))
+        {
+            Some(nest_uuid) => nest_uuid,
+            None => {
+                return ApiResponse::error(
+                    "no nest specified and the egg repository has no default nest",
+                )
+                .with_status(StatusCode::BAD_REQUEST)
+                .ok();
+            }
+        };
+
+        let nest = match Nest::by_uuid_optional(&state.database, nest_uuid).await? {
             Some(nest) => nest,
             None => {
                 return ApiResponse::error("nest not found")
@@ -76,8 +92,8 @@ mod post {
             let egg = NestEgg::import(
                 &state,
                 nest.uuid,
-                Some(egg_repository_egg.uuid),
-                egg_repository_egg.exported_egg,
+                Some(&egg_repository_egg),
+                egg_repository_egg.exported_egg.clone(),
             )
             .await?;
 

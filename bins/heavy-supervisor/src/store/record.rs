@@ -36,6 +36,8 @@ pub struct BuildRecord {
     pub finished_at: Option<String>,
     pub exit_code: Option<i32>,
     pub failure_reason: Option<String>,
+    #[serde(default)]
+    pub failed_extensions: Vec<String>,
 }
 
 pub fn extensions_satisfied(intended: &[ExtensionRef], compiled_in: &[ExtensionRef]) -> bool {

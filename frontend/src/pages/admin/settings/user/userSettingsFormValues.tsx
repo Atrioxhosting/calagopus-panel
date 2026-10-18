@@ -14,6 +14,7 @@ export const userSettingsEmptyFormValues: UserSettingsFormValues = {
   maxSettingsCount: 0,
   maxSettingsValueBytes: 0,
   allowChangingLanguage: true,
+  allowChangingAvatar: true,
   routeOrder: null,
 };
 
@@ -25,6 +26,11 @@ export function useUserSettingsFormFields(): FieldDef<UserSettingsFormValues>[] 
   const { t } = useTranslations();
 
   return [
+    {
+      type: 'divider',
+      name: 'limitsDivider',
+      label: t('pages.admin.settings.tabs.user.page.section.limits', {}),
+    },
     {
       type: 'number',
       name: 'maxServerGroupCount',
@@ -68,10 +74,21 @@ export function useUserSettingsFormFields(): FieldDef<UserSettingsFormValues>[] 
       required: true,
     },
     {
+      type: 'divider',
+      name: 'permissionsDivider',
+      label: t('pages.admin.settings.tabs.user.page.section.permissions', {}),
+    },
+    {
       type: 'switch',
       name: 'allowChangingLanguage',
       label: t('pages.admin.settings.tabs.user.page.form.allowChangingLanguage', {}),
       description: t('pages.admin.settings.tabs.user.page.form.allowChangingLanguageDescription', {}),
+    },
+    {
+      type: 'switch',
+      name: 'allowChangingAvatar',
+      label: t('pages.admin.settings.tabs.user.page.form.allowChangingAvatar', {}),
+      description: t('pages.admin.settings.tabs.user.page.form.allowChangingAvatarDescription', {}),
     },
   ];
 }

@@ -73,6 +73,8 @@ function FileEditorComponent() {
   const canCreate = useServerCan('files.create');
   const canUpdate = useServerCan('files.update');
   const canReadContent = useServerCan('files.read-content');
+  const compressed = searchParams.get('compressed') === 'true';
+  const writable = browsingWritableDirectory && !compressed;
 
   const [loading, setLoading] = useState(params.action !== 'new');
   const [dirty, setDirty] = useState(false);
@@ -117,10 +119,16 @@ function FileEditorComponent() {
   useFileDraftPersistence(server.uuid, currentDraftPath, dirty);
 
   const collab = useFileCollab({
-    enabled: params.action === 'edit' && !!fileName && !!browsingDirectory && browsingPrimaryFilesystem && !loading,
+    enabled:
+      params.action === 'edit' &&
+      !!fileName &&
+      !!browsingDirectory &&
+      browsingPrimaryFilesystem &&
+      !compressed &&
+      !loading,
     engine: editorEngine === 'pierre' ? 'pierre' : 'monaco',
     filePath: fileName && browsingDirectory ? join(browsingDirectory, fileName) : '',
-    restoreContent: canUpdate && browsingWritableDirectory ? handoffContent : undefined,
+    restoreContent: canUpdate && writable ? handoffContent : undefined,
     onRestoreContent: () => setHandoffContent(undefined),
     onActivated: (dirty) => {
       collabActiveRef.current = true;
@@ -380,7 +388,7 @@ function FileEditorComponent() {
   };
 
   const saveFile = (name?: string) => {
-    if ((!hasEditor() && !matchedFileEditorAction) || !browsingWritableDirectory || saving) return;
+    if ((!hasEditor() && !matchedFileEditorAction) || !writable || saving) return;
 
     if (!name && collabActiveRef.current) {
       if (collab.save()) {
@@ -451,7 +459,7 @@ function FileEditorComponent() {
   useFileEditorQuickActions({
     action: params.action,
     fileName,
-    writable: browsingWritableDirectory,
+    writable,
     primary: browsingPrimaryFilesystem,
     saving,
     dirty,
@@ -489,9 +497,10 @@ function FileEditorComponent() {
     dirty &&
     params.action === 'edit' &&
     !!fileName &&
-    browsingWritableDirectory &&
+    writable &&
     !collab.conflict?.deleted;
-  const showHistoryAction = canReadContent && params.action === 'edit' && !!fileName && browsingPrimaryFilesystem;
+  const showHistoryAction =
+    canReadContent && params.action === 'edit' && !!fileName && browsingPrimaryFilesystem && !compressed;
 
   return (
     <ServerContentContainer
@@ -649,7 +658,7 @@ function FileEditorComponent() {
               blobContent={blobContent}
               setBlobContent={setBlobContent}
               fileName={fileName}
-              readOnly={!browsingWritableDirectory || !(collab.active ? canUpdate : canCreate)}
+              readOnly={!writable || !(collab.active ? canUpdate : canCreate)}
               context={editorContext}
               handleContentChange={handleContentChange}
               handlePierreChangeEvent={collab.handlePierreChangeEvent}

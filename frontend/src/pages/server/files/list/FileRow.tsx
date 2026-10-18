@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import { join } from 'pathe';
 import { forwardRef, memo, useMemo, useRef } from 'react';
-import { FileOpenMode } from 'shared/src/registries/pages/server/files.ts';
+import { FileOpenMode } from 'shared/src/registries/pages/server/files/index.ts';
 import { z } from 'zod';
 import { TableData, TableRow } from '@/elements/data-display/Table.tsx';
 import Checkbox from '@/elements/input/Checkbox.tsx';

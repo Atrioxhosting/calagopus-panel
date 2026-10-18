@@ -1,7 +1,20 @@
+import { ClipboardCancelledError, ClipboardPasteEvent } from 'shared';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { getTranslations } from '@/providers/TranslationProvider.tsx';
 
 export function pasteFromClipboard(): Promise<string> {
+  return readClipboard().then((text) => {
+    const handlers = window.extensionContext.extensionRegistry.events.clipboard.pasteHandlers;
+    if (!handlers.handlers.length) return text;
+
+    const event = handlers.emit(new ClipboardPasteEvent(text));
+    if (event.cancelled) throw new ClipboardCancelledError();
+
+    return event.data;
+  });
+}
+
+function readClipboard(): Promise<string> {
   if (!window.isSecureContext) {
     const textArea = document.createElement('textarea');
     textArea.style.position = 'fixed';
@@ -38,6 +51,8 @@ export function handleRawPasteFromClipboard(
       addToast?.(getTranslations().t('elements.pasteOnClick.toast.pasted', {}), 'success');
     })
     .catch((err) => {
+      if (err instanceof ClipboardCancelledError) return;
+
       console.error(err);
       addToast?.(getTranslations().t('elements.pasteOnClick.toast.failed', {}), 'error');
     });

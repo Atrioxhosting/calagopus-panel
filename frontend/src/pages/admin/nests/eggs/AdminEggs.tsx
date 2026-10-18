@@ -1,4 +1,4 @@
-import { faChevronDown, faLink, faPlus, faUpload } from '@fortawesome/free-solid-svg-icons';
+import { faChevronDown, faDownload, faLink, faPlus, faUpload } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { ChangeEvent, Ref, useRef, useState } from 'react';
 import { Route, Routes, useNavigate } from 'react-router';
@@ -17,6 +17,7 @@ import { parseStructuredDocument } from '@/lib/parseStructuredDocument.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminNestSchema } from '@/lib/schemas/admin/nests.ts';
 import { eggTableColumns } from '@/lib/tableColumns.ts';
+import EggRepositoryCatalogModal from '@/pages/admin/egg-repositories/eggs/modals/EggRepositoryCatalogModal.tsx';
 import EggView from '@/pages/admin/nests/eggs/EggView.tsx';
 import { useImportDragAndDrop } from '@/plugins/import/useImportDragAndDrop.ts';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
@@ -36,9 +37,11 @@ function EggsContainer({ contextNest }: { contextNest: z.infer<typeof adminNestS
   const { t } = useTranslations();
 
   const canCreate = useAdminCan('eggs.create');
+  const canReadEggRepositories = useAdminCan('egg-repositories.read');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [importUrlOpen, setImportUrlOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   const {
     data: eggs,
@@ -129,6 +132,14 @@ function EggsContainer({ contextNest }: { contextNest: z.infer<typeof adminNestS
                 onClick: () => setImportUrlOpen(true),
                 color: 'gray',
               },
+              {
+                type: 'action',
+                icon: faDownload,
+                label: t('pages.admin.nests.tabs.eggs.page.button.fromRepository', {}),
+                onClick: () => setCatalogOpen(true),
+                disabled: !canReadEggRepositories,
+                color: 'gray',
+              },
             ]}
           >
             {({ openMenu }) => (
@@ -168,6 +179,13 @@ function EggsContainer({ contextNest }: { contextNest: z.infer<typeof adminNestS
         opened={importUrlOpen}
         onClose={() => setImportUrlOpen(false)}
         onImported={refetch}
+      />
+
+      <EggRepositoryCatalogModal
+        nest={contextNest}
+        opened={catalogOpen}
+        onClose={() => setCatalogOpen(false)}
+        onInstalled={refetch}
       />
 
       <EggActionBar

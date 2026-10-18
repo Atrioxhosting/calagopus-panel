@@ -159,7 +159,7 @@ impl shared::extensions::commands::CliCommand<MassImportArgs> for MassImportComm
                             };
 
                             nest_egg
-                                .import_update(&state.database, exported_egg)
+                                .import_update(&state.database, exported_egg, false)
                                 .await?;
 
                             eprintln!(

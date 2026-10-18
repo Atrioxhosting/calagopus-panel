@@ -22,6 +22,7 @@ mod put {
     #[utoipa::path(put, path = "/", responses(
         (status = OK, body = inline(Response)),
         (status = NOT_FOUND, body = ApiError),
+        (status = FORBIDDEN, body = ApiError),
     ), request_body = String)]
     pub async fn route(
         state: GetState,
@@ -31,6 +32,12 @@ mod put {
         image: Bytes,
     ) -> ApiResponseResult {
         permissions.has_user_permission("account.avatar")?;
+
+        if !state.settings.get().await?.user.allow_changing_avatar {
+            return ApiResponse::error("changing avatar is not allowed")
+                .with_status(StatusCode::FORBIDDEN)
+                .ok();
+        }
 
         if user.frozen {
             return ApiResponse::error("account is frozen")
@@ -76,6 +83,7 @@ mod delete {
     #[utoipa::path(delete, path = "/", responses(
         (status = OK, body = inline(Response)),
         (status = NOT_FOUND, body = ApiError),
+        (status = FORBIDDEN, body = ApiError),
     ))]
     pub async fn route(
         state: GetState,
@@ -84,6 +92,12 @@ mod delete {
         activity_logger: GetUserActivityLogger,
     ) -> ApiResponseResult {
         permissions.has_user_permission("account.avatar")?;
+
+        if !state.settings.get().await?.user.allow_changing_avatar {
+            return ApiResponse::error("changing avatar is not allowed")
+                .with_status(StatusCode::FORBIDDEN)
+                .ok();
+        }
 
         tokio::spawn(async move {
             let avatar = match &user.avatar {

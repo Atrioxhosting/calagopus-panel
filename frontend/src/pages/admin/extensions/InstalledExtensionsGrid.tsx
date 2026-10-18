@@ -16,11 +16,13 @@ import ExtensionGrid from './ExtensionGrid.tsx';
 export default function InstalledExtensionsGrid({
   adminExtensions,
   extensionStatus,
+  failedExtensions,
   onRemove,
   onToggle,
 }: {
   adminExtensions: AdminExtensionList | undefined;
   extensionStatus: ExtensionStatus | undefined;
+  failedExtensions: string[];
   onRemove: (extension: AdminBackendExtension) => void;
   onToggle: (packageName: string, enabled: boolean) => void;
 }) {
@@ -66,6 +68,7 @@ export default function InstalledExtensionsGrid({
             isRemoved={isRemoved(extension.packageName)}
             isDisabled={backendExtension ? adminExtensions.disabled.includes(extension.packageName) : false}
             isPendingDisabled={adminExtensions.pendingDisabled.includes(extension.packageName)}
+            isBuildFailed={failedExtensions.includes(extension.packageName)}
             onRemove={extensionStatus && backendExtension ? () => onRemove(backendExtension) : undefined}
             onToggle={backendExtension ? (enabled) => onToggle(extension.packageName, enabled) : undefined}
           />
@@ -78,6 +81,7 @@ export default function InstalledExtensionsGrid({
           isRemoved={isRemoved(backendExtension.metadataToml.packageName)}
           isDisabled={adminExtensions.disabled.includes(backendExtension.metadataToml.packageName)}
           isPendingDisabled={adminExtensions.pendingDisabled.includes(backendExtension.metadataToml.packageName)}
+          isBuildFailed={failedExtensions.includes(backendExtension.metadataToml.packageName)}
           onRemove={extensionStatus ? () => onRemove(backendExtension) : undefined}
           onToggle={(enabled) => onToggle(backendExtension.metadataToml.packageName, enabled)}
         />

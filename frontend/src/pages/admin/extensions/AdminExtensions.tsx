@@ -9,6 +9,7 @@ import ConditionalTooltip from '@/elements/overlays/ConditionalTooltip.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import ExtensionInstallOverlay from './ExtensionInstallOverlay.tsx';
 import ExtensionStatusAlerts from './ExtensionStatusAlerts.tsx';
+import ExtensionUploadsCard from './ExtensionUploadsCard.tsx';
 import InstalledExtensionsGrid from './InstalledExtensionsGrid.tsx';
 import BuildLogsModal from './modals/BuildLogsModal.tsx';
 import LicenseModal from './modals/LicenseModal.tsx';
@@ -72,14 +73,18 @@ export default function AdminExtensions() {
         supervisor={ext.supervisor}
         buildFailed={ext.buildFailed}
         failureReason={ext.failureReason}
+        failedExtensions={ext.failedExtensions}
         pendingRestart={ext.pendingRestart}
         isBuilding={ext.isBuilding}
         onRestart={ext.handleRestart}
       />
 
+      <ExtensionUploadsCard uploads={ext.uploads} onCancel={ext.handleCancelUpload} />
+
       <InstalledExtensionsGrid
         adminExtensions={ext.adminExtensions}
         extensionStatus={ext.extensionStatus}
+        failedExtensions={ext.failedExtensions}
         onRemove={ext.setRemovalExtension}
         onToggle={ext.handleToggle}
       />
@@ -90,6 +95,7 @@ export default function AdminExtensions() {
           phase={ext.phase}
           isBuilding={ext.isBuilding}
           buildFailed={ext.buildFailed}
+          failedExtensions={ext.failedExtensions}
           cancellingBuild={ext.cancellingBuild}
           onCancelBuild={ext.handleCancelBuild}
           onRebuild={ext.handleRebuild}

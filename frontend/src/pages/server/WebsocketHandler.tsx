@@ -93,7 +93,7 @@ export default function WebsocketHandler() {
           return;
         }
 
-        const socket = new Websocket();
+        const socket = new Websocket(uuid);
 
         socket.on('auth success', () => {
           setSocketConnectionState(true);

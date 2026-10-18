@@ -17,6 +17,7 @@ pub struct AppSettingsUser {
     pub max_settings_value_bytes: u64,
 
     pub allow_changing_language: bool,
+    pub allow_changing_avatar: bool,
 
     pub route_order: Option<Vec<super::RouteOrderItem>>,
 }
@@ -59,6 +60,10 @@ impl SettingsSerializeExt for AppSettingsUser {
             .write_raw_setting(
                 "allow_changing_language",
                 self.allow_changing_language.to_compact_string(),
+            )
+            .write_raw_setting(
+                "allow_changing_avatar",
+                self.allow_changing_avatar.to_compact_string(),
             )
             .write_serde_setting("route_order", &self.route_order)?)
     }
@@ -103,6 +108,10 @@ impl SettingsDeserializeExt for AppSettingsUserDeserializer {
                 .unwrap_or(16384),
             allow_changing_language: deserializer
                 .take_raw_setting("allow_changing_language")
+                .map(|s| s == "true")
+                .unwrap_or(true),
+            allow_changing_avatar: deserializer
+                .take_raw_setting("allow_changing_avatar")
                 .map(|s| s == "true")
                 .unwrap_or(true),
             route_order: deserializer
