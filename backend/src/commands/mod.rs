@@ -44,7 +44,7 @@ pub fn commands(cli: CliCommandGroupBuilder) -> CliCommandGroupBuilder {
     .add_group("oobe", "Manage the OOBE for the Panel.", oobe::commands)
     .add_group(
         "import",
-        "Import data from other panel software into Calagopus.",
+        "Import data from other panel software into Atrioxhosting.",
         import::commands,
     )
     .add_group(

@@ -1281,7 +1281,7 @@ impl Settings {
         }
 
         Ok(builder
-            .rp_name(&settings.app.name)
+            .rp_name(settings.app.display_name())
             .timeout(std::time::Duration::from_secs(
                 settings.webauthn.authentication_timeout_seconds,
             ))

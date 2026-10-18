@@ -533,7 +533,7 @@
     "pages": {
       "oobe": {
         "welcome": {
-          "title": "Vitajte v Calagopus",
+          "title": "Vitajte v Atrioxhosting",
           "subtitle": "Poďme spustiť váš systém správy herného servera!",
           "wizardIntro": "Tento sprievodca nastavením vás prevedie:",
           "steps": {
@@ -661,7 +661,7 @@
         },
         "finished": {
           "title": "Nastavenie je dokončené!",
-          "subtitle": "Váš panel Calagopus je pripravený na použitie",
+          "subtitle": "Váš panel Atrioxhosting je pripravený na použitie",
           "setupTitle": "Čo sme nastavili",
           "items": {
             "account": "Účet správcu",
@@ -1357,7 +1357,7 @@
                 "modal": {
                   "disableTelemetry": {
                     "title": "Potvrdiť vypnutie telemetrie",
-                    "content": "Naozaj chcete zakázať telemetriu? Telemetria nám pomáha zlepšovať Calagopus poskytovaním anonymných údajov o používaní. Vypnutím telemetrie zabránite odosielaniu akýchkoľvek údajov."
+                    "content": "Naozaj chcete zakázať telemetriu? Telemetria nám pomáha zlepšovať Atrioxhosting poskytovaním anonymných údajov o používaní. Vypnutím telemetrie zabránite odosielaniu akýchkoľvek údajov."
                   },
                   "enableRegistration": {
                     "title": "Potvrdiť povolenie registrácie",

@@ -1057,7 +1057,7 @@
     "pages": {
       "oobe": {
         "welcome": {
-          "title": "Te damos la bienvenida a Calagopus",
+          "title": "Te damos la bienvenida a Atrioxhosting",
           "subtitle": "¡Vamos a poner en marcha tu sistema de gestión de servidores de juego!",
           "wizardIntro": "Este asistente de configuración te guiará por:",
           "steps": {
@@ -1193,7 +1193,7 @@
         },
         "finished": {
           "title": "¡Configuración completa!",
-          "subtitle": "Tu panel de Calagopus está listo para usarse",
+          "subtitle": "Tu panel de Atrioxhosting está listo para usarse",
           "setupTitle": "Lo que hemos configurado",
           "items": {
             "account": "Cuenta de administrador",
@@ -2128,7 +2128,7 @@
                 "modal": {
                   "disableTelemetry": {
                     "title": "Confirmar la desactivación de la telemetría",
-                    "content": "¿Quieres desactivar la telemetría? La telemetría nos ayuda a mejorar Calagopus mediante datos de uso anónimos. Si desactivas la telemetría, no se enviará ningún dato."
+                    "content": "¿Quieres desactivar la telemetría? La telemetría nos ayuda a mejorar Atrioxhosting mediante datos de uso anónimos. Si desactivas la telemetría, no se enviará ningún dato."
                   },
                   "enableRegistration": {
                     "title": "Confirmar la activación del registro",

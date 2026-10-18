@@ -495,38 +495,38 @@ impl ExtensionDistrFile {
 
         let mut package_segments = self.metadata_toml.package_name.split('.');
         let tld_segment = package_segments.next().ok_or_else(|| {
-            anyhow::anyhow!("invalid package name in calagopus extension archive. (too few segments, expected 3)")
+            anyhow::anyhow!("invalid package name in Atrioxhosting extension archive. (too few segments, expected 3)")
         })?;
         let author_segment = package_segments.next().ok_or_else(|| {
-            anyhow::anyhow!("invalid package name in calagopus extension archive. (too few segments, expected 3)")
+            anyhow::anyhow!("invalid package name in Atrioxhosting extension archive. (too few segments, expected 3)")
         })?;
         let identifier_segment = package_segments.next().ok_or_else(|| {
-            anyhow::anyhow!("invalid package name in calagopus extension archive. (too few segments, expected 3)")
+            anyhow::anyhow!("invalid package name in Atrioxhosting extension archive. (too few segments, expected 3)")
         })?;
 
         if package_segments.next().is_some() {
             return Err(anyhow::anyhow!(
-                "invalid package name in calagopus extension archive. (too many segments, expected 3)"
+                "invalid package name in Atrioxhosting extension archive. (too many segments, expected 3)"
             ));
         }
 
         if tld_segment.len() < 2 || tld_segment.len() > 6 {
             return Err(anyhow::anyhow!(
-                "invalid tld segment `{}` in calagopus extension archive package name.",
+                "invalid tld segment `{}` in Atrioxhosting extension archive package name.",
                 tld_segment
             ));
         }
 
         if author_segment.len() < 3 || author_segment.len() > 30 {
             return Err(anyhow::anyhow!(
-                "invalid author segment `{}` in calagopus extension archive package name.",
+                "invalid author segment `{}` in Atrioxhosting extension archive package name.",
                 author_segment
             ));
         }
 
         if identifier_segment.len() < 4 || identifier_segment.len() > 30 {
             return Err(anyhow::anyhow!(
-                "invalid identifier segment `{}` in calagopus extension archive package name.",
+                "invalid identifier segment `{}` in Atrioxhosting extension archive package name.",
                 identifier_segment
             ));
         }
@@ -534,7 +534,7 @@ impl ExtensionDistrFile {
         for c in tld_segment.chars() {
             if !c.is_ascii_lowercase() {
                 return Err(anyhow::anyhow!(
-                    "invalid character `{c}` in tld segment of calagopus extension archive package name."
+                    "invalid character `{c}` in tld segment of Atrioxhosting extension archive package name."
                 ));
             }
         }
@@ -542,7 +542,7 @@ impl ExtensionDistrFile {
         for c in author_segment.chars() {
             if !c.is_ascii_lowercase() && !c.is_ascii_digit() && c != '-' {
                 return Err(anyhow::anyhow!(
-                    "invalid character `{c}` in author segment of calagopus extension archive package name."
+                    "invalid character `{c}` in author segment of Atrioxhosting extension archive package name."
                 ));
             }
         }
@@ -550,7 +550,7 @@ impl ExtensionDistrFile {
         for c in identifier_segment.chars() {
             if !c.is_ascii_lowercase() && !c.is_ascii_digit() && c != '-' {
                 return Err(anyhow::anyhow!(
-                    "invalid character `{c}` in identifier segment of calagopus extension archive package name."
+                    "invalid character `{c}` in identifier segment of Atrioxhosting extension archive package name."
                 ));
             }
         }
@@ -558,7 +558,7 @@ impl ExtensionDistrFile {
         for dir in MUST_EXIST_DIRECTORIES {
             if self.zip.by_name(dir).ok().is_none_or(|e| !e.is_dir()) {
                 return Err(anyhow::anyhow!(
-                    "unable to find directory `{dir}` in calagopus extension archive."
+                    "unable to find directory `{dir}` in Atrioxhosting extension archive."
                 ));
             }
         }
@@ -566,7 +566,7 @@ impl ExtensionDistrFile {
         for file in MUST_EXIST_FILES {
             if self.zip.by_name(file).ok().is_none_or(|e| !e.is_file()) {
                 return Err(anyhow::anyhow!(
-                    "unable to find file `{file}` in calagopus extension archive."
+                    "unable to find file `{file}` in Atrioxhosting extension archive."
                 ));
             }
         }
@@ -575,7 +575,7 @@ impl ExtensionDistrFile {
             && self.zip.by_name("frontend/src/index.tsx").is_err()
         {
             return Err(anyhow::anyhow!(
-                "unable to find file `frontend/src/index.ts` or `frontend/src/index.tsx` in calagopus extension archive."
+                "unable to find file `frontend/src/index.ts` or `frontend/src/index.tsx` in Atrioxhosting extension archive."
             ));
         }
 
@@ -588,7 +588,7 @@ impl ExtensionDistrFile {
 
             if !lib_string.contains("pub struct ExtensionStruct") {
                 return Err(anyhow::anyhow!(
-                    "unable to find `pub struct ExtensionStruct` in calagopus extension archive backend/src/lib.rs."
+                    "unable to find `pub struct ExtensionStruct` in Atrioxhosting extension archive backend/src/lib.rs."
                 ));
             }
         }
@@ -606,7 +606,7 @@ impl ExtensionDistrFile {
 
             if !index_string.contains("export default ") {
                 return Err(anyhow::anyhow!(
-                    "unable to find `export default ` in calagopus extension archive frontend/src/index.ts."
+                    "unable to find `export default ` in Atrioxhosting extension archive frontend/src/index.ts."
                 ));
             }
         }
@@ -615,7 +615,7 @@ impl ExtensionDistrFile {
             && let Err(err) = self.get_migrations()
         {
             return Err(anyhow::anyhow!(
-                "unable to parse migrations in calagopus extension archive. make sure they are formatted as directories `20260125115245_xxx_xxx/` containing `up.sql` and `down.sql`. {err}"
+                "unable to parse migrations in Atrioxhosting extension archive. make sure they are formatted as directories `20260125115245_xxx_xxx/` containing `up.sql` and `down.sql`. {err}"
             ));
         }
 

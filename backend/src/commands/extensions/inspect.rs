@@ -25,7 +25,7 @@ impl shared::extensions::commands::CliCommand<InspectArgs> for InspectCommand {
                 let metadata = tokio::fs::metadata(args.file).await?;
                 let mut extension_distr = tokio::task::spawn_blocking(move || {
                     ExtensionDistrFile::parse_from_reader(file)
-                        .context("failed to parse calagopus extension archive")
+                        .context("failed to parse Atrioxhosting extension archive")
                 })
                 .await??;
 

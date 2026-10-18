@@ -1235,7 +1235,7 @@ pub async fn handle_startup() -> Result<
     let (router, mut openapi) = app.split_for_parts();
     openapi.info.version = "1.0.0".into();
     openapi.info.description = None;
-    openapi.info.title = format!("{} API", settings.app.name);
+    openapi.info.title = format!("{} API", settings.app.display_name());
     openapi.info.contact = None;
     openapi.info.license = None;
     openapi.servers = Some(

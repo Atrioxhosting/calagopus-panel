@@ -33,6 +33,19 @@ pub struct AppSettingsServer {
     pub container_prelude: compact_str::CompactString,
 }
 
+impl AppSettingsServer {
+    /// Keep persisted prompts intact, mapping only the legacy product defaults.
+    pub fn display_container_prelude(&self) -> &str {
+        match self.container_prelude.as_str() {
+            "container@calagopus~" => "container@atrioxhosting~",
+            "\x1b[1m\x1b[33mcontainer@calagopus~ \x1b[0m" => {
+                "\x1b[1m\x1b[33mcontainer@atrioxhosting~ \x1b[0m"
+            }
+            prompt => prompt,
+        }
+    }
+}
+
 #[async_trait::async_trait]
 impl SettingsSerializeExt for AppSettingsServer {
     async fn serialize(
@@ -210,7 +223,7 @@ impl SettingsDeserializeExt for AppSettingsServerDeserializer {
                 .unwrap_or(true),
             container_prelude: deserializer
                 .take_raw_setting("container_prelude")
-                .unwrap_or_else(|| "container@calagopus~".into()),
+                .unwrap_or_else(|| "container@atrioxhosting~".into()),
         }))
     }
 }

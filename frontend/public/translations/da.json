@@ -958,7 +958,7 @@
     "pages": {
       "oobe": {
         "welcome": {
-          "title": "Velkommen til Calagopus",
+          "title": "Velkommen til Atrioxhosting",
           "subtitle": "Lad os få dit game server management-system op at køre!",
           "wizardIntro": "Denne opsætningsguide fører dig igennem:",
           "steps": {
@@ -1090,7 +1090,7 @@
         },
         "finished": {
           "title": "Opsætning fuldført!",
-          "subtitle": "Dit Calagopus-panel er klar til brug",
+          "subtitle": "Dit Atrioxhosting-panel er klar til brug",
           "setupTitle": "Det, vi har sat op",
           "items": {
             "account": "Administratorkonto",
@@ -1970,7 +1970,7 @@
                 "modal": {
                   "disableTelemetry": {
                     "title": "Bekræft deaktivering af telemetri",
-                    "content": "Er du sikker på, at du vil deaktivere telemetri? Telemetri hjælper os med at forbedre Calagopus via anonyme brugsdata. Deaktiveres telemetri, bliver der ikke sendt nogen data."
+                    "content": "Er du sikker på, at du vil deaktivere telemetri? Telemetri hjælper os med at forbedre Atrioxhosting via anonyme brugsdata. Deaktiveres telemetri, bliver der ikke sendt nogen data."
                   },
                   "enableRegistration": {
                     "title": "Bekræft aktivering af registrering",

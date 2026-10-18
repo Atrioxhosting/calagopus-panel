@@ -69,7 +69,7 @@ mod get {
                 "otpauth://totp/{name}:{}?secret={}&issuer={name}",
                 urlencoding::encode(&user.email),
                 urlencoding::encode(&secret),
-                name = urlencoding::encode(&settings.app.name)
+                name = urlencoding::encode(settings.app.display_name())
             ),
             secret,
         })

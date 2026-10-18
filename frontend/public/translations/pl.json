@@ -637,7 +637,7 @@
     "pages": {
       "oobe": {
         "welcome": {
-          "title": "Witaj w Calagopus",
+          "title": "Witaj w Atrioxhosting",
           "subtitle": "Ustawmy twój system zarządzania serwerami!",
           "wizardIntro": "Kreator konfiguracji przeprowadzi Cię przez:",
           "steps": {
@@ -773,7 +773,7 @@
         },
         "finished": {
           "title": "Konfiguracja zakończona!",
-          "subtitle": "Twój panel Calagopus jest gotowy do użycia",
+          "subtitle": "Twój panel Atrioxhosting jest gotowy do użycia",
           "setupTitle": "Co utworzyliśmy",
           "items": {
             "account": "Konto administratora",
@@ -1413,7 +1413,7 @@
                 "modal": {
                   "disableTelemetry": {
                     "title": "Potwierdź wyłączenie telemetrii",
-                    "content": "Czy na pewno chcesz wyłączyć telemetrię? Telemetria pomaga nam ulepszyć Calagopus dostarczając anonimowe dane użytkowania. Wyłączenie telemetrii uniemożliwi wysyłanie jakichkolwiek danych."
+                    "content": "Czy na pewno chcesz wyłączyć telemetrię? Telemetria pomaga nam ulepszyć Atrioxhosting dostarczając anonimowe dane użytkowania. Wyłączenie telemetrii uniemożliwi wysyłanie jakichkolwiek danych."
                   },
                   "enableRegistration": {
                     "title": "Potwierdź włączenie rejestracji",

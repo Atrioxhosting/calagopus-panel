@@ -5,5 +5,5 @@
   "out": "docs",
   "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
   "plugin": ["typedoc-plugin-rename-defaults", "typedoc-plugin-zod"],
-  "name": "Calagopus Frontend"
+  "name": "Atrioxhosting Frontend"
 }

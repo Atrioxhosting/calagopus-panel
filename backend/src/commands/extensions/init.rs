@@ -96,7 +96,7 @@ impl shared::extensions::commands::CliCommand<InitArgs> for InitCommand {
                         let file = tokio::fs::File::open(entry.path()).await?.into_std().await;
                         let extension_distr = tokio::task::spawn_blocking(move || {
                             ExtensionDistrFile::parse_from_reader(file)
-                                .context("failed to parse calagopus extension archive")
+                                .context("failed to parse Atrioxhosting extension archive")
                         })
                         .await??;
 

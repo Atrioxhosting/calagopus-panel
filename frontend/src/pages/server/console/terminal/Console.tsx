@@ -169,8 +169,8 @@ export default function Terminal({ popout = false }: { popout?: boolean }) {
         processed = redactConsoleLine(processed);
       }
 
-      if (processed.includes('container@pterodactyl~')) {
-        processed = processed.replace('container@pterodactyl~', containerPreludeRef.current);
+      for (const legacyPrompt of ['container@pterodactyl~', 'container@calagopus~']) {
+        processed = processed.replace(legacyPrompt, containerPreludeRef.current);
       }
 
       if (prelude && !processed.includes('\x1b[1m\x1b[41m')) {

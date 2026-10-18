@@ -221,7 +221,7 @@ export default function OobeRouter() {
         <ContentContainer title={`Setting up ${settings.app.name}`}>
           <div className='flex flex-col gap-4 items-center justify-center min-h-screen p-4'>
             <div className='flex flex-col items-center gap-2'>
-              <img src='/icon.svg' className='h-48' alt='Calagopus Icon' />
+              <img src='/icon.svg' className='h-48' alt='Atrioxhosting Icon' />
               <div>
                 <Title order={2} ta='center'>
                   {t('pages.oobe.welcome.title', {})}

@@ -397,7 +397,7 @@
     "pages": {
       "oobe": {
         "welcome": {
-          "title": "Calagopus'a Hoş Geldiniz",
+          "title": "Atrioxhosting'a Hoş Geldiniz",
           "subtitle": "Oyun sunucusu yönetim sisteminizi kuralım ve çalıştıralım!",
           "wizardIntro": "Bu kurulum sihirbazı size şunlarda rehberlik edecek:",
           "steps": {
@@ -526,7 +526,7 @@
         },
         "finished": {
           "title": "Kurulum Tamamlandı!",
-          "subtitle": "Calagopus paneliniz kullanıma hazır",
+          "subtitle": "Atrioxhosting paneliniz kullanıma hazır",
           "setupTitle": "Neleri Kurduk",
           "items": {
             "account": "Yönetici Hesabı",

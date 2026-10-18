@@ -105,7 +105,7 @@ mod get {
                 icon_light: settings.app.icon_light.as_deref(),
                 banner: settings.app.banner.as_deref(),
                 banner_light: settings.app.banner_light.as_deref(),
-                name: &settings.app.name,
+                name: settings.app.display_name(),
                 language: &settings.app.language,
                 registration_enabled: settings.app.registration_enabled,
                 password_login_enabled: settings.app.password_login_enabled,
@@ -143,7 +143,7 @@ mod get {
                     .server
                     .allow_acknowledging_installation_failure,
                 allow_changing_trash_settings: settings.server.allow_changing_trash_settings,
-                container_prelude: &settings.server.container_prelude,
+                container_prelude: settings.server.display_container_prelude(),
             },
             user: ResponseUser {
                 max_server_group_count: settings.user.max_server_group_count,

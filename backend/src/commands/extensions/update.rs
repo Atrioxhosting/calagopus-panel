@@ -33,7 +33,7 @@ impl shared::extensions::commands::CliCommand<UpdateArgs> for UpdateCommand {
                 let file = tokio::fs::File::open(&args.file).await?.into_std().await;
                 let mut extension_distr = tokio::task::spawn_blocking(move || {
                     ExtensionDistrFile::parse_from_reader(file)
-                        .context("failed to parse calagopus extension archive")
+                        .context("failed to parse Atrioxhosting extension archive")
                 })
                 .await??;
 

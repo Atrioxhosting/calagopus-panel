@@ -109,7 +109,7 @@ export function toPterodactylEgg(exported: object): object {
   const startup = egg.startup_commands?.Default ?? Object.values(egg.startup_commands ?? {})[0] ?? '';
 
   return {
-    _comment: 'DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY CALAGOPUS PANEL',
+    _comment: 'DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY ATRIOXHOSTING PANEL',
     meta: {
       version: 'PTDL_v2',
       update_url: null,

@@ -119,7 +119,7 @@
     "pages": {
       "oobe": {
         "welcome": {
-          "title": "Bun venit la Calagopus",
+          "title": "Bun venit la Atrioxhosting",
           "subtitle": "Hai să punem în funcțiune sistemul tău de gestionare a serverelor de jocuri!",
           "wizardIntro": "Acest asistent de configurare te va ghida prin:",
           "steps": {
@@ -198,7 +198,7 @@
         },
         "finished": {
           "title": "Configurare completă!",
-          "subtitle": "Panoul tău Calagopus este gata de utilizare",
+          "subtitle": "Panoul tău Atrioxhosting este gata de utilizare",
           "setupTitle": "Ce am configurat",
           "items": {
             "account": "Cont de administrator",

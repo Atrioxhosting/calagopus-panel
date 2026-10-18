@@ -971,7 +971,7 @@ const baseTranslations = defineTranslations({
     pages: {
       oobe: {
         welcome: {
-          title: 'Welcome to Calagopus',
+          title: 'Welcome to Atrioxhosting',
           subtitle: "Let's get your game server management system up and running!",
           wizardIntro: 'This setup wizard will guide you through:',
           steps: {
@@ -1067,7 +1067,7 @@ const baseTranslations = defineTranslations({
           title: 'Application Settings',
           form: {
             applicationName: 'Application Name',
-            applicationNamePlaceholder: 'Calagopus',
+            applicationNamePlaceholder: 'Atrioxhosting',
             applicationUrl: 'Application URL',
             registration: 'Enable Registration',
             registrationDescription: 'Allow new users to register their own account.',
@@ -1123,7 +1123,7 @@ const baseTranslations = defineTranslations({
         },
         finished: {
           title: 'Setup Complete!',
-          subtitle: 'Your Calagopus panel is ready to use',
+          subtitle: 'Your Atrioxhosting panel is ready to use',
           setupTitle: "What We've Set Up",
           items: {
             account: 'Administrator Account',
@@ -2140,7 +2140,7 @@ const baseTranslations = defineTranslations({
                   disableTelemetry: {
                     title: 'Confirm Disabling Telemetry',
                     content:
-                      'Are you sure you want to disable telemetry? Telemetry helps us improve Calagopus by providing anonymous usage data. Disabling telemetry will prevent any data from being sent.',
+                      'Are you sure you want to disable telemetry? Telemetry helps us improve Atrioxhosting by providing anonymous usage data. Disabling telemetry will prevent any data from being sent.',
                   },
                   enableRegistration: {
                     title: 'Confirm Enabling Registration',

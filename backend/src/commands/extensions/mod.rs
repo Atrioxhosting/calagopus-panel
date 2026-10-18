@@ -212,7 +212,7 @@ pub fn commands(cli: CliCommandGroupBuilder) -> CliCommandGroupBuilder {
     )
     .add_command(
         "add",
-        "Adds an extension using a calagopus extension archive.",
+        "Adds an extension using a Atrioxhosting extension archive.",
         add::AddCommand,
     )
     .add_command(

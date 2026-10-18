@@ -72,7 +72,7 @@ export const createSettingsSlice: StateCreator<AdminStore, [], [], SettingsSlice
       usageThreshold: 90,
     },
     allowChangingTrashSettings: true,
-    containerPrelude: '\x1b[1m\x1b[33mcontainer@calagopus~ \x1b[0m',
+    containerPrelude: '\x1b[1m\x1b[33mcontainer@atrioxhosting~ \x1b[0m',
   },
   user: {
     maxServerGroupCount: 25,

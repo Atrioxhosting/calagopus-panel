@@ -378,7 +378,7 @@
     "pages": {
       "oobe": {
         "welcome": {
-          "title": "مرحباً بك في Calagopus",
+          "title": "مرحباً بك في Atrioxhosting",
           "subtitle": "لنقم بإعداد نظام إدارة خوادم الألعاب الخاص بك وتشغيله!",
           "wizardIntro": "سيرشدك معالج الإعداد هذا خلال:",
           "steps": {
@@ -506,7 +506,7 @@
         },
         "finished": {
           "title": "اكتمل الإعداد!",
-          "subtitle": "لوحة التحكم Calagopus الخاصة بك جاهزة للاستخدام",
+          "subtitle": "لوحة التحكم Atrioxhosting الخاصة بك جاهزة للاستخدام",
           "setupTitle": "ما قمنا بإعداده",
           "items": {
             "account": "حساب المسؤول",

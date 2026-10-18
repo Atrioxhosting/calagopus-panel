@@ -167,7 +167,7 @@ export function effectiveBinding(
 }
 
 const EXPORT_HEADER = [
-  '# Calagopus keyboard shortcuts',
+  '# Atrioxhosting keyboard shortcuts',
   '#',
   '# Edit the value after "=" then paste this back to apply your changes.',
   '#   - a key combination such as  Ctrl+Shift+K  or  Mod+S  (Mod = Ctrl/Cmd)',

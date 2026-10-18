@@ -1,7 +1,7 @@
 {
-  "name": "Calagopus Panel",
-  "short_name": "Calagopus",
-  "description": "Calagopus Panel - Game Server Management",
+  "name": "Atrioxhosting Panel",
+  "short_name": "Atrioxhosting",
+  "description": "Atrioxhosting Panel - Game Server Management",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

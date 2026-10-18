@@ -32,7 +32,7 @@ pub struct ServiceInstallArgs {
 fn generate_systemd_service(binary_path: &Path) -> String {
     format!(
         r#"[Unit]
-Description=Calagopus Panel Daemon
+Description=Atrioxhosting Panel Daemon
 
 [Service]
 User=root
@@ -56,7 +56,7 @@ fn generate_openrc_service(binary_path: &Path) -> String {
     format!(
         r#"#!/sbin/openrc-run
 
-description="Calagopus Panel Daemon"
+description="Atrioxhosting Panel Daemon"
 
 command="{}"
 supervisor="supervise-daemon"

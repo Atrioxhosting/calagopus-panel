@@ -407,7 +407,7 @@
     "pages": {
       "oobe": {
         "welcome": {
-          "title": "Välkommen till Calagopus",
+          "title": "Välkommen till Atrioxhosting",
           "subtitle": "Låt oss få igång ditt spelserverhanteringssystem!",
           "wizardIntro": "Den här installationsguiden guidar dig genom:",
           "steps": {
@@ -533,7 +533,7 @@
         },
         "finished": {
           "title": "Installationen är klar!",
-          "subtitle": "Din Calagopus panel är redo att användas",
+          "subtitle": "Din Atrioxhosting panel är redo att användas",
           "setupTitle": "Vad vi har satt upp",
           "items": {
             "account": "Administratörskonto",

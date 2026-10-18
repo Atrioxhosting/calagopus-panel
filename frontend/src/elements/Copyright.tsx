@@ -11,10 +11,10 @@ export default function Copyright({ className }: { className?: string }) {
       />
 
       <span className='flex flex-row gap-2'>
-        <Anchor size='xs' href='https://calagopus.com' target='_blank'>
-          Calagopus
+        <Anchor size='xs' href='https://atrioxhost.com/' target='_blank'>
+          Atrioxhosting
         </Anchor>
-        &copy; 2025 - {new Date().getFullYear()}
+        &copy; 2021 - 2026
       </span>
 
       <ExtensionSlot

@@ -939,7 +939,7 @@
     "pages": {
       "oobe": {
         "welcome": {
-          "title": "歡迎使用 Calagopus",
+          "title": "歡迎使用 Atrioxhosting",
           "subtitle": "讓我們開始設定你的遊戲伺服器管理系統！",
           "wizardIntro": "此設定精靈會引導你完成：",
           "steps": {
@@ -1072,7 +1072,7 @@
         },
         "finished": {
           "title": "設定完成！",
-          "subtitle": "你的 Calagopus 面板已可使用",
+          "subtitle": "你的 Atrioxhosting 面板已可使用",
           "setupTitle": "我們已設定的內容",
           "items": {
             "account": "管理員帳戶",
@@ -1829,7 +1829,7 @@
                 "modal": {
                   "disableTelemetry": {
                     "title": "確認停用遙測",
-                    "content": "你確定要停用遙測嗎？遙測透過提供匿名使用資料協助我們改善 Calagopus。停用遙測將阻止任何資料被傳送。"
+                    "content": "你確定要停用遙測嗎？遙測透過提供匿名使用資料協助我們改善 Atrioxhosting。停用遙測將阻止任何資料被傳送。"
                   },
                   "enableRegistration": {
                     "title": "確認啟用註冊",

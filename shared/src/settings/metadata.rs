@@ -41,7 +41,7 @@ impl AppSettingsMetadata {
             description: self.description.clone().unwrap_or_else(|| {
                 compact_str::format_compact!(
                     "Manage your game servers and services with {}.",
-                    app.name
+                    app.display_name()
                 )
             }),
             theme_color: self.theme_color.clone(),

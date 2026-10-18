@@ -1036,7 +1036,7 @@
     "pages": {
       "oobe": {
         "welcome": {
-          "title": "Chào mừng đến với Calagopus",
+          "title": "Chào mừng đến với Atrioxhosting",
           "subtitle": "Hãy cùng thiết lập và vận hành hệ thống quản lý máy chủ trò chơi của bạn!",
           "wizardIntro": "Trình hướng dẫn thiết lập này sẽ hướng dẫn bạn thực hiện các bước sau:",
           "steps": {
@@ -1173,7 +1173,7 @@
         },
         "finished": {
           "title": "Thiết lập hoàn tất!",
-          "subtitle": "Bạn đã thiết lặp Calagopus thành công. Dưới đây là một số thông tin về những gì đã được thiết lập:",
+          "subtitle": "Bạn đã thiết lặp Atrioxhosting thành công. Dưới đây là một số thông tin về những gì đã được thiết lập:",
           "setupTitle": "Những Gì Đã Được Thiết Lập",
           "items": {
             "account": "Tài khoản quản trị viên của bạn",
@@ -2111,7 +2111,7 @@
                 "modal": {
                   "disableTelemetry": {
                     "title": "Xác Nhận Tắt Đo Lường",
-                    "content": "Bạn có chắc muốn tắt đo lường? Đo lường giúp chúng tôi cải thiện Calagopus bằng cách cung cấp dữ liệu sử dụng ẩn danh. Tắt đo lường sẽ ngăn mọi dữ liệu được gửi."
+                    "content": "Bạn có chắc muốn tắt đo lường? Đo lường giúp chúng tôi cải thiện Atrioxhosting bằng cách cung cấp dữ liệu sử dụng ẩn danh. Tắt đo lường sẽ ngăn mọi dữ liệu được gửi."
                   },
                   "enableRegistration": {
                     "title": "Xác Nhận Bật Đăng Ký",

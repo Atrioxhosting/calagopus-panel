@@ -303,7 +303,7 @@
     "pages": {
       "oobe": {
         "welcome": {
-          "title": "Benvenuto in Calagopus",
+          "title": "Benvenuto in Atrioxhosting",
           "subtitle": "Mettiamo in funzione il tuo sistema di gestione dei server di gioco!",
           "wizardIntro": "Questa procedura guidata ti accompagnerà attraverso:",
           "steps": {
@@ -382,7 +382,7 @@
         },
         "finished": {
           "title": "Configurazione completata!",
-          "subtitle": "Il tuo pannello Calagopus è pronto all'uso",
+          "subtitle": "Il tuo pannello Atrioxhosting è pronto all'uso",
           "setupTitle": "Cosa abbiamo configurato",
           "items": {
             "account": "Account amministratore",

@@ -1133,7 +1133,7 @@
     "pages": {
       "oobe": {
         "welcome": {
-          "title": "Willkommen bei Calagopus",
+          "title": "Willkommen bei Atrioxhosting",
           "subtitle": "Lass uns dein Game-Server-Managementsystem einrichten!",
           "wizardIntro": "Dieser Einrichtungsassistent führt dich durch:",
           "steps": {
@@ -1226,7 +1226,7 @@
           "title": "Anwendungseinstellungen",
           "form": {
             "applicationName": "Anwendungsname",
-            "applicationNamePlaceholder": "Calagopus",
+            "applicationNamePlaceholder": "Atrioxhosting",
             "applicationUrl": "Anwendungs-URL",
             "registration": "Registrierung aktivieren",
             "registrationDescription": "Erlaube neuen Benutzern, ihren eigenen Account zu registrieren.",
@@ -1279,7 +1279,7 @@
         },
         "finished": {
           "title": "Einrichtung abgeschlossen!",
-          "subtitle": "Dein Calagopus-Panel ist einsatzbereit",
+          "subtitle": "Dein Atrioxhosting-Panel ist einsatzbereit",
           "setupTitle": "Was wir eingerichtet haben",
           "items": {
             "account": "Administrator-Account",
@@ -2262,7 +2262,7 @@
                 "modal": {
                   "disableTelemetry": {
                     "title": "Telemetrie-Deaktivierung bestätigen",
-                    "content": "Bist du sicher, dass du die Telemetrie deaktivieren möchtest? Telemetrie hilft uns, Calagopus durch anonyme Nutzungsdaten zu verbessern. Das Deaktivieren der Telemetrie verhindert, dass irgendwelche Daten gesendet werden."
+                    "content": "Bist du sicher, dass du die Telemetrie deaktivieren möchtest? Telemetrie hilft uns, Atrioxhosting durch anonyme Nutzungsdaten zu verbessern. Das Deaktivieren der Telemetrie verhindert, dass irgendwelche Daten gesendet werden."
                   },
                   "enableRegistration": {
                     "title": "Registrierungs-Aktivierung bestätigen",

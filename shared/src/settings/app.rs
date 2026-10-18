@@ -36,6 +36,7 @@ impl TwoFactorMethod {
 
 #[derive(Clone, ToSchema, Serialize, Deserialize)]
 pub struct AppSettingsApp {
+    #[serde(serialize_with = "serialize_application_name")]
     pub name: compact_str::CompactString,
     pub icon: compact_str::CompactString,
     pub icon_light: Option<compact_str::CompactString>,
@@ -58,7 +59,27 @@ pub struct AppSettingsApp {
     pub password_login_enabled: bool,
 }
 
+fn display_application_name(name: &str) -> &str {
+    if name.trim().eq_ignore_ascii_case("Calagopus") {
+        "Atrioxhosting"
+    } else {
+        name
+    }
+}
+
+fn serialize_application_name<S: serde::Serializer>(
+    name: &str,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(display_application_name(name))
+}
+
 impl AppSettingsApp {
+    /// Presents the legacy default without rewriting a stored or custom name.
+    pub fn display_name(&self) -> &str {
+        display_application_name(&self.name)
+    }
+
     pub fn urls(&self) -> impl Iterator<Item = &str> {
         std::iter::once(&*self.url).chain(self.additional_urls.iter().map(|url| &**url))
     }
@@ -177,7 +198,7 @@ impl SettingsDeserializeExt for AppSettingsAppDeserializer {
         Ok(Box::new(AppSettingsApp {
             name: deserializer
                 .take_raw_setting("name")
-                .unwrap_or_else(|| "Calagopus".into()),
+                .unwrap_or_else(|| "Atrioxhosting".into()),
             icon: deserializer
                 .take_raw_setting("icon")
                 .unwrap_or_else(|| "/icon.svg".into()),
@@ -244,6 +265,48 @@ impl SettingsDeserializeExt for AppSettingsAppDeserializer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn branding_is_presentational_and_preserves_custom_names() {
+        for (name, expected) in [
+            ("Calagopus", "Atrioxhosting"),
+            ("CALAGOPUS", "Atrioxhosting"),
+            (" calagopus ", "Atrioxhosting"),
+            ("My hosting", "My hosting"),
+        ] {
+            let mut settings = app("https://panel.example.com", &[]);
+            settings.name = name.into();
+            assert_eq!(settings.display_name(), expected);
+            assert_eq!(serde_json::to_value(&settings).unwrap()["name"], expected);
+            assert_eq!(settings.name, name);
+
+            // Browser metadata and mail templates use the serialized app settings.
+            let context =
+                minijinja::context! { settings => serde_json::json!({ "app": &settings }) };
+            let rendered = minijinja::Environment::new()
+                .render_str("{{ settings.app.name }}", context)
+                .unwrap();
+            assert_eq!(rendered, expected);
+            assert_eq!(settings.name, name);
+
+            let metadata = super::super::metadata::AppSettingsMetadata {
+                description: None,
+                theme_color: "#6c5ce7".into(),
+                og_image: None,
+                twitter_card: super::super::metadata::TwitterCard::Summary,
+                indexable: false,
+            };
+            let resolved = metadata.resolve(&settings);
+            assert_eq!(
+                resolved.description,
+                format!("Manage your game servers and services with {expected}.")
+            );
+            assert_eq!(
+                resolved.og_image,
+                "https://panel.example.com/android-chrome-512x512.png"
+            );
+        }
+    }
 
     fn app(url: &str, additional: &[&str]) -> AppSettingsApp {
         AppSettingsApp {
