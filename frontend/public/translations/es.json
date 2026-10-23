@@ -3910,7 +3910,6 @@
                         "updateExisting": "Actualizar existente",
                         "updateExistingDescription": "Si está activado y se encuentra una coincidencia, se reemplazará por el valor de \"Reemplazar con\". Si está desactivado, la sustitución solo insertará valores nuevos y fallará si se encuentra una coincidencia.",
                         "startupCommands": "Comandos de inicio",
-                        "forceOutgoingIp": "Forzar IP saliente",
                         "separatePort": "Separar IP y puerto",
                         "separatePortDescription": "Separa la IP principal y el puerto en la página de la consola en vez de unirlos con \":\".",
                         "features": "Funciones",

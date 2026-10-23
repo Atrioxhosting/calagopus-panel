@@ -148,7 +148,6 @@ pub struct SourceEgg {
     pub script_install: Option<String>,
     /// Either the single Pterodactyl startup command or Pelican's named commands as JSON.
     pub startup: SourceEggStartup,
-    pub force_outgoing_ip: bool,
     pub created: Option<DateTime<Utc>>,
 }
 
@@ -440,7 +439,6 @@ pub struct PlanEgg {
     pub config_stop: NestEggConfigStop,
     pub config_script: NestEggConfigScript,
     pub startup_commands: IndexMap<CompactString, CompactString>,
-    pub force_outgoing_ip: bool,
     pub created: DateTime<Utc>,
 }
 

@@ -1561,7 +1561,6 @@ impl Validator<'_> {
                 config_stop,
                 config_script,
                 startup_commands,
-                force_outgoing_ip: egg.force_outgoing_ip,
                 separate_port: false,
                 features,
                 docker_images,
@@ -1605,7 +1604,6 @@ impl Validator<'_> {
                 config_stop: options.config_stop,
                 config_script: options.config_script,
                 startup_commands: options.startup_commands,
-                force_outgoing_ip: egg.force_outgoing_ip,
                 created: egg.created.unwrap_or(self.now),
             });
         }
@@ -3155,7 +3153,6 @@ mod tests {
             script_entry: Some("ash".into()),
             script_install: Some("echo".into()),
             startup: SourceEggStartup::Single(Some("java -jar server.jar".into())),
-            force_outgoing_ip: false,
             created: None,
         }
     }

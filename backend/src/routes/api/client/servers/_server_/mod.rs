@@ -25,6 +25,7 @@ mod databases;
 mod devices;
 mod files;
 mod firewall;
+mod game_network;
 mod logs;
 mod mounts;
 mod power;
@@ -146,6 +147,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .nest("/subusers", subusers::router(state))
         .nest("/backups", backups::router(state))
         .nest("/allocations", allocations::router(state))
+        .nest("/game-network", game_network::router(state))
         .nest("/firewall", firewall::router(state))
         .nest("/tunnel", tunnel::router(state))
         .nest("/databases", databases::router(state))

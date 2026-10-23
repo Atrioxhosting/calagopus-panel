@@ -10,12 +10,15 @@ import { queryKeys } from '@/lib/queryKeys.ts';
 import { AdminServer } from '@/lib/schemas/admin/servers.ts';
 import { serverAllocationTableColumns } from '@/lib/tableColumns.ts';
 import ServerAllocationAddModal from '@/pages/admin/servers/allocations/modals/ServerAllocationAddModal.tsx';
+import GameIpv6 from '@/pages/server/network/GameIpv6.tsx';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
+import { useAdminCan } from '@/plugins/usePermissions.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import ServerAllocationRow from './ServerAllocationRow.tsx';
 
 export default function AdminServerAllocations({ server }: { server: AdminServer }) {
   const { t } = useTranslations();
+  const canChangeIpv6 = useAdminCan('servers.update');
   const [openModal, setOpenModal] = useState<'add' | null>(null);
 
   const {
@@ -50,6 +53,7 @@ export default function AdminServerAllocations({ server }: { server: AdminServer
         <ServerAllocationAddModal server={server} opened={openModal === 'add'} onClose={() => setOpenModal(null)} />
       </AdminCan>
 
+      <GameIpv6 uuid={server.uuid} admin canChange={canChangeIpv6} />
       <Table
         columns={serverAllocationTableColumns()}
         loading={loading}

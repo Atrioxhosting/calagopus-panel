@@ -41,7 +41,6 @@ export const adminEggSchema = z.looseObject({
     value: z.preprocess(nullableString, z.string().nullable()),
   }),
   startupCommands: z.record(z.string(), z.string()),
-  forceOutgoingIp: z.boolean(),
   separatePort: z.boolean(),
   features: z.array(z.string()),
   dockerImages: z.record(z.string(), z.string()),

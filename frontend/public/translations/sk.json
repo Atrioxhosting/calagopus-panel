@@ -2472,7 +2472,6 @@
                         "updateExisting": "Aktualizovať existujúce",
                         "updateExistingDescription": "Ak je povolené a nájde sa zhoda, hodnota sa nahradí hodnotou z poľa „Nahradiť za“. Ak je zakázané, nahradenie vloží iba nové hodnoty a zlyhá, ak sa nájde zhoda.",
                         "startupCommands": "Príkazy pri spustení",
-                        "forceOutgoingIp": "Vynútiť odchádzajúce IP",
                         "separatePort": "Samostatná IP a port",
                         "separatePortDescription": "Oddeľuje primárnu adresu IP a port na stránke konzoly namiesto toho, aby ich spájal znakom „:“.",
                         "features": "Funkcie",

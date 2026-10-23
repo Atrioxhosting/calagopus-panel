@@ -634,7 +634,6 @@ pub(super) async fn read(
                 script_entry: source_optional_text(row, "script_entry")?,
                 script_install: source_optional_text(row, "script_install")?,
                 startup: SourceEggStartup::Single(source_optional_text(row, "startup")?),
-                force_outgoing_ip: source_bool(row, "force_outgoing_ip")?,
                 created,
             })
         })

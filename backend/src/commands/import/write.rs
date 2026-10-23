@@ -305,9 +305,9 @@ pub async fn write_plan(
             INSERT INTO nest_eggs (
                 uuid, nest_uuid, author, name, description, features, docker_images,
                 file_denylist, config_files, config_startup, config_stop,
-                config_script, startup_commands, force_outgoing_ip, created
+                config_script, startup_commands, created
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
             "#,
         )
         .bind(egg.uuid)
@@ -323,7 +323,6 @@ pub async fn write_plan(
         .bind(serde_json::to_value(&egg.config_stop)?)
         .bind(serde_json::to_value(&egg.config_script)?)
         .bind(OrderedJson(&egg.startup_commands))
-        .bind(egg.force_outgoing_ip)
         .bind(egg.created.naive_utc())
         .execute(&mut *tx)
         .await

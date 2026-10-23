@@ -569,8 +569,9 @@ nestify::nest! {
         pub schedules: Vec<Schedule>,
         #[schema(inline)]
         pub allocations: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct ServerConfigurationAllocations {
-            #[schema(inline)]
-            pub force_outgoing_ip: bool,
+            #[serde(default)]
+            pub ipv6: Option<GameIpv6>,
+
             #[schema(inline)]
             pub default: Option<#[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct ServerConfigurationAllocationsDefault {
                 #[schema(inline)]
@@ -4234,4 +4235,10 @@ pub mod update {
 
         pub type Response = Response200;
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+pub struct GameIpv6 {
+    pub address: String,
+    pub prefix: String,
 }

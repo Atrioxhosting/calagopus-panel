@@ -3780,7 +3780,6 @@
                         "updateExisting": "Cập Nhật Hiện Tại",
                         "updateExistingDescription": "Nếu bật, nếu tìm thấy khớp, nó sẽ được thay thế bằng giá trị \\\"Thay Thế Bằng\\\". Nếu tắt, thay thế chỉ chèn giá trị mới.",
                         "startupCommands": "Lệnh Khởi Động",
-                        "forceOutgoingIp": "Buộc IP Đi",
                         "separatePort": "Tách IP và Cổng",
                         "separatePortDescription": "Tách IP chính và cổng trên trang Bảng Điều Khiển thay vì nối chúng bằng \\\":\\\".",
                         "features": "Tính Năng",

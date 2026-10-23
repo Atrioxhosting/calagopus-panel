@@ -876,7 +876,6 @@ export const nestEggsTable = pgTable(
     config_stop: jsonb().notNull(),
     config_script: jsonb().notNull(),
     startup_commands: json().notNull(),
-    force_outgoing_ip: boolean().default(false).notNull(),
     separate_port: boolean().default(false).notNull(),
     features: text().array().notNull(),
     docker_images: json().notNull(),
@@ -1481,3 +1480,43 @@ export const serverScheduleStepsTable = pgTable(
   },
   (cols) => [index('server_schedule_steps_schedule_uuid_idx').on(cols.schedule_uuid)],
 );
+
+// Address reservations deliberately outlive server deletion until Wings confirms detachment.
+export const gameIpv6NodesTable = pgTable(
+  'game_ipv6_nodes',
+  {
+    node_uuid: uuid()
+      .primaryKey()
+      .references(() => nodesTable.uuid, { onDelete: 'cascade' }),
+    prefix: inet().notNull(),
+    reserved: jsonb().notNull().default([]),
+  },
+  (c) => [uniqueIndex('game_ipv6_prefix_unique').on(c.prefix)],
+);
+export const gameIpv6AddressesTable = pgTable(
+  'game_ipv6_addresses',
+  {
+    address: inet().primaryKey(),
+    node_uuid: uuid()
+      .notNull()
+      .references(() => nodesTable.uuid, { onDelete: 'restrict' }),
+    server_uuid: uuid().notNull(),
+    created: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (c) => [index('game_ipv6_addresses_owner').on(c.server_uuid)],
+);
+export const gameIpv6ServersTable = pgTable('game_ipv6_servers', {
+  server_uuid: uuid().primaryKey(),
+  node_uuid: uuid()
+    .notNull()
+    .references(() => nodesTable.uuid, { onDelete: 'restrict' }),
+  desired: inet()
+    .notNull()
+    .references(() => gameIpv6AddressesTable.address, { onDelete: 'restrict' }),
+  applied: inet(),
+  generation: uuid().notNull().defaultRandom(),
+  pending: boolean().notNull().default(true),
+  kind: text().notNull().default('provision'),
+  last_rotation: timestamp({ withTimezone: true }),
+  error: text(),
+});

@@ -1,0 +1,1 @@
+ALTER TABLE "game_ipv6_nodes" DROP CONSTRAINT "game_ipv6_nodes_node_uuid_nodes_uuid_fkey", ADD CONSTRAINT "game_ipv6_nodes_node_uuid_nodes_uuid_fkey" FOREIGN KEY ("node_uuid") REFERENCES "nodes"("uuid") ON DELETE CASCADE;

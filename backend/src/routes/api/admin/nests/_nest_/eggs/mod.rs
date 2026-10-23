@@ -131,8 +131,6 @@ mod post {
         #[garde(custom(shared::models::nest_egg::validate_startup_commands))]
         startup_commands: IndexMap<compact_str::CompactString, compact_str::CompactString>,
         #[garde(skip)]
-        force_outgoing_ip: bool,
-        #[garde(skip)]
         separate_port: bool,
 
         #[garde(skip)]
@@ -186,7 +184,6 @@ mod post {
             config_stop: data.config_stop,
             config_script: data.config_script,
             startup_commands: data.startup_commands,
-            force_outgoing_ip: data.force_outgoing_ip,
             separate_port: data.separate_port,
             features: data.features,
             docker_images: data.docker_images,
@@ -221,7 +218,6 @@ mod post {
                     "config_script": egg.config_script,
 
                     "startup_commands": egg.startup_commands,
-                    "force_outgoing_ip": egg.force_outgoing_ip,
                     "separate_port": egg.separate_port,
 
                     "features": egg.features,

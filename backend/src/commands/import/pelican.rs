@@ -342,7 +342,6 @@ pub(super) async fn read(
                 } else {
                     SourceEggStartup::Single(source_optional_text(row, "startup")?)
                 },
-                force_outgoing_ip: source_bool(row, "force_outgoing_ip")?,
                 created,
             })
         })

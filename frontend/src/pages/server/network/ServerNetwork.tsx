@@ -20,6 +20,7 @@ import { useServerStore } from '@/stores/server.ts';
 import AllocationActionBar from './AllocationActionBar.tsx';
 import AllocationRow from './AllocationRow.tsx';
 import ServerFirewall from './firewall/ServerFirewall.tsx';
+import GameIpv6, { useGameIpv6 } from './GameIpv6.tsx';
 import NetworkSubNavigation from './NetworkSubNavigation.tsx';
 import ServerTunnel from './tunnel/ServerTunnel.tsx';
 
@@ -28,6 +29,8 @@ export default function ServerNetwork() {
   const { addToast } = useToast();
   const server = useServerStore((state) => state.server);
   const canReadAllocations = useServerCan('allocations.read');
+  const canChangeIpv6 = useServerCan('allocations.update');
+  const ipv6 = useGameIpv6(server.uuid, false, canReadAllocations).data;
   const canReadFirewall = useServerCan('firewall.read');
   const canDelete = useServerCan('allocations.delete');
 
@@ -98,6 +101,7 @@ export default function ServerNetwork() {
       registry={window.extensionContext.extensionRegistry.pages.server.network.container}
     >
       <NetworkSubNavigation />
+      {canReadAllocations && <GameIpv6 uuid={server.uuid} canChange={canChangeIpv6} />}
 
       <AllocationActionBar
         selectedAllocations={selectedAllocations}
@@ -134,6 +138,7 @@ export default function ServerNetwork() {
               {(innerRef: Ref<HTMLElement>) => (
                 <AllocationRow
                   allocation={allocation}
+                  ipv6={ipv6?.applied_address ?? ipv6?.address ?? undefined}
                   ref={innerRef as Ref<HTMLTableRowElement>}
                   isSelected={selectedAllocations.has(allocation.uuid)}
                   onSelectionChange={canDelete ? (selected) => toggleAllocation(allocation, selected) : undefined}

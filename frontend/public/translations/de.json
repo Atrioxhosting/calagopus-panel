@@ -4086,7 +4086,6 @@
                         "updateExisting": "Vorhandene aktualisieren",
                         "updateExistingDescription": "Wenn aktiviert und eine Übereinstimmung gefunden wird, wird sie durch den Wert \"Ersetzen durch\" ersetzt. Wenn deaktiviert, fügt die Ersetzung nur neue Werte ein und schlägt fehl, wenn eine Übereinstimmung gefunden wird.",
                         "startupCommands": "Startbefehle",
-                        "forceOutgoingIp": "Ausgehende IP erzwingen",
                         "separatePort": "IP und Port trennen",
                         "separatePortDescription": "Trennt die primäre IP und den Port auf der Konsolenseite, anstatt sie mit \":\" zu verbinden.",
                         "features": "Funktionen",

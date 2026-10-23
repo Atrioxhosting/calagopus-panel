@@ -21,6 +21,7 @@ mod database_hosts;
 mod devices;
 mod duplicate;
 mod enrollment;
+mod game_network;
 mod mounts;
 mod pair;
 mod reset_token;
@@ -295,6 +296,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .nest("/token", token::router(state))
         .nest("/tunnel", tunnel::router(state))
         .nest("/allocations", allocations::router(state))
+        .nest("/game-network", game_network::router(state))
         .nest("/system", system::router(state))
         .nest("/capacity", capacity::router(state))
         .nest("/servers", servers::router(state))

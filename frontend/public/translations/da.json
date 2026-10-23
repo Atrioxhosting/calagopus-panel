@@ -3581,7 +3581,6 @@
                         "updateExisting": "Opdater eksisterende",
                         "updateExistingDescription": "Hvis aktiveret, og der findes et match, erstattes det med værdien fra \"Erstat med\". Hvis deaktiveret, indsætter erstatningen kun nye værdier og mislykkes, hvis der findes et match.",
                         "startupCommands": "Opstartskommandoer",
-                        "forceOutgoingIp": "Tving udgående IP",
                         "separatePort": "Adskil IP og port",
                         "separatePortDescription": "Adskiller den primære IP og port på konsolsiden i stedet for at samle dem med \":\".",
                         "fileDenylist": "Deny-liste for filer",

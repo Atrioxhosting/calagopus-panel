@@ -1,5 +1,6 @@
 import { faStar, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { Stack, Text } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import debounce from 'debounce';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
@@ -8,6 +9,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import deleteAllocation from '@/api/server/allocations/deleteAllocation.ts';
 import updateAllocation from '@/api/server/allocations/updateAllocation.ts';
+import CopyOnClick from '@/elements/CopyOnClick.tsx';
 import { TableData, TableRow, TableSelectionCell } from '@/elements/data-display/Table.tsx';
 import TextArea from '@/elements/input/TextArea.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
@@ -26,12 +28,29 @@ import { useServerStore } from '@/stores/server.ts';
 
 interface AllocationRowProps {
   allocation: z.infer<typeof serverAllocationSchema>;
+  ipv6?: string;
   isSelected?: boolean;
   onSelectionChange?: (selected: boolean) => void;
 }
 
+function AllocationValue({ value, redact = false }: { value: string; redact?: boolean }) {
+  return (
+    <CopyOnClick
+      content={value}
+      className='group inline-flex w-fit min-w-0 max-w-full items-center align-middle text-left leading-none focus-visible:outline-2! focus-visible:outline-solid! focus-visible:outline-(--mantine-primary-color-filled)!'
+    >
+      <Code
+        className='block! max-w-full bg-(--mantine-color-default-hover)! transition-colors group-hover:bg-(--mantine-color-default-border)! group-focus-visible:bg-(--mantine-color-default-border)!'
+        style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}
+      >
+        {redact ? <RedactedText value={value} /> : value}
+      </Code>
+    </CopyOnClick>
+  );
+}
+
 const AllocationRow = forwardRef<HTMLTableRowElement, AllocationRowProps>(function AllocationRow(
-  { allocation, isSelected = false, onSelectionChange },
+  { allocation, ipv6, isSelected = false, onSelectionChange },
   ref,
 ) {
   const { t } = useTranslations();
@@ -161,6 +180,7 @@ const AllocationRow = forwardRef<HTMLTableRowElement, AllocationRowProps>(functi
         {({ items, openMenu }) => (
           <TableRow
             ref={ref}
+            className='[&>td]:align-middle'
             bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}
             onContextMenu={(e) => {
               e.preventDefault();
@@ -179,14 +199,34 @@ const AllocationRow = forwardRef<HTMLTableRowElement, AllocationRowProps>(functi
               )}
             </td>
 
-            <TableData>
-              <Code>
-                <RedactedText value={allocation.ipAlias ?? allocation.ip} />
-              </Code>
+            <TableData className='min-w-48 max-w-xs whitespace-normal!'>
+              <Stack gap={4} className='min-w-0'>
+                {allocation.ipAlias && (
+                  <CopyOnClick content={allocation.ipAlias} className='max-w-full text-left [overflow-wrap:anywhere]'>
+                    <Text size='sm' fw={500} component='span'>
+                      <RedactedText value={allocation.ipAlias} />
+                    </Text>
+                  </CopyOnClick>
+                )}
+                <div className='grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1'>
+                  <Text size='xs' c='dimmed'>
+                    IPv4
+                  </Text>
+                  <AllocationValue value={allocation.ip} redact />
+                  {ipv6 && (
+                    <>
+                      <Text size='xs' c='dimmed'>
+                        IPv6
+                      </Text>
+                      <AllocationValue value={ipv6} redact />
+                    </>
+                  )}
+                </div>
+              </Stack>
             </TableData>
 
             <TableData>
-              <Code>{allocation.port}</Code>
+              <AllocationValue value={String(allocation.port)} />
             </TableData>
 
             <TableData>

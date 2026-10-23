@@ -19,6 +19,7 @@ mod billing_period;
 mod clear_state;
 mod databases;
 mod devices;
+mod game_network;
 mod logs;
 mod mounts;
 mod transfer;
@@ -299,6 +300,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .nest("/devices", devices::router(state))
         .nest("/transfer", transfer::router(state))
         .nest("/allocations", allocations::router(state))
+        .nest("/game-network", game_network::router(state))
         .nest("/clear-state", clear_state::router(state))
         .nest("/logs", logs::router(state))
         .nest("/backups", backups::router(state))

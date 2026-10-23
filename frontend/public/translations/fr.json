@@ -2699,7 +2699,6 @@
                         "updateExisting": "Mettre à jour l'existant",
                         "updateExistingDescription": "Si activé, lorsqu'une correspondance est trouvée, elle sera remplacée par la valeur « Remplacer par ». Si désactivé, le remplacement n'insérera que de nouvelles valeurs et échouera si une correspondance est trouvée.",
                         "startupCommands": "Commandes de démarrage",
-                        "forceOutgoingIp": "Forcer l'IP sortante",
                         "separatePort": "Séparer l'IP et le port",
                         "separatePortDescription": "Sépare l'IP et le port primaires sur la page Console au lieu de les joindre avec « : ».",
                         "features": "Fonctionnalités",

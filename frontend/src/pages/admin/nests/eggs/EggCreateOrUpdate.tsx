@@ -340,11 +340,6 @@ export default function EggCreateOrUpdate({
 
           <Group grow>
             <Switch
-              label={t('pages.admin.nests.tabs.eggs.page.tabs.general.page.form.forceOutgoingIp', {})}
-              key={form.key('forceOutgoingIp')}
-              {...form.getInputProps('forceOutgoingIp', { type: 'checkbox' })}
-            />
-            <Switch
               label={t('pages.admin.nests.tabs.eggs.page.tabs.general.page.form.separatePort', {})}
               description={t('pages.admin.nests.tabs.eggs.page.tabs.general.page.form.separatePortDescription', {})}
               key={form.key('separatePort')}

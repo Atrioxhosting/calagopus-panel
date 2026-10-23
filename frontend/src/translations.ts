@@ -4065,7 +4065,6 @@ const baseTranslations = defineTranslations({
                         updateExistingDescription:
                           'If enabled, if a match is found, it will be replaced with the "Replace With" value. If disabled, the replacement will only insert new values and will fail if a match is found.',
                         startupCommands: 'Startup Commands',
-                        forceOutgoingIp: 'Force Outgoing IP',
                         separatePort: 'Separate IP and Port',
                         separatePortDescription:
                           'Separates the primary IP and port on the Console page instead of joining them with ":".',

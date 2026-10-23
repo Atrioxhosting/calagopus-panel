@@ -87,7 +87,6 @@ mod post {
                         "config_script": nest_egg.config_script,
 
                         "startup_commands": nest_egg.startup_commands,
-                        "force_outgoing_ip": nest_egg.force_outgoing_ip,
                         "separate_port": nest_egg.separate_port,
 
                         "features": nest_egg.features,

@@ -29,6 +29,7 @@ pub mod device;
 pub mod egg_configuration;
 pub mod egg_repository;
 pub mod egg_repository_egg;
+pub mod game_ipv6;
 pub mod location;
 pub mod location_database_agent_host;
 pub mod location_database_host;

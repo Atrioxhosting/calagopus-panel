@@ -3239,7 +3239,6 @@
                         "updateExisting": "更新現有值",
                         "updateExistingDescription": "若啟用，當找到符合的值時，將以「替換為」的值進行替換。若停用，替換僅會插入新值，且若找到符合的值將會失敗。",
                         "startupCommands": "啟動指令",
-                        "forceOutgoingIp": "強制輸出 IP",
                         "separatePort": "分離 IP 與連接埠",
                         "separatePortDescription": "在主控台頁面上分離主要 IP 與連接埠，而非以「:」連接。",
                         "features": "功能",

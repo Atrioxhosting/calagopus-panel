@@ -1694,6 +1694,34 @@ impl Server {
         }
 
         let mut transaction = state.database.write().begin().await?;
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))")
+            .bind(self.uuid.to_string())
+            .execute(&mut *transaction)
+            .await?;
+        let ipv6_pending: Option<bool> = sqlx::query_scalar(
+            "SELECT pending FROM game_ipv6_servers WHERE server_uuid=$1 FOR UPDATE",
+        )
+        .bind(self.uuid)
+        .fetch_optional(&mut *transaction)
+        .await?;
+        if ipv6_pending == Some(true) {
+            return Err(DisplayError::new(
+                "IPv6 operation is pending; retry transfer after reconciliation",
+            )
+            .with_status(axum::http::StatusCode::CONFLICT)
+            .into());
+        }
+        if ipv6_pending.is_some()
+            && super::game_ipv6::node_network(state, options.destination_node.uuid)
+                .await?
+                .is_none()
+        {
+            return Err(DisplayError::new(
+                "Configure the destination game IPv6 prefix before transferring this server",
+            )
+            .with_status(axum::http::StatusCode::CONFLICT)
+            .into());
+        }
 
         let destination_allocation_uuid = if let Some(allocation_uuid) = options.allocation_uuid {
             match sqlx::query!(
@@ -2171,7 +2199,7 @@ impl Server {
                     })
                     .try_collect_vec()?,
                 allocations: wings_api::ServerConfigurationAllocations {
-                    force_outgoing_ip: self.egg.force_outgoing_ip,
+                    ipv6: super::game_ipv6::configuration(state, self.uuid, self.node.uuid).await?,
                     default: self.allocation.map(|a| {
                         wings_api::ServerConfigurationAllocationsDefault {
                             ip: compact_str::format_compact!("{}", a.allocation.ip.ip()),

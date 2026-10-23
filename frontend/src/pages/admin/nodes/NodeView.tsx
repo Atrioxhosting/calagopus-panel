@@ -28,6 +28,7 @@ import AdminNodeConfiguration from './configuration/AdminNodeConfiguration.tsx';
 import AdminNodeDatabaseAgentHosts from './database-agent-hosts/AdminNodeDatabaseAgentHosts.tsx';
 import AdminNodeDatabaseHosts from './database-hosts/AdminNodeDatabaseHosts.tsx';
 import AdminNodeDevices from './devices/AdminNodeDevices.tsx';
+import GameNetwork from './GameNetwork.tsx';
 import AdminNodeLogs from './logs/AdminNodeLogs.tsx';
 import AdminNodeMounts from './mounts/AdminNodeMounts.tsx';
 import NodeCreateOrUpdate from './NodeCreateOrUpdate.tsx';
@@ -89,11 +90,18 @@ export default function NodeView() {
                 element: <AdminNodeLogs node={node} />,
               },
               {
-                name: t('pages.admin.nodes.tabs.allocations.title', {}),
+                name: 'Allocations-v4',
                 icon: faNetworkWired,
                 path: `/allocations`,
                 element: <AdminNodeAllocations node={node} />,
                 permission: 'nodes.allocations',
+              },
+              {
+                name: 'Allocations-v6',
+                icon: faNetworkWired,
+                path: '/game-network',
+                element: <GameNetwork uuid={node.uuid} />,
+                permission: 'nodes.read',
               },
               {
                 name: t('pages.admin.nodes.tabs.mounts.title', {}),

@@ -141,7 +141,6 @@ mod post {
                         "config_script": egg.config_script,
 
                         "startup_commands": egg.startup_commands,
-                        "force_outgoing_ip": egg.force_outgoing_ip,
                         "separate_port": egg.separate_port,
 
                         "features": egg.features,

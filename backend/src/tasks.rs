@@ -67,6 +67,19 @@ pub async fn define_background_tasks(
     background_task_builder: &shared::extensions::background_tasks::BackgroundTaskBuilder,
 ) {
     background_task_builder
+        .add_task("reconcile_game_ipv6", async |state| {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(15));
+            loop {
+                interval.tick().await;
+                if let Err(error) = shared::models::game_ipv6::reconcile_pending(&state).await {
+                    tracing::warn!(%error,"Game IPv6 reconciliation failed");
+                }
+            }
+            #[allow(unreachable_code)]
+            Ok(())
+        })
+        .await;
+    background_task_builder
         .add_task("collect_telemetry", async |state| {
             fn generate_randomized_cron_schedule() -> croner::Cron {
                 let mut rng = rand::rng();
