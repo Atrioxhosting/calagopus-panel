@@ -5499,6 +5499,10 @@ const baseTranslations = defineTranslations({
         },
         console: {
           title: 'Console',
+          ipMasking: {
+            show: 'Click to show IP address',
+            hide: 'Click to hide IP address',
+          },
           input: {
             placeholder: 'Type a command...',
             ariaLabel: 'Console command input.',

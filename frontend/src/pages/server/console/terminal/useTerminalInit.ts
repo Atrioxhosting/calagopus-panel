@@ -8,6 +8,8 @@ import { copyToClipboard, handleRawCopyToClipboard } from '@/lib/clipboard/copy.
 import { getCellHeight, getXtermTheme } from '@/lib/editor/xterm.ts';
 import { eventKeyMatches } from '@/lib/quickActions/shortcuts.ts';
 import type { AddToast } from '@/providers/contexts/toastContext.ts';
+import { getTranslations } from '@/providers/TranslationProvider.tsx';
+import { ConsoleIpMasking } from './ConsoleIpMasking.ts';
 
 interface UseTerminalInitOptions {
   terminalRef: RefObject<HTMLDivElement | null>;
@@ -31,6 +33,7 @@ export function useTerminalInit({
   isDark,
 }: UseTerminalInitOptions) {
   const xtermInstance = useRef<XTerm | null>(null);
+  const ipMaskingRef = useRef<ConsoleIpMasking | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
   const updateSelectionMenuRef = useRef<() => void>(() => void 0);
@@ -79,6 +82,18 @@ export function useTerminalInit({
 
     term.open(terminalRef.current);
     fitAddon.fit();
+    const ipMasking = new ConsoleIpMasking(
+      term,
+      () => ({
+        show: getTranslations().t('pages.server.console.ipMasking.show', {}),
+        hide: getTranslations().t('pages.server.console.ipMasking.hide', {}),
+      }),
+      copyToClipboard,
+      (value) => {
+        touchSelectionRef.current = value;
+      },
+    );
+    ipMaskingRef.current = ipMasking;
 
     for (const handler of window.extensionContext.extensionRegistry.pages.server.console.xterm.afterOpenHandlers) {
       handler(term, {});
@@ -119,7 +134,10 @@ export function useTerminalInit({
       }
 
       const cellHeight = getCellHeight(term, (term.options.fontSize ?? 14) * 1.2);
-      const lastLineTop = (range.end.y - term.buffer.active.viewportY) * cellHeight;
+      const selectionRect = ipMasking.getSelectionRect();
+      const lastLineTop = selectionRect
+        ? selectionRect.bottom - terminalRef.current!.getBoundingClientRect().top - cellHeight
+        : (range.end.y - term.buffer.active.viewportY) * cellHeight;
 
       let top = lastLineTop - 40;
       if (top < 4) top = lastLineTop + cellHeight + 8;
@@ -157,6 +175,8 @@ export function useTerminalInit({
     return () => {
       resizeObserver.disconnect();
       if (fitFrame !== null) cancelAnimationFrame(fitFrame);
+      ipMasking.dispose();
+      ipMaskingRef.current = null;
       term.dispose();
       xtermInstance.current = null;
       fitAddonRef.current = null;
@@ -186,6 +206,7 @@ export function useTerminalInit({
 
   const resetTerminal = useCallback(() => {
     if (!xtermInstance.current) return false;
+    ipMaskingRef.current?.reset();
     xtermInstance.current.reset();
     return true;
   }, []);

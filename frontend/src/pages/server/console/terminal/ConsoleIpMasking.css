@@ -1,0 +1,53 @@
+.console-ip-address {
+  color: #93b8e0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+:root[data-mantine-color-scheme="light"] .console-ip-address {
+  color: #466f98;
+}
+
+/* xterm remains the original-data engine; only the browser lays out output. */
+.console-natural-terminal > .xterm-viewport,
+.console-natural-terminal > .xterm-scrollable-element,
+.console-natural-terminal .xterm-screen {
+  visibility: hidden;
+}
+
+.console-output {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  cursor: text;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.console-output-line {
+  min-height: 1lh;
+}
+
+.console-output ::selection {
+  background: var(--console-selection-background);
+}
+
+.xterm .console-output .console-ip-address {
+  color: #93b8e0;
+  cursor: pointer;
+  font-weight: inherit;
+}
+
+:root[data-mantine-color-scheme="light"] .xterm .console-output .console-ip-address {
+  color: #466f98;
+}
+
+.console-output-url {
+  cursor: pointer;
+}
+.console-output-url:hover {
+  text-decoration: underline;
+}
