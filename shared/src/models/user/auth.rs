@@ -260,6 +260,23 @@ impl PermissionManager {
         self.user_admin && self.scope.is_session()
     }
 
+    /// A linked identity signs in as the account from then on. Besides unrestricted administrators,
+    /// a session may only link its own account, and an api key only through a provider an
+    /// unrestricted administrator marked as api-linkable, for accounts it could impersonate.
+    pub fn can_link_identity(&self, user: &super::User, api_linkable: bool) -> bool {
+        if self.is_unrestricted_admin() {
+            return true;
+        }
+
+        if self.scope.is_session() {
+            return self.user_uuid == user.uuid;
+        }
+
+        api_linkable
+            && self.has_admin_permission("users.impersonate").is_ok()
+            && self.can_impersonate(user)
+    }
+
     /// Administrators may only be written to by other administrators signed in with a session,
     /// no matter which admin permissions a role or api key grants.
     pub fn can_modify_user(&self, user: &super::User) -> Result<(), ApiResponse> {
@@ -663,5 +680,97 @@ mod tests {
             manager.missing_server_permission(["files.read", "files.delete"]),
             Some("files.delete")
         );
+    }
+
+    // PermissionManager::can_link_identity
+    #[test]
+    fn an_admin_session_can_link_any_identity() {
+        let mut manager = manager(CredentialScope::Session);
+        manager.user_admin = true;
+
+        assert!(manager.can_link_identity(&user(true, None), false));
+        assert!(manager.can_link_identity(&user(true, None), true));
+        assert!(manager.can_link_identity(&user(false, Some((&["users.update"], &[]))), false));
+    }
+
+    #[test]
+    fn a_role_session_can_only_link_its_own_account() {
+        let target = user(false, None);
+        let mut manager = manager(CredentialScope::Session);
+        manager.role_admin_permissions = permissions(&["users.oauth-links", "users.impersonate"]);
+
+        assert!(!manager.can_link_identity(&target, true));
+        assert!(!manager.can_link_identity(&target, false));
+
+        manager.user_uuid = target.uuid;
+        assert!(manager.can_link_identity(&target, false));
+        assert!(manager.can_link_identity(&target, true));
+    }
+
+    #[test]
+    fn an_api_key_needs_the_linkable_flag() {
+        let mut manager = manager(api_key(&[], &["users.impersonate"], &[]));
+        manager.user_admin = true;
+
+        assert!(manager.can_link_identity(&user(false, None), true));
+        assert!(!manager.can_link_identity(&user(false, None), false));
+    }
+
+    #[test]
+    fn an_api_key_needs_impersonate_granted_and_scoped() {
+        let mut unscoped = manager(api_key(&[], &["users.oauth-links"], &[]));
+        unscoped.user_admin = true;
+        let ungranted = manager(api_key(&[], &["users.impersonate"], &[]));
+        let mut role = manager(api_key(&[], &["users.impersonate"], &[]));
+        role.role_admin_permissions = permissions(&["users.impersonate"]);
+
+        assert!(!unscoped.can_link_identity(&user(false, None), true));
+        assert!(!ungranted.can_link_identity(&user(false, None), true));
+        assert!(role.can_link_identity(&user(false, None), true));
+    }
+
+    #[test]
+    fn an_api_key_cannot_link_an_admin() {
+        let mut manager = manager(api_key(
+            &["account.infos"],
+            &["users.impersonate"],
+            &["files.read"],
+        ));
+        manager.user_admin = true;
+
+        assert!(!manager.can_link_identity(&user(true, None), true));
+    }
+
+    #[test]
+    fn an_api_key_cannot_link_a_stronger_role() {
+        let mut manager = manager(api_key(
+            &[],
+            &["users.impersonate", "roles.read"],
+            &["files.read"],
+        ));
+        manager.role_admin_permissions =
+            permissions(&["users.impersonate", "roles.read", "users.update"]);
+        manager.role_server_permissions = permissions(&["files.read", "files.delete"]);
+
+        assert!(
+            manager.can_link_identity(&user(false, Some((&["roles.read"], &["files.read"]))), true)
+        );
+        assert!(!manager.can_link_identity(&user(false, Some((&["users.update"], &[]))), true));
+        assert!(!manager.can_link_identity(&user(false, Some((&[], &["files.delete"]))), true));
+        assert!(!manager.can_link_identity(&user(false, Some((&["nodes.read"], &[]))), true));
+    }
+
+    #[test]
+    fn an_api_key_gets_no_exemption_for_its_own_account() {
+        let target = user(false, None);
+        let mut flagless = manager(api_key(&[], &["users.impersonate"], &[]));
+        flagless.user_admin = true;
+        flagless.user_uuid = target.uuid;
+        let mut unscoped = manager(api_key(&[], &[], &[]));
+        unscoped.user_admin = true;
+        unscoped.user_uuid = target.uuid;
+
+        assert!(!flagless.can_link_identity(&target, false));
+        assert!(!unscoped.can_link_identity(&target, true));
     }
 }

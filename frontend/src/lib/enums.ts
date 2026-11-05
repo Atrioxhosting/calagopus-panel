@@ -771,7 +771,7 @@ export const scheduleStepDefaultMapping: Record<
   create_backup: {
     type: 'create_backup',
     ignoreFailure: false,
-    foreground: false,
+    foreground: true,
     name: null,
     ignoredFiles: [],
     outputInto: null,
@@ -779,7 +779,7 @@ export const scheduleStepDefaultMapping: Record<
   create_database_backup: {
     type: 'create_database_backup',
     ignoreFailure: false,
-    foreground: false,
+    foreground: true,
     name: null,
     databaseInstanceUuid: '',
     outputInto: null,
@@ -838,7 +838,7 @@ export const scheduleStepDefaultMapping: Record<
   copy_file: {
     type: 'copy_file',
     ignoreFailure: false,
-    foreground: false,
+    foreground: true,
     file: '',
     destination: '',
   },
@@ -858,7 +858,7 @@ export const scheduleStepDefaultMapping: Record<
   compress_files: {
     type: 'compress_files',
     ignoreFailure: false,
-    foreground: false,
+    foreground: true,
     root: '/',
     files: [],
     format: 'tar_gz',
@@ -867,14 +867,14 @@ export const scheduleStepDefaultMapping: Record<
   decompress_file: {
     type: 'decompress_file',
     ignoreFailure: false,
-    foreground: false,
+    foreground: true,
     root: '/',
     file: '',
   },
   pull_file: {
     type: 'pull_file',
     ignoreFailure: false,
-    foreground: false,
+    foreground: true,
     root: '/',
     url: '',
     fileName: null,
@@ -1038,7 +1038,7 @@ export const scheduleTriggerDefaultMapping: Record<
   z.infer<typeof serverScheduleTriggerSchema>['type'],
   z.infer<typeof serverScheduleTriggerSchema>
 > = {
-  cron: { type: 'cron', schedule: '0 0 0 * * *' },
+  cron: { type: 'cron', schedule: '0 0 0 * * *', weekInterval: 1, weekAnchor: null },
   power_action: { type: 'power_action', action: 'start' },
   server_state: { type: 'server_state', state: 'running' },
   backup_status: { type: 'backup_status', status: 'starting' },

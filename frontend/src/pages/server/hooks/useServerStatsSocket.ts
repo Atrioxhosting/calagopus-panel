@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { z } from 'zod';
 import { serverResourceUsageSchema } from '@/lib/schemas/server/server.ts';
 import { transformKeysToCamelCase } from '@/lib/serialization/transformers.ts';
+import { structuredArg } from '@/plugins/websocket/args.ts';
 import useWebsocketEvent, { SocketEvent, SocketRequest } from '@/plugins/websocket/useWebsocketEvent.ts';
 import { useServerStore, useServerStoreApi } from '@/stores/server.ts';
 import { useUserStore } from '@/stores/user.ts';
@@ -22,10 +23,10 @@ export default function useServerStatsSocket() {
     socketInstance.send(SocketRequest.SEND_STATS);
   }, [socketInstance, socketConnected]);
 
-  useWebsocketEvent(SocketEvent.STATS, (data) => {
+  useWebsocketEvent(SocketEvent.STATS, (data: unknown) => {
     let resourceUsage: z.infer<typeof serverResourceUsageSchema>;
     try {
-      resourceUsage = transformKeysToCamelCase(JSON.parse(data)) as z.infer<typeof serverResourceUsageSchema>;
+      resourceUsage = transformKeysToCamelCase(structuredArg(data)) as z.infer<typeof serverResourceUsageSchema>;
     } catch {
       return;
     }

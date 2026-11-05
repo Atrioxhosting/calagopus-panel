@@ -2,7 +2,7 @@ import { basename, dirname, join } from 'pathe';
 import { z } from 'zod';
 import { FileRename, renameFilePath } from '@/lib/files/fileRenames.ts';
 import { serverDirectoryEntrySchema } from '@/lib/schemas/server/files.ts';
-import { FileTreeEditorSelection, getFileTreeEditorTabId } from './fileTreeEditor.ts';
+import { FileTreeEditorSelection, FileTreeTabPosition, getFileTreeEditorTabId } from './fileTreeEditor.ts';
 
 export interface FileTreeEditorPaneState {
   id: string;
@@ -94,11 +94,82 @@ export const normalizeFileTreeWorkspace = (input: FileTreeEditorWorkspaceState):
     };
   }
 
+  const sizeScale = panes.length / panes.reduce((total, pane) => total + pane.size, 0);
+
   return {
     tabs,
-    panes,
+    panes: sizeScale === 1 ? panes : panes.map((pane) => ({ ...pane, size: pane.size * sizeScale })),
     activePaneId: panes.some((pane) => pane.id === input.activePaneId) ? input.activePaneId : panes[0].id,
   };
+};
+
+const removePaneTabs = (pane: FileTreeEditorPaneState, tabIds: ReadonlySet<string>): FileTreeEditorPaneState => {
+  const remaining = pane.tabIds.filter((id) => !tabIds.has(id));
+  if (remaining.length === pane.tabIds.length) return pane;
+  const activeIndex = pane.tabIds.indexOf(pane.activeTabId ?? '');
+  return {
+    ...pane,
+    tabIds: remaining,
+    previewTabId: pane.previewTabId && !tabIds.has(pane.previewTabId) ? pane.previewTabId : undefined,
+    activeTabId:
+      pane.activeTabId && !tabIds.has(pane.activeTabId)
+        ? pane.activeTabId
+        : (pane.tabIds.slice(activeIndex + 1).find((id) => !tabIds.has(id)) ?? remaining.at(-1) ?? null),
+  };
+};
+
+export type FileTreePaneDropTarget =
+  | { paneId: string; split: 'left' | 'right' }
+  | { paneId: string; position: FileTreeTabPosition | null };
+
+export const placeFileTreeTabs = (
+  workspace: FileTreeEditorWorkspaceState,
+  selections: FileTreeEditorSelection[],
+  target: FileTreePaneDropTarget,
+): FileTreeEditorWorkspaceState => {
+  const tabIds = Array.from(new Set(selections.map(getFileTreeEditorTabId)));
+  const targetPane = workspace.panes.find((pane) => pane.id === target.paneId);
+  if (!targetPane || tabIds.length === 0) return workspace;
+  const moving = new Set(tabIds);
+  if ('position' in target && target.position && moving.has(target.position.tabId)) return workspace;
+
+  const tabs = [...workspace.tabs];
+  for (const selection of selections) {
+    const index = tabs.findIndex((tab) => getFileTreeEditorTabId(tab) === getFileTreeEditorTabId(selection));
+    if (index === -1) tabs.push(selection);
+    else tabs[index] = selection;
+  }
+
+  const panes = workspace.panes.map((pane) => removePaneTabs(pane, moving));
+  const targetIndex = panes.findIndex((pane) => pane.id === target.paneId);
+  const remainingTarget = panes[targetIndex];
+
+  if ('split' in target && remainingTarget.tabIds.length > 0) {
+    const paneId = createFileTreePaneId();
+    panes.splice(target.split === 'left' ? targetIndex : targetIndex + 1, 0, {
+      id: paneId,
+      tabIds,
+      activeTabId: tabIds[0],
+      size: 1,
+    });
+    return normalizeFileTreeWorkspace({
+      tabs,
+      panes: panes.map((pane) => ({ ...pane, size: 1 })),
+      activePaneId: paneId,
+    });
+  }
+
+  const position = 'position' in target ? target.position : null;
+  const insertIndex =
+    position && remainingTarget.tabIds.includes(position.tabId)
+      ? remainingTarget.tabIds.indexOf(position.tabId) + Number(position.after)
+      : remainingTarget.tabIds.length;
+  panes[targetIndex] = {
+    ...remainingTarget,
+    tabIds: remainingTarget.tabIds.toSpliced(insertIndex, 0, ...tabIds),
+    activeTabId: tabIds[0],
+  };
+  return normalizeFileTreeWorkspace({ tabs, panes, activePaneId: target.paneId });
 };
 
 export const closeFileTreeWorkspaceTabs = (
@@ -106,19 +177,7 @@ export const closeFileTreeWorkspaceTabs = (
   tabIds: ReadonlySet<string>,
 ): FileTreeEditorWorkspaceState => {
   if (!workspace.tabs.some((tab) => tabIds.has(getFileTreeEditorTabId(tab)))) return workspace;
-  const panes = workspace.panes.map((pane) => {
-    const remaining = pane.tabIds.filter((id) => !tabIds.has(id));
-    if (remaining.length === pane.tabIds.length) return pane;
-    const activeIndex = pane.tabIds.indexOf(pane.activeTabId ?? '');
-    return {
-      ...pane,
-      tabIds: remaining,
-      activeTabId:
-        pane.activeTabId && !tabIds.has(pane.activeTabId)
-          ? pane.activeTabId
-          : (pane.tabIds.slice(activeIndex + 1).find((id) => !tabIds.has(id)) ?? remaining.at(-1) ?? null),
-    };
-  });
+  const panes = workspace.panes.map((pane) => removePaneTabs(pane, tabIds));
   const activeIndex = workspace.panes.findIndex((pane) => pane.id === workspace.activePaneId);
   const remainingPanes = panes.filter((pane) => pane.tabIds.length > 0);
   const activePane =

@@ -162,6 +162,10 @@ export const createSettingsSlice: StateCreator<AdminStore, [], [], SettingsSlice
       hits: 0,
       windowSeconds: 0,
     },
+    clientServersSubusersCreate: {
+      hits: 0,
+      windowSeconds: 0,
+    },
     remote: {
       hits: 0,
       windowSeconds: 0,

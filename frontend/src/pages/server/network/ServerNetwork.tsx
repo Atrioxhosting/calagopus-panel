@@ -47,6 +47,7 @@ export default function ServerNetwork() {
     queryKey: queryKeys.server(server.uuid).network.all(),
     fetcher: (page, search, perPage) => getAllocations(server.uuid, page, search, perPage),
     canRequest: canReadAllocations,
+    backgroundRefetch: true,
   });
 
   const {

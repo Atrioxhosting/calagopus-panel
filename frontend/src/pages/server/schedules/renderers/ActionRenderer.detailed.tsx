@@ -26,7 +26,12 @@ export function ForegroundText({ foreground }: { foreground: boolean }) {
   const { t } = useTranslations();
   return (
     <Text size='xs' c='dimmed'>
-      {t('pages.server.schedules.renderer.foreground', { value: t(foreground ? 'common.yes' : 'common.no', {}) })}
+      {t(
+        foreground
+          ? 'pages.server.schedules.renderer.waitsForCompletion'
+          : 'pages.server.schedules.renderer.runsInBackground',
+        {},
+      )}
     </Text>
   );
 }

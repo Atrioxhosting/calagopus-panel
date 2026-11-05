@@ -17,12 +17,11 @@ import { useContextMenu } from '@/elements/overlays/ContextMenu.tsx';
 import FileRowIcon from '@/pages/server/files/list/FileRowIcon.tsx';
 import FileTreeName from '@/pages/server/files/tree/FileTreeName.tsx';
 import {
+  acceptsFileTreeEditorDrop,
   FILE_TREE_EDITOR_TAB_DRAG_TYPE,
   FileTreeEditorSelection,
-  FileTreeEditorTabDragData,
   FileTreeTabCloseAction,
   FileTreeTabPosition,
-  getFileTreeEditorTabDragData,
   getFileTreeEditorTabId,
   setFileTreeEditorTabDragData,
 } from '@/pages/server/files/tree/fileTreeEditor.ts';
@@ -36,7 +35,7 @@ interface FileTreeEditorTabsProps {
   dirtyTabIds: ReadonlySet<string>;
   onSelect: (tabId: string) => void;
   onClose: (tabId: string, action?: FileTreeTabCloseAction) => void;
-  onMove: (drag: FileTreeEditorTabDragData, position: FileTreeTabPosition) => void;
+  onDrop: (dataTransfer: DataTransfer, position: FileTreeTabPosition) => void;
   onReveal: (tabId: string) => void;
   onKeepOpen: (tabId: string) => void;
 }
@@ -55,7 +54,7 @@ export default function FileTreeEditorTabs({
   dirtyTabIds,
   onSelect,
   onClose,
-  onMove,
+  onDrop,
   onReveal,
   onKeepOpen,
 }: FileTreeEditorTabsProps) {
@@ -107,12 +106,12 @@ export default function FileTreeEditorTabs({
       setDropPosition(null);
       setDragPreview(null);
     };
-    window.addEventListener('dragend', clear);
-    window.addEventListener('drop', clear);
+    window.addEventListener('dragend', clear, true);
+    window.addEventListener('drop', clear, true);
     window.addEventListener('blur', clear);
     return () => {
-      window.removeEventListener('dragend', clear);
-      window.removeEventListener('drop', clear);
+      window.removeEventListener('dragend', clear, true);
+      window.removeEventListener('drop', clear, true);
       window.removeEventListener('blur', clear);
     };
   }, []);
@@ -148,9 +147,11 @@ export default function FileTreeEditorTabs({
       classNames={{ content: 'flex! w-max min-w-full' }}
       data-file-manager-editor-tabs
       onDragOver={(event) => {
-        if (!event.dataTransfer.types.includes(FILE_TREE_EDITOR_TAB_DRAG_TYPE)) return;
+        if (!acceptsFileTreeEditorDrop(event.dataTransfer)) return;
         event.preventDefault();
-        event.dataTransfer.dropEffect = 'move';
+        event.dataTransfer.dropEffect = event.dataTransfer.types.includes(FILE_TREE_EDITOR_TAB_DRAG_TYPE)
+          ? 'move'
+          : 'copy';
         const position = getDropPosition(event);
         setDropPosition((current) =>
           current?.tabId === position.tabId && current.after === position.after ? current : position,
@@ -166,13 +167,13 @@ export default function FileTreeEditorTabs({
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropPosition(null);
       }}
       onDrop={(event) => {
-        if (!event.dataTransfer.types.includes(FILE_TREE_EDITOR_TAB_DRAG_TYPE)) return;
+        if (!acceptsFileTreeEditorDrop(event.dataTransfer)) return;
         event.preventDefault();
         event.stopPropagation();
+        const position = getDropPosition(event);
         setDropPosition(null);
         setDragPreview(null);
-        const drag = getFileTreeEditorTabDragData(event.dataTransfer);
-        if (drag) onMove(drag, getDropPosition(event));
+        onDrop(event.dataTransfer, position);
       }}
       className='h-[calc(2.625rem+1px+var(--file-manager-editor-tab-gutter,0px))] min-w-0 shrink-0 border-b border-(--mantine-color-default-border)'
     >

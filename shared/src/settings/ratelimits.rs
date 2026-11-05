@@ -30,6 +30,7 @@ pub struct AppSettingsRatelimits {
     pub client_servers_backups_create: RatelimitConfiguration,
     pub client_servers_files_pull: RatelimitConfiguration,
     pub client_servers_files_pull_query: RatelimitConfiguration,
+    pub client_servers_subusers_create: RatelimitConfiguration,
 
     pub remote: RatelimitConfiguration,
     pub remote_sftp_auth: RatelimitConfiguration,
@@ -81,6 +82,10 @@ impl SettingsSerializeExt for AppSettingsRatelimits {
             .write_serde_setting(
                 "client_servers_files_pull_query",
                 &self.client_servers_files_pull_query,
+            )?
+            .write_serde_setting(
+                "client_servers_subusers_create",
+                &self.client_servers_subusers_create,
             )?
             .write_serde_setting("remote", &self.remote)?
             .write_serde_setting("remote_sftp_auth", &self.remote_sftp_auth)?
@@ -176,6 +181,12 @@ impl SettingsDeserializeExt for AppSettingsRatelimitsDeserializer {
                 .unwrap_or(RatelimitConfiguration {
                     hits: 10,
                     window_seconds: 60,
+                }),
+            client_servers_subusers_create: deserializer
+                .read_serde_setting("client_servers_subusers_create")
+                .unwrap_or(RatelimitConfiguration {
+                    hits: 10,
+                    window_seconds: 3600,
                 }),
             remote: deserializer
                 .read_serde_setting("remote")

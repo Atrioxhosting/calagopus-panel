@@ -19,7 +19,11 @@ const withAccessibleName = (children: ReactNode, label: TooltipProps['label']) =
 const Tooltip = forwardRef<HTMLDivElement, TooltipProps & { innerClassName?: string }>(
   ({ children, className, innerClassName, ...rest }, ref) => {
     return (
-      <MantineTooltip ref={ref} className={classNames(className, 'w-fit leading-none')} {...rest}>
+      <MantineTooltip
+        ref={ref}
+        className={classNames(className, 'w-fit', rest.multiline ? 'leading-snug' : 'leading-none')}
+        {...rest}
+      >
         <span className={classNames(innerClassName, 'inline-block')}>{withAccessibleName(children, rest.label)}</span>
       </MantineTooltip>
     );

@@ -1,5 +1,6 @@
 import { useShallow } from 'zustand/react/shallow';
 import { queryKeys } from '@/lib/queryKeys.ts';
+import { structuredArg } from '@/plugins/websocket/args.ts';
 import useWebsocketEvent, { SocketEvent } from '@/plugins/websocket/useWebsocketEvent.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -23,10 +24,10 @@ export default function useServerBackupSocket() {
       })),
     );
 
-  useWebsocketEvent(SocketEvent.BACKUP_PROGRESS, (uuid, data) => {
+  useWebsocketEvent(SocketEvent.BACKUP_PROGRESS, (uuid, data: unknown) => {
     let wsData: { bytes_processed: number; bytes_total: number; files_processed: number };
     try {
-      wsData = JSON.parse(data);
+      wsData = structuredArg(data);
     } catch {
       return;
     }
@@ -38,7 +39,7 @@ export default function useServerBackupSocket() {
     });
   });
 
-  useWebsocketEvent(SocketEvent.BACKUP_COMPLETED, (uuid, data) => {
+  useWebsocketEvent(SocketEvent.BACKUP_COMPLETED, (uuid, data: unknown) => {
     let wsData: {
       successful: boolean;
       checksum_type: string;
@@ -49,7 +50,7 @@ export default function useServerBackupSocket() {
       streaming: boolean;
     };
     try {
-      wsData = JSON.parse(data);
+      wsData = structuredArg(data);
     } catch {
       return;
     }
@@ -74,10 +75,10 @@ export default function useServerBackupSocket() {
     invalidateCacheKey(queryKeys.server(serverStoreApi.getState().server.uuid).backups.all());
   });
 
-  useWebsocketEvent(SocketEvent.BACKUP_DELETED, (uuid, data) => {
+  useWebsocketEvent(SocketEvent.BACKUP_DELETED, (uuid, data: unknown) => {
     let wsData: { successful: boolean };
     try {
-      wsData = JSON.parse(data);
+      wsData = structuredArg(data);
     } catch {
       return;
     }
@@ -96,10 +97,10 @@ export default function useServerBackupSocket() {
     updateServer({ status: 'restoring_backup' });
   });
 
-  useWebsocketEvent(SocketEvent.BACKUP_RESTORE_PROGRESS, (data) => {
+  useWebsocketEvent(SocketEvent.BACKUP_RESTORE_PROGRESS, (data: unknown) => {
     let wsData: { bytes_processed: number; bytes_total: number; files_processed: number };
     try {
-      wsData = JSON.parse(data);
+      wsData = structuredArg(data);
     } catch {
       return;
     }
@@ -130,7 +131,7 @@ export default function useServerBackupSocket() {
     invalidateCacheKey(queryKeys.server(state.server.uuid).databases.instances.all());
   });
 
-  useWebsocketEvent(SocketEvent.DATABASE_BACKUP_RESTORE_PROGRESS, (_uuid, instanceUuid, data) => {
+  useWebsocketEvent(SocketEvent.DATABASE_BACKUP_RESTORE_PROGRESS, (_uuid, instanceUuid, data: unknown) => {
     const state = serverStoreApi.getState();
     if (state.databaseInstance?.uuid !== instanceUuid) {
       return;
@@ -138,7 +139,7 @@ export default function useServerBackupSocket() {
 
     let wsData: { bytes_processed: number; bytes_total: number };
     try {
-      wsData = JSON.parse(data);
+      wsData = structuredArg(data);
     } catch {
       return;
     }

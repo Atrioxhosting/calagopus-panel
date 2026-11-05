@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import getServer from '@/api/server/getServer.ts';
+import { structuredArg } from '@/plugins/websocket/args.ts';
 import useWebsocketEvent, { SocketEvent } from '@/plugins/websocket/useWebsocketEvent.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -65,7 +66,7 @@ export default function useServerTransferSocket() {
     }
   });
 
-  useWebsocketEvent(SocketEvent.TRANSFER_PROGRESS, (data) => {
+  useWebsocketEvent(SocketEvent.TRANSFER_PROGRESS, (data: unknown) => {
     updateServer({ isTransferring: true });
 
     let wsData: {
@@ -75,7 +76,7 @@ export default function useServerTransferSocket() {
       files_processed: number;
     };
     try {
-      wsData = JSON.parse(data);
+      wsData = structuredArg(data);
     } catch {
       return;
     }

@@ -4,7 +4,6 @@ import { z } from 'zod';
 import getBackupGroups from '@/api/server/backups/groups/getBackupGroups.ts';
 import Select from '@/elements/input/Select.tsx';
 import Switch from '@/elements/input/Switch.tsx';
-import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { serverScheduleStepUpdateSchema } from '@/lib/schemas/server/schedules.ts';
@@ -60,16 +59,15 @@ export default function StepCreateDatabaseBackup({
           onChange={(v) => form.setFieldValue('action.backupGroupUuid', v)}
         />
       )}
-      <Group>
-        <Switch
-          label={t('pages.server.schedules.form.runInForeground', {})}
-          {...form.getInputProps('action.foreground', { type: 'checkbox' })}
-        />
-        <Switch
-          label={t('pages.server.schedules.form.ignoreFailure', {})}
-          {...form.getInputProps('action.ignoreFailure', { type: 'checkbox' })}
-        />
-      </Group>
+      <Switch
+        label={t('pages.server.schedules.form.waitForCompletion', {})}
+        description={t('pages.server.schedules.form.waitForCompletionDescription', {})}
+        {...form.getInputProps('action.foreground', { type: 'checkbox' })}
+      />
+      <Switch
+        label={t('pages.server.schedules.form.ignoreFailure', {})}
+        {...form.getInputProps('action.ignoreFailure', { type: 'checkbox' })}
+      />
       <ScheduleDynamicParameterInput
         label={t('pages.server.schedules.steps.createBackup.form.outputInto', {})}
         allowNull

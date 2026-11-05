@@ -45,7 +45,7 @@ export class ConsoleIpMasking implements IDisposable {
   constructor(
     private readonly term: Terminal,
     private readonly labels: () => { show: string; hide: string },
-    private readonly copy: (text: string) => Promise<void> = (text) => navigator.clipboard.writeText(text),
+    private readonly transformCopy: (text: string) => string | null = (text) => text,
     private readonly setTouchSelecting: (value: boolean) => void = () => undefined,
   ) {
     if (!term.element?.querySelector('.xterm-rows'))
@@ -483,9 +483,11 @@ export class ConsoleIpMasking implements IDisposable {
     const selection = document.getSelection();
     if (!selection?.anchorNode || !this.view.contains(selection.anchorNode)) return;
     this.fromDOMSelection();
-    if (!this.term.hasSelection()) return;
+    if (!this.term.hasSelection() || !event.clipboardData) return;
     event.preventDefault();
-    void this.copy(this.term.getSelection()).catch(() => undefined);
+    const text = this.transformCopy(this.term.getSelection());
+    if (text !== null) event.clipboardData.setData('text/plain', text);
+    setTimeout(() => this.term.clearSelection());
   };
 
   private onKeyDown = (event: KeyboardEvent) => {
@@ -509,10 +511,8 @@ export class ConsoleIpMasking implements IDisposable {
     } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c') {
       this.fromDOMSelection();
       if (!this.term.hasSelection()) return;
-      event.preventDefault();
+      // Keep the original selection ready for the browser's native copy event.
       event.stopPropagation();
-      void this.copy(this.term.getSelection()).catch(() => undefined);
-      this.term.clearSelection();
     }
   };
 

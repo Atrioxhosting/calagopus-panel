@@ -1,7 +1,6 @@
 import { UseFormReturnType } from '@mantine/form';
 import { z } from 'zod';
 import Switch from '@/elements/input/Switch.tsx';
-import Group from '@/elements/layout/Group.tsx';
 import Stack from '@/elements/layout/Stack.tsx';
 import { serverScheduleStepUpdateSchema } from '@/lib/schemas/server/schedules.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -45,16 +44,15 @@ export default function StepPullFile({
         description={t('pages.server.schedules.steps.pullFile.form.useHeaderDescription', {})}
         {...form.getInputProps('action.useHeader', { type: 'checkbox' })}
       />
-      <Group>
-        <Switch
-          label={t('pages.server.schedules.form.runInForeground', {})}
-          {...form.getInputProps('action.foreground', { type: 'checkbox' })}
-        />
-        <Switch
-          label={t('pages.server.schedules.form.ignoreFailure', {})}
-          {...form.getInputProps('action.ignoreFailure', { type: 'checkbox' })}
-        />
-      </Group>
+      <Switch
+        label={t('pages.server.schedules.form.waitForCompletion', {})}
+        description={t('pages.server.schedules.form.waitForCompletionDescription', {})}
+        {...form.getInputProps('action.foreground', { type: 'checkbox' })}
+      />
+      <Switch
+        label={t('pages.server.schedules.form.ignoreFailure', {})}
+        {...form.getInputProps('action.ignoreFailure', { type: 'checkbox' })}
+      />
     </Stack>
   );
 }

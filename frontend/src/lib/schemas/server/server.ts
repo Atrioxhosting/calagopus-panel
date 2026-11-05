@@ -112,6 +112,7 @@ export const serverResourceUsageSchema = z.object({
     generation: z.number(),
     lastCheckpoint: z.number(),
   }),
+  trashBytes: z.number().optional(),
   state: z.lazy(() => serverPowerState),
   network: z.object({
     rxBytes: z.number(),

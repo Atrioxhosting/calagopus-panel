@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { formatMilliseconds } from '@/lib/format/time.ts';
 import { serverFileOperationSchema } from '@/lib/schemas/server/files.ts';
 import { transformKeysToCamelCase } from '@/lib/serialization/transformers.ts';
+import { structuredArg } from '@/plugins/websocket/args.ts';
 import useWebsocketEvent, { SocketEvent } from '@/plugins/websocket/useWebsocketEvent.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -197,10 +198,10 @@ export default function useServerFileOperationSocket() {
     })),
   );
 
-  useWebsocketEvent(SocketEvent.OPERATION_PROGRESS, (uuid, data) => {
+  useWebsocketEvent(SocketEvent.OPERATION_PROGRESS, (uuid, data: unknown) => {
     let wsData: z.infer<typeof serverFileOperationSchema>;
     try {
-      wsData = transformKeysToCamelCase(JSON.parse(data)) as z.infer<typeof serverFileOperationSchema>;
+      wsData = transformKeysToCamelCase(structuredArg(data)) as z.infer<typeof serverFileOperationSchema>;
     } catch {
       return;
     }

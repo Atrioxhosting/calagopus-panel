@@ -9,6 +9,7 @@ import { serverSchema } from '@/lib/schemas/server/server.ts';
 import { FileManagerContextType } from '@/providers/contexts/fileManagerContext.ts';
 import { ComponentListRegistry } from '../../../slices/componentList.ts';
 import { ContextMenuRegistry } from '../../../slices/contextMenu.ts';
+import { DiskUsageBarRegistry } from './diskUsageBar.ts';
 import { TrashRegistry } from './trash.ts';
 
 type HandleOpenProps = {
@@ -115,6 +116,7 @@ export class FilesRegistry implements Registry {
     this.fileContextMenu.mergeFrom(other.fileContextMenu);
     this.fileMassContextMenu.mergeFrom(other.fileMassContextMenu);
     this.trash.mergeFrom(other.trash);
+    this.diskUsageBar.mergeFrom(other.diskUsageBar);
 
     this.fileIconHandlers.push(...other.fileIconHandlers);
     this.fileOpenableHandlers.push(...other.fileOpenableHandlers);
@@ -136,6 +138,7 @@ export class FilesRegistry implements Registry {
   public fileContextMenu: ContextMenuRegistry<FileContextMenuProps> = new ContextMenuRegistry();
   public fileMassContextMenu: ContextMenuRegistry = new ContextMenuRegistry();
   public trash: TrashRegistry = new TrashRegistry();
+  public diskUsageBar: DiskUsageBarRegistry = new DiskUsageBarRegistry();
 
   public fileIconHandlers: FileIconHandler[] = [];
   public fileOpenableHandlers: FileOpenableHandler[] = [];
@@ -218,6 +221,11 @@ export class FilesRegistry implements Registry {
 
   public enterTrash(callback: (registry: TrashRegistry) => unknown): this {
     callback(this.trash);
+    return this;
+  }
+
+  public enterDiskUsageBar(callback: (registry: DiskUsageBarRegistry) => unknown): this {
+    callback(this.diskUsageBar);
     return this;
   }
 }

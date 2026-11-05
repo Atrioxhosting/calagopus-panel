@@ -253,6 +253,7 @@
         "update": "Aktualisieren",
         "upgrade": "Aktualisieren",
         "close": "Schließen",
+        "copy": "Kopieren",
         "cancel": "Abbrechen",
         "continue": "Weiter",
         "skip": "Überspringen",
@@ -288,7 +289,8 @@
         "viewDocumentation": "Dokumentation ansehen",
         "undo": "Rückgängig",
         "clearUserFilter": "Benutzerfilter löschen",
-        "deleteFailedBackups": "{count} fehlgeschlagene löschen"
+        "deleteFailedBackups": "{count} fehlgeschlagene löschen",
+        "retryFailedDeletions": "{count} fehlgeschlagene Löschungen wiederholen"
       },
       "alert": {
         "error": "Fehler",
@@ -425,11 +427,19 @@
           "alert": {
             "forceWarning": "Das erzwungene Löschen entfernt diese Backups, auch wenn ihre Konfiguration fehlt oder der Remote-Speicher nicht erreichbar ist. Die Backup-Dateien selbst werden möglicherweise nicht vollständig entfernt, sodass verwaiste Daten zurückbleiben."
           }
+        },
+        "retryFailedDeletions": {
+          "title": "Wiederholen fehlgeschlagener Löschungen bestätigen",
+          "content": "Bist du sicher, dass du das Löschen von `{count}` Backups, deren Löschung fehlgeschlagen ist, erneut versuchen möchtest? Backups, deren Konfiguration sich im Wartungsmodus befindet, werden übersprungen. Die Löschung läuft im Hintergrund und kann eine Weile dauern."
         }
       },
       "toast": {
         "duplicated": "{resource} dupliziert.",
+        "preparingDownload": "Download wird vorbereitet...",
+        "downloadFailed": "Der Download konnte nicht gestartet werden.",
+        "importing": "{file} wird importiert...",
         "failedBackupDeletionStarted": "{count} fehlgeschlagene Backups werden im Hintergrund gelöscht.",
+        "failedDeletionRetryStarted": "{count} fehlgeschlagene Backup-Löschungen werden im Hintergrund wiederholt.",
         "requestBlockedByExtension": "Diese Anfrage wurde von einer Erweiterung blockiert."
       },
       "settingScope": {
@@ -569,7 +579,9 @@
       "table": {
         "selectRow": "Zeile auswählen",
         "pagination": {
-          "results": "Zeige {start} bis {end} von {total} Ergebnissen."
+          "results": "Zeige {start} bis {end} von {total} Ergebnissen.",
+          "perPage": "{count} / Seite",
+          "perPageLabel": "Ergebnisse pro Seite"
         },
         "empty": {
           "title": "Keine Einträge gefunden",
@@ -608,6 +620,10 @@
           "server": "Server",
           "address": "Adresse",
           "eggs": "Eggs",
+          "nodes": "Nodes",
+          "servers": "Server",
+          "users": "Benutzer",
+          "databases": "Datenbanken",
           "template": "Vorlage",
           "version": "Version",
           "host": "Host"
@@ -668,6 +684,7 @@
         "page": "Seite {page}",
         "emptyDirectory": "Dieses Verzeichnis ist leer",
         "ignored": "Ignoriert",
+        "partiallyIgnored": "Teilweise ignoriert",
         "showingFirstEntries": "Die ersten {count} Einträge werden angezeigt"
       },
       "databaseAgentHost": {
@@ -773,7 +790,11 @@
           "started": "Gestartet",
           "stopped": "Gestoppt",
           "restarted": "Neu gestartet",
-          "killed": "Gekillt"
+          "killed": "Gekillt",
+          "suspended": "Suspendiert",
+          "unsuspended": "Entsuspendiert",
+          "clearedState": "Status zurückgesetzt für",
+          "deleted": "Gelöscht"
         },
         "compressionLevel": {
           "bestSpeed": "Beste Geschwindigkeit",
@@ -790,6 +811,11 @@
           "gibibytes": "GiB",
           "tebibytes": "TiB",
           "pebibytes": "PiB"
+        },
+        "rate": {
+          "kilobits": "Kbit/s",
+          "megabits": "Mbit/s",
+          "gigabits": "Gbit/s"
         }
       },
       "unlimited": "Unendlich",
@@ -1158,6 +1184,7 @@
         },
         "toast": {
           "uploading": "Hochladen von {files} gestartet...",
+          "checkingConflicts": "{files} werden auf vorhandene Dateien geprüft...",
           "conflictCheckFailed": "Vorhandene Dateien konnten nicht geprüft werden; wird trotzdem hochgeladen.",
           "failed": "Upload fehlgeschlagen: {error}",
           "cancelledFile": "Upload von `{file}` erfolgreich abgebrochen.",
@@ -1493,6 +1520,11 @@
       },
       "account": {
         "home": {
+          "empty": {
+            "title": "Keine Server",
+            "description": "Dieses Konto hat noch keine Server. Server, die dafür erstellt oder als Subuser mit ihm geteilt werden, erscheinen hier."
+          },
+          "emptyGroup": "Diese Gruppe ist leer. Ziehe einen Server hierher, um ihn hinzuzufügen.",
           "title": "Servers",
           "tooltip": {
             "removeFromGroup": "Aus der Gruppe entfernen",
@@ -1507,6 +1539,11 @@
             "groupedServers": {
               "title": "Gruppierte Server",
               "page": {
+                "empty": {
+                  "title": "Keine Servergruppen",
+                  "description": "Jeder Server wird einzeln aufgeführt. Erstelle eine Gruppe, um Server in Abschnitte zu sortieren und per Drag & Drop neu anzuordnen.",
+                  "descriptionReadOnly": "Jeder Server wird einzeln aufgeführt."
+                },
                 "button": {
                   "createGroup": "Neue Gruppe"
                 },
@@ -1559,11 +1596,6 @@
                   "toast": {
                     "moved": "Server nach {group} verschoben."
                   }
-                },
-                "empty": {
-                  "title": "Keine Servergruppen",
-                  "description": "Jeder Server wird einzeln aufgeführt. Erstelle eine Gruppe, um Server in Abschnitte zu sortieren und per Drag & Drop neu anzuordnen.",
-                  "descriptionReadOnly": "Jeder Server wird einzeln aufgeführt."
                 }
               }
             },
@@ -1591,12 +1623,7 @@
             "success": "Erfolgreich {servers} {action}.",
             "partial": "Erfolgreich {successfulServers} {action}. {failedServers} fehlgeschlagen.",
             "groupActions": "Gruppen-Aktionen"
-          },
-          "empty": {
-            "title": "Keine Server",
-            "description": "Dieses Konto hat noch keine Server. Server, die dafür erstellt oder als Subuser mit ihm geteilt werden, erscheinen hier."
-          },
-          "emptyGroup": "Diese Gruppe ist leer. Ziehe einen Server hierher, um ihn hinzuzufügen."
+          }
         },
         "admin": {
           "title": "Admin"
@@ -1872,7 +1899,10 @@
             "deleteFiles": "Ausgewählte Dateien löschen",
             "closeEditorTab": "Aktiven Editor-Tab schließen",
             "nextEditorTab": "Nächster Editor-Tab",
-            "previousEditorTab": "Vorheriger Editor-Tab"
+            "previousEditorTab": "Vorheriger Editor-Tab",
+            "increaseEditorFontSize": "Schriftgröße im Editor vergrößern",
+            "decreaseEditorFontSize": "Schriftgröße im Editor verkleinern",
+            "resetEditorFontSize": "Schriftgröße im Editor zurücksetzen"
           },
           "table": {
             "title": "Tabellen-Navigation",
@@ -1887,7 +1917,10 @@
             "title": "Server Konsole",
             "searchContent": "Konsolenausgabe durchsuchen",
             "previousCommand": "Vorheriger Befehl im Verlauf",
-            "nextCommand": "Nächster Befehl im Verlauf"
+            "nextCommand": "Nächster Befehl im Verlauf",
+            "increaseFontSize": "Schriftgröße der Konsole vergrößern",
+            "decreaseFontSize": "Schriftgröße der Konsole verkleinern",
+            "resetFontSize": "Schriftgröße der Konsole zurücksetzen"
           },
           "serverList": {
             "selectServer": "Halte S und klicke, um Server auszuwählen/abzuwählen"
@@ -2125,7 +2158,11 @@
         "home": {
           "title": "Startseite",
           "alert": {
-            "newPanelVersion": "Eine neue Version für das Panel ist verfügbar! Du nutzt aktuell {current} und die neueste Version ist {latest}. Du solltest ein Upgrade in Betracht ziehen. [Klicke hier]({upgradeUrl}), um die Upgrade-Anweisungen anzuzeigen."
+            "newPanelVersion": "Eine neue Version für das Panel ist verfügbar! Du nutzt aktuell {current} und die neueste Version ist {latest}. Du solltest ein Upgrade in Betracht ziehen. [Klicke hier]({upgradeUrl}), um die Upgrade-Anweisungen anzuzeigen.",
+            "extensionBuildFailed": {
+              "content": "Der letzte Build der Erweiterungen ist fehlgeschlagen.",
+              "link": "Erweiterungen ansehen"
+            }
           },
           "tabs": {
             "overview": {
@@ -2784,6 +2821,11 @@
           }
         },
         "extensions": {
+          "empty": {
+            "title": "Keine Erweiterungen installiert",
+            "description": "Dieses Panel läuft ohne Erweiterungen. Ziehe eine Erweiterungsdatei auf diese Seite, um eine zu installieren.",
+            "descriptionDisabled": "Dieses Panel läuft ohne Erweiterungen. Die Erweiterungsverwaltung ist deaktiviert, daher können keine installiert werden."
+          },
           "title": "Erweiterungen",
           "unknownExtension": "Unbekannte Erweiterung",
           "alert": {
@@ -2858,7 +2900,8 @@
           },
           "card": {
             "version": "Version",
-            "authors": "Autoren"
+            "authors": "Autoren",
+            "panelVersion": "Panel-Version"
           },
           "section": {
             "pendingExtensions": "Ausstehende Erweiterungen",
@@ -2903,11 +2946,6 @@
                 "removeMigrations": "Möchtest du die Datenbank-Migrationen dieser Erweiterung entfernen & zurückrollen?"
               }
             }
-          },
-          "empty": {
-            "title": "Keine Erweiterungen installiert",
-            "description": "Dieses Panel läuft ohne Erweiterungen. Ziehe eine Erweiterungsdatei auf diese Seite, um eine zu installieren.",
-            "descriptionDisabled": "Dieses Panel läuft ohne Erweiterungen. Die Erweiterungsverwaltung ist deaktiviert, daher können keine installiert werden."
           }
         },
         "users": {
@@ -3728,6 +3766,27 @@
             "clearState": "Serverstatus zurücksetzen",
             "delete": "Server löschen"
           },
+          "bulkActions": {
+            "verb": {
+              "suspend": "suspendieren",
+              "unsuspend": "entsuspendieren",
+              "clearState": "in ihrem Status zurücksetzen",
+              "delete": "löschen"
+            },
+            "modal": {
+              "title": "Massenaktion bestätigen",
+              "content": "Bist du sicher, dass du **{servers}** {action} möchtest?",
+              "deleteContent": "Bist du sicher, dass du **{servers}** samt allem, was sich darauf befindet, endgültig löschen möchtest? Dies kann nicht rückgängig gemacht werden.",
+              "form": {
+                "deleteBackups": "Möchtest du die Backups dieser Server löschen?"
+              },
+              "alert": {
+                "forceWarning": "Das erzwungene Löschen entfernt diese Server aus dem Panel, auch wenn ihre Nodes nicht erreichbar sind. Ihre Dateien und Datenbanken werden möglicherweise nicht vollständig bereinigt, sodass verwaiste Daten zurückbleiben."
+              }
+            },
+            "successWithSkipped": "Erfolgreich {servers} {action}. {skippedServers} übersprungen.",
+            "nothingToDo": "Jeder ausgewählte Server befindet sich bereits in diesem Zustand."
+          },
           "externalIdLookup": {
             "button": "Über externe ID suchen",
             "modal": {
@@ -3842,6 +3901,13 @@
                   "ioWeight": "IO-Gewichtung",
                   "ioWeightDescription": "Die relative IO-Gewichtung des Server-Containers im Vergleich zu anderen Containern.",
                   "ioWeightTooltip": "0-1000. Funktioniert möglicherweise nicht auf allen Systemen.",
+                  "bandwidth": {
+                    "upload": "Upload-Limit",
+                    "download": "Download-Limit",
+                    "description": "0 setzt kein Limit.",
+                    "unavailable": "Die Node unterstützt keine Bandbreitenlimits.",
+                    "disabled": "Bandbreitenlimits sind in der Node-Konfiguration deaktiviert."
+                  },
                   "pinnedCpus": "Angeheftete CPUs",
                   "pinnedCpusDescription": "Die CPU-Kerne, an die dieser Server angeheftet ist.",
                   "pinnedCpusTooltip": "Nach Index, z. B. 0, 1, 2. Leer lassen, um alle Kerne zuzulassen.",
@@ -4231,6 +4297,11 @@
                   "variables": {
                     "title": "Variablen",
                     "page": {
+                      "empty": {
+                        "title": "Keine Variablen",
+                        "description": "Server mit diesem Egg haben auf ihrer Startup-Seite nichts einzustellen. Füge eine Variable hinzu, um eine Einstellung an den Startbefehl und das Installationsskript zu übergeben.",
+                        "descriptionReadOnly": "Server mit diesem Egg haben auf ihrer Startup-Seite nichts einzustellen."
+                      },
                       "title": "Egg Variablen",
                       "aria": {
                         "reorder": "Variable verschieben"
@@ -4259,11 +4330,6 @@
                         "duplicate": {
                           "title": "Egg Variable duplizieren"
                         }
-                      },
-                      "empty": {
-                        "title": "Keine Variablen",
-                        "description": "Server mit diesem Egg haben auf ihrer Startup-Seite nichts einzustellen. Füge eine Variable hinzu, um eine Einstellung an den Startbefehl und das Installationsskript zu übergeben.",
-                        "descriptionReadOnly": "Server mit diesem Egg haben auf ihrer Startup-Seite nichts einzustellen."
                       }
                     }
                   },
@@ -4470,8 +4536,10 @@
           },
           "card": {
             "repository": "Repository",
-            "author": "Autor",
-            "installedIn": "Installiert in"
+            "path": "Pfad",
+            "installedIn": "Installiert in",
+            "dockerImages": "Docker-Images",
+            "features": "Features"
           },
           "badge": {
             "manual": "Manuell"
@@ -4590,6 +4658,9 @@
                 },
                 "button": {
                   "testConnection": "Verbindung testen"
+                },
+                "tooltip": {
+                  "errorWhileFetchingVersion": "Fehler beim Abrufen der Version"
                 },
                 "toast": {
                   "tested": "Test erfolgreich abgeschlossen."
@@ -5011,8 +5082,12 @@
                   "loginBypassTwoFactorDescription": "Erlaubt Benutzern, die sich mit diesem Anbieter anmelden, ihre Panel-2FA zu umgehen.",
                   "linkViewable": "Verknüpfung für Benutzer sichtbar",
                   "linkViewableDescription": "Erlaubt dem Benutzer, die Verbindung und deren Identifier in der Client-Oberfläche zu sehen.",
+                  "apiLinkable": "Mit API-Schlüsseln verknüpfbar",
+                  "apiLinkableDescription": "Erlaubt API-Schlüsseln mit den Berechtigungen users.oauth-links und users.impersonate, Konten, die sie impersonieren könnten, mit diesem Anbieter zu verknüpfen, etwa für Abrechnungsintegrationen. Aktiviere dies nur für Anbieter, deren Identifier du die Integration vergeben lässt.",
                   "userManageable": "Verknüpfung vom Benutzer verwaltbar",
-                  "userManageableDescription": "Erlaubt dem Benutzer, sich mit diesem Anbieter zu verbinden und die Verbindung zu trennen."
+                  "userManageableDescription": "Erlaubt dem Benutzer, sich mit diesem Anbieter zu verbinden und die Verbindung zu trennen.",
+                  "loginViewable": "Bei der Anmeldung sichtbar",
+                  "loginViewableDescription": "Zeigt diesen Anbieter auf der Anmeldeseite an. Ausgeschaltet bleibt der Anbieter aktiv, kann weiterhin auf der Kontoseite verbunden werden und Benutzer können sich weiterhin über die direkte Weiterleitungs-URL anmelden."
                 },
                 "button": {
                   "discover": "Aus OpenID Discovery importieren"
@@ -5735,6 +5810,11 @@
           "socketDisconnected": "Getrennt"
         },
         "files": {
+          "empty": {
+            "title": "Leeres Verzeichnis",
+            "description": "In diesem Verzeichnis ist noch nichts. Lade Dateien hoch oder erstelle neue, um es zu füllen.",
+            "descriptionReadOnly": "In diesem Verzeichnis ist noch nichts."
+          },
           "title": "Dateien",
           "editorNotFound": {
             "title": "Nicht gefunden",
@@ -5780,7 +5860,6 @@
             "revealInTree": "Im Dateibaum anzeigen",
             "revealNotFound": "{path} konnte im Dateibaum nicht gefunden werden.",
             "unsavedTab": "{name} hat ungespeicherte Änderungen",
-            "dropToSplit": "Hier ablegen, um in einem neuen Editorbereich zu öffnen",
             "resizeEditorPanes": "Größe der Editorbereiche ändern",
             "resizeFileTree": "Größe des Dateibaums ändern",
             "selectPane": "Editorbereich auswählen",
@@ -5798,7 +5877,11 @@
             }
           },
           "diskUsage": {
-            "details": "{used} von {total} belegt ({percentage}%)"
+            "details": "{used} von {total} belegt ({percentage}%)",
+            "section": {
+              "files": "Dateien",
+              "trash": "Papierkorb"
+            }
           },
           "button": {
             "new": "Neu",
@@ -5951,6 +6034,7 @@
             "archiveCreationStarted": "Archiverstellung hat begonnen.",
             "decompressionStarted": "Das Entpacken des Archivs hat begonnen.",
             "fileCopyingStarted": "Dateikopiervorgang hat begonnen.",
+            "duplicating": "Datei wird dupliziert...",
             "fileCopyingStartedMany": "Dateikopiervorgang auf {servers} hat begonnen.",
             "fileCopyingStartedPartial": "Dateikopiervorgang auf {successfulServers} hat begonnen. {failedServers} fehlgeschlagen:",
             "fileInfoRetrieved": "Dateiinformationen erfolgreich abgerufen.",
@@ -6093,7 +6177,7 @@
             },
             "createSymlink": {
               "title": "Symlink erstellen",
-              "targetDescription": "Relativ zu dem Verzeichnis, in dem der Symlink erstellt wird.",
+              "targetDescription": "Relativ zu dem Verzeichnis, in dem der Symlink erstellt wird, oder zum Server-Stammverzeichnis, wenn er mit / beginnt.",
               "createdAs": "Dieser Symlink wird erstellt als ",
               "pointsTo": "Er wird zeigen auf "
             },
@@ -6273,11 +6357,6 @@
               "hint": "Setze ihn im Upload-Bereich fort, wenn du ihn gestartet hast, oder lösche die unvollständige Datei, wenn du sie nicht mehr brauchst.",
               "empty": "Alle Uploads auf diesen Server sind abgeschlossen."
             }
-          },
-          "empty": {
-            "title": "Leeres Verzeichnis",
-            "description": "In diesem Verzeichnis ist noch nichts. Lade Dateien hoch oder erstelle neue, um es zu füllen.",
-            "descriptionReadOnly": "In diesem Verzeichnis ist noch nichts."
           }
         },
         "databases": {
@@ -6904,8 +6983,17 @@
             }
           },
           "view": {
+            "empty": {
+              "triggers": {
+                "title": "Keine Auslöser",
+                "description": "Dieser Zeitplan startet nie von selbst und läuft nur, wenn er manuell gestartet wird. Bearbeite ihn, um einen Auslöser hinzuzufügen.",
+                "descriptionReadOnly": "Dieser Zeitplan startet nie von selbst und läuft nur, wenn er manuell gestartet wird."
+              }
+            },
             "badge": {
-              "running": "Läuft"
+              "running": "Läuft",
+              "waits": "Wartet",
+              "background": "Hintergrund"
             },
             "tooltip": {
               "cannotRun": "Ein deaktivierter Zeitplan kann nicht ausgeführt werden"
@@ -6919,13 +7007,6 @@
               "actions": "Zeitplan-Aktionen",
               "preConditions": "Zeitplan-Vorbedingungen",
               "triggers": "Zeitplan-Auslöser"
-            },
-            "empty": {
-              "triggers": {
-                "title": "Keine Auslöser",
-                "description": "Dieser Zeitplan startet nie von selbst und läuft nur, wenn er manuell gestartet wird. Bearbeite ihn, um einen Auslöser hinzuzufügen.",
-                "descriptionReadOnly": "Dieser Zeitplan startet nie von selbst und läuft nur, wenn er manuell gestartet wird."
-              }
             }
           },
           "step": {
@@ -6947,7 +7028,8 @@
             "rootPath": "Root-Pfad",
             "outputInto": "Ausgabe in",
             "ignoreFailure": "Fehler ignorieren",
-            "runInForeground": "Im Vordergrund ausführen",
+            "waitForCompletion": "Auf Abschluss Warten",
+            "waitForCompletionDescription": "Der Zeitplan wartet, bis dieser Schritt fertig ist, bevor er fortfährt, und ein Fehler zählt als fehlgeschlagener Schritt. Wenn deaktiviert, läuft er im Hintergrund: der nächste Schritt startet sofort und Fehler werden nicht gemeldet.",
             "sourceDatabaseInstance": "Nur Backups berücksichtigen von",
             "sourceDatabaseInstanceDescription": "Es werden nur Datenbank-Backups ausgewählt, die aus dieser verwalteten Datenbank erstellt wurden. Leer lassen, um Backups jeder verwalteten Datenbank dieses Servers zu berücksichtigen.",
             "sourceDatabaseInstanceAny": "Beliebige verwaltete Datenbank"
@@ -6992,6 +7074,8 @@
                 "time": "Um",
                 "weekday": "Am",
                 "dayOfMonth": "Am Tag",
+                "weekInterval": "Alle (Wochen)",
+                "weekAnchor": "Ausgerichtet auf die Woche vom",
                 "advanced": "Als Cron-Ausdruck bearbeiten"
               },
               "frequency": {
@@ -7001,6 +7085,7 @@
                 "weekly": "Wöchentlich",
                 "monthly": "Monatlich"
               },
+              "everyWeeks": "alle {weeks} Wochen",
               "timezoneHint": "Zeiten verwenden die Server-Zeitzone ({timezone}).",
               "card": {
                 "content": "Im Cron-Intervall {schedule}, nächste Ausführung ist {timestamp} - letzte Ausführung war {lastTimestamp}."
@@ -7073,7 +7158,8 @@
             "noActionSelected": "Wähle einen Aktionstyp zur Konfiguration aus",
             "noActionDetails": "Aktionsdetails nicht verfügbar",
             "ignoreFailure": "Fehler ignorieren: {value}",
-            "foreground": "Vordergrund: {value}",
+            "waitsForCompletion": "Wartet, bis dieser Schritt fertig ist, bevor es weitergeht",
+            "runsInBackground": "Läuft im Hintergrund, der nächste Schritt startet sofort und Fehler werden nicht gemeldet",
             "sourceDatabaseInstance": "Nur aus verwalteter Datenbank: {uuid}",
             "sourceDatabaseInstanceAny": "Nur aus verwalteter Datenbank: Beliebig",
             "backupSelector": {
@@ -7087,13 +7173,18 @@
               "limitReached": "Dieser Zeitplan ist auf {max} Schritte limitiert."
             },
             "empty": {
+              "descriptionReadOnly": "Dieser Zeitplan tut nichts, wenn er ausgeführt wird.",
               "title": "Keine Schritte konfiguriert",
-              "description": "Dieser Zeitplan hat noch keine Schritte. Füge einige Aktionen hinzu, um loszulegen.",
-              "descriptionReadOnly": "Dieser Zeitplan tut nichts, wenn er ausgeführt wird."
+              "description": "Dieser Zeitplan hat noch keine Schritte. Füge einige Aktionen hinzu, um loszulegen."
             },
             "warning": {
               "unclosedIf": "Einem \"Wenn\"-Block fehlt das zugehörige \"Ende Wenn\". Alle verbleibenden Schritte werden als Teil des Blocks ausgeführt.",
-              "orphanBranch": "Es gibt einen \"Sonst\"-, \"Sonst wenn\"- oder \"Ende Wenn\"-Schritt ohne ein passendes \"Wenn\" davor."
+              "orphanBranch": "Es gibt einen \"Sonst\"-, \"Sonst wenn\"- oder \"Ende Wenn\"-Schritt ohne ein passendes \"Wenn\" davor.",
+              "variable": {
+                "never": "Die Variable \"{variable}\" wird von diesem Zeitplan nie gesetzt und kann daher nicht aufgelöst werden.",
+                "unavailable": "Die Variable \"{variable}\" wird an dieser Stelle weder von einem Auslöser noch von einem vorherigen Schritt gesetzt.",
+                "conditional": "Die Variable \"{variable}\" wird nur bei manchen Ausführungen gesetzt, zum Beispiel in einem anderen Zweig, durch nur einen von mehreren Auslösern oder durch einen Schritt, der fehlschlagen kann."
+              }
             },
             "groups": {
               "server": "Server",
@@ -7547,7 +7638,9 @@
             "createSubuser": {
               "title": "Subuser erstellen",
               "toast": {
-                "created": "Subuser erstellt."
+                "created": "Subuser erstellt.",
+                "userMustSignIn": "Kein Konto verwendet diese E-Mail. Die Person muss sich zuerst einmal mit einem Konto mit genau dieser E-Mail im Panel anmelden, danach kannst du sie hinzufügen.",
+                "userMustBeCreatedByAdmin": "Kein Konto verwendet diese E-Mail. Bitte einen Administrator, zuerst ein Konto anzulegen, danach kannst du die Person hinzufügen."
               },
               "form": {
                 "emailPlaceholder": "Gib die E-Mail ein, unter der dieser Subuser gespeichert werden soll.",
@@ -7612,7 +7705,9 @@
           "toast": {
             "downloadStarted": "Download gestartet.",
             "restoringBackup": "Backup wird wiederhergestellt...",
-            "exportStarted": "Backup-Export gestartet."
+            "exportStarted": "Backup-Export gestartet.",
+            "locked": "Backup gesperrt.",
+            "unlocked": "Backup entsperrt."
           },
           "modal": {
             "createBackup": {
@@ -7947,6 +8042,10 @@
           }
         },
         "startup": {
+          "empty": {
+            "title": "Keine Startvariablen",
+            "description": "Das Egg dieses Servers hat hier keine Einstellungen, der Startbefehl wird also unverändert ausgeführt."
+          },
           "title": "Start",
           "variables": "Variablen",
           "dockerImageDescription": "Das Docker Image, das verwendet wird, um diesen Server auszuführen. Dies kann geändert werden, um ein anderes Image zu verwenden.",
@@ -7962,11 +8061,7 @@
               "content": "Du hast ungespeicherte Änderungen an deinen Startvariablen. Bist du sicher, dass du diese Seite verlassen möchtest? Wenn du die Seite verlässt, gehen deine Änderungen verloren."
             }
           },
-          "predefinedStartupCommands": "Vordefinierte Startbefehle",
-          "empty": {
-            "title": "Keine Startvariablen",
-            "description": "Das Egg dieses Servers hat hier keine Einstellungen, der Startbefehl wird also unverändert ausgeführt."
-          }
+          "predefinedStartupCommands": "Vordefinierte Startbefehle"
         },
         "mounts": {
           "title": "Mounts",

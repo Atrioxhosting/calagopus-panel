@@ -266,6 +266,9 @@ mod put {
         client_servers_files_pull_query:
             Option<shared::settings::ratelimits::RatelimitConfiguration>,
         #[garde(dive)]
+        client_servers_subusers_create:
+            Option<shared::settings::ratelimits::RatelimitConfiguration>,
+        #[garde(dive)]
         remote: Option<shared::settings::ratelimits::RatelimitConfiguration>,
         #[garde(dive)]
         remote_sftp_auth: Option<shared::settings::ratelimits::RatelimitConfiguration>,
@@ -647,6 +650,10 @@ mod put {
             {
                 settings.ratelimits.client_servers_files_pull_query =
                     client_servers_files_pull_query;
+            }
+            if let Some(client_servers_subusers_create) = ratelimits.client_servers_subusers_create
+            {
+                settings.ratelimits.client_servers_subusers_create = client_servers_subusers_create;
             }
             if let Some(remote) = ratelimits.remote {
                 settings.ratelimits.remote = remote;

@@ -7,7 +7,12 @@ import UserSettingScopeMenu from '@/elements/UserSettingScopeMenu.tsx';
 import SettingsPopover from '@/pages/server/files/SettingsPopover.tsx';
 import { useFileManager } from '@/providers/FileManagerProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
-import { fileManagerSettingKey } from '@/stores/fileManager.ts';
+import {
+  EDITOR_FONT_SIZE_DEFAULT,
+  EDITOR_FONT_SIZE_MAX,
+  EDITOR_FONT_SIZE_MIN,
+  fileManagerSettingKey,
+} from '@/stores/fileManager.ts';
 
 export default function FileEditorSettings() {
   const { t } = useTranslations();
@@ -78,10 +83,10 @@ export default function FileEditorSettings() {
           </span>
         }
         className='order-25'
-        min={6}
-        max={72}
+        min={EDITOR_FONT_SIZE_MIN}
+        max={EDITOR_FONT_SIZE_MAX}
         value={editorFontSize}
-        onChange={(value) => setEditorFontSize(Number(value) || 14)}
+        onChange={(value) => setEditorFontSize(Number(value) || EDITOR_FONT_SIZE_DEFAULT)}
       />
       <Select
         label={t('pages.server.files.settings.editorEngine', {})}

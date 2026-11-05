@@ -86,10 +86,23 @@ export interface FileTreeTabPosition {
   after: boolean;
 }
 
+let activeTabDrag: FileTreeEditorTabDragData | null = null;
+
+export const getActiveFileTreeEditorTabDrag = () => activeTabDrag;
+
+export const clearActiveFileTreeEditorTabDrag = () => {
+  activeTabDrag = null;
+};
+
 export const setFileTreeEditorTabDragData = (dataTransfer: DataTransfer, data: FileTreeEditorTabDragData) => {
   dataTransfer.setData(FILE_TREE_EDITOR_TAB_DRAG_TYPE, JSON.stringify(data));
   dataTransfer.effectAllowed = 'copyMove';
+  activeTabDrag = data;
 };
+
+export const acceptsFileTreeEditorDrop = (dataTransfer: DataTransfer) =>
+  dataTransfer.types.includes(FILE_TREE_EDITOR_DRAG_TYPE) ||
+  dataTransfer.types.includes(FILE_TREE_EDITOR_TAB_DRAG_TYPE);
 
 export const getFileTreeEditorTabDragData = (dataTransfer: DataTransfer): FileTreeEditorTabDragData | null => {
   try {

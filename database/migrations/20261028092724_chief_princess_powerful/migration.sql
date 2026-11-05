@@ -1,0 +1,1 @@
+ALTER TABLE "oauth_providers" ADD COLUMN "api_linkable" boolean DEFAULT false NOT NULL;

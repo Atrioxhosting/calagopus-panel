@@ -18,6 +18,7 @@ import Progress from '@/elements/feedback/Progress.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import { CORE_QUICK_ACTION_CATEGORIES } from '@/lib/quickActions/coreQuickActions.tsx';
 import { useUserSetting } from '@/lib/userSettings.ts';
+import { stepFontSize, useFontSizeZoom } from '@/plugins/quick-actions/useFontSizeZoom.ts';
 import { matchesShortcut, useKeyboardShortcut } from '@/plugins/quick-actions/useKeyboardShortcuts.ts';
 import { useQuickActions } from '@/plugins/quick-actions/useQuickActions.ts';
 import { SocketEvent, SocketRequest } from '@/plugins/websocket/useWebsocketEvent.ts';
@@ -30,7 +31,13 @@ import ConsoleCommandInput from './ConsoleCommandInput.tsx';
 import CommandHistoryDrawer from './drawers/CommandHistoryDrawer.tsx';
 import FeatureProvider from './features/FeatureProvider.tsx';
 import SshDetailsModal from './modals/SshDetailsModal.tsx';
-import TerminalHeader, { CONSOLE_FONT_SIZE_KEY, consoleFontSizeSchema } from './TerminalHeader.tsx';
+import TerminalHeader, {
+  CONSOLE_FONT_SIZE_DEFAULT,
+  CONSOLE_FONT_SIZE_KEY,
+  CONSOLE_FONT_SIZE_MAX,
+  CONSOLE_FONT_SIZE_MIN,
+  consoleFontSizeSchema,
+} from './TerminalHeader.tsx';
 import TerminalSelectionMenu from './TerminalSelectionMenu.tsx';
 import { useCommandHistory } from './useCommandHistory.ts';
 import { useTerminalInit } from './useTerminalInit.ts';
@@ -58,7 +65,11 @@ export default function Terminal({ popout = false }: { popout?: boolean }) {
   const [searchText, setSearchText] = useState('');
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [websocketPing, setWebsocketPing] = useState(0);
-  const [consoleFontSize, setConsoleFontSize] = useUserSetting(CONSOLE_FONT_SIZE_KEY, consoleFontSizeSchema, 14);
+  const [consoleFontSize, setConsoleFontSize] = useUserSetting(
+    CONSOLE_FONT_SIZE_KEY,
+    consoleFontSizeSchema,
+    CONSOLE_FONT_SIZE_DEFAULT,
+  );
   const [openModal, setOpenModal] = useState<'search' | 'commandHistory' | 'sshDetails' | null>(null);
 
   const inputValueRef = useRef(inputValue);
@@ -69,6 +80,14 @@ export default function Terminal({ popout = false }: { popout?: boolean }) {
   const isFirstLine = useRef(true);
 
   const commandHistory = useCommandHistory(server.uuid);
+
+  const zoomRef = useFontSizeZoom(
+    { increase: 'console.increaseFontSize', decrease: 'console.decreaseFontSize', reset: 'console.resetFontSize' },
+    (step) =>
+      setConsoleFontSize((size) =>
+        stepFontSize(size, step, CONSOLE_FONT_SIZE_MIN, CONSOLE_FONT_SIZE_MAX, CONSOLE_FONT_SIZE_DEFAULT),
+      ),
+  );
 
   const {
     xtermInstance,
@@ -329,8 +348,8 @@ export default function Terminal({ popout = false }: { popout?: boolean }) {
           label: () => t('pages.server.console.tooltip.decreaseFontSize', {}),
           keywords: ['zoom', 'smaller'],
           icon: <FontAwesomeIcon icon={faMinus} />,
-          isVisible: () => consoleFontSize > 10,
-          perform: () => setConsoleFontSize((size) => Math.max(10, size - 1)),
+          isVisible: () => consoleFontSize > CONSOLE_FONT_SIZE_MIN,
+          perform: () => setConsoleFontSize((size) => Math.max(CONSOLE_FONT_SIZE_MIN, size - 1)),
         },
         {
           id: 'console.increaseFontSize',
@@ -338,8 +357,8 @@ export default function Terminal({ popout = false }: { popout?: boolean }) {
           label: () => t('pages.server.console.tooltip.increaseFontSize', {}),
           keywords: ['zoom', 'larger'],
           icon: <FontAwesomeIcon icon={faPlus} />,
-          isVisible: () => consoleFontSize < 24,
-          perform: () => setConsoleFontSize((size) => Math.min(24, size + 1)),
+          isVisible: () => consoleFontSize < CONSOLE_FONT_SIZE_MAX,
+          perform: () => setConsoleFontSize((size) => Math.min(CONSOLE_FONT_SIZE_MAX, size + 1)),
         },
       ],
       [
@@ -364,7 +383,7 @@ export default function Terminal({ popout = false }: { popout?: boolean }) {
       <CommandHistoryDrawer opened={openModal === 'commandHistory'} onClose={() => setOpenModal(null)} />
       <SshDetailsModal opened={openModal === 'sshDetails'} onClose={() => setOpenModal(null)} />
 
-      <Card className='h-full flex flex-col font-mono text-sm relative isolate p-2!'>
+      <Card ref={zoomRef} className='h-full flex flex-col font-mono text-sm relative isolate p-2!'>
         <TerminalHeader
           websocketPing={websocketPing}
           openModal={openModal}

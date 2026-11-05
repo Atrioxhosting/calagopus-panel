@@ -2,6 +2,7 @@ use crate::{
     models::{InsertQueryBuilder, UpdateQueryBuilder},
     prelude::*,
 };
+use axum::http::StatusCode;
 use garde::Validate;
 use rand::distr::SampleString;
 use serde::{Deserialize, Serialize};
@@ -287,51 +288,40 @@ pub struct CreateServerSubuserOptions<'a> {
     pub ignored_files: Vec<compact_str::CompactString>,
 }
 
-#[async_trait::async_trait]
-impl CreatableModel for ServerSubuser {
-    type CreateOptions<'a> = CreateServerSubuserOptions<'a>;
-    type CreateResult = Self;
-
-    fn get_create_handlers() -> &'static LazyLock<CreateListenerList<Self>> {
-        static CREATE_LISTENERS: LazyLock<CreateListenerList<ServerSubuser>> =
-            LazyLock::new(|| Arc::new(ModelHandlerList::default()));
-
-        &CREATE_LISTENERS
-    }
-
-    async fn create(
+impl ServerSubuser {
+    async fn create_inner(
         state: &crate::State,
-        options: Self::CreateOptions<'_>,
-    ) -> Result<Self, crate::database::DatabaseError> {
-        let mut transaction = state.database.write().begin().await?;
-
-        let result = match Self::create_with_transaction(state, options, &mut transaction).await {
-            Ok(result) => result,
-            Err(err) => {
-                transaction.rollback().await?;
-                return Err(err);
-            }
-        };
-
-        transaction.commit().await?;
-
-        super::invalidate_cache_keys(&state.database, &result.cache_invalidation_keys()).await;
-
-        result.invalidate_wings_permissions(&state.database).await;
-
-        Ok(result)
-    }
-
-    async fn create_with_transaction(
-        state: &crate::State,
-        mut options: Self::CreateOptions<'_>,
+        options: &mut CreateServerSubuserOptions<'_>,
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
-    ) -> Result<Self, crate::database::DatabaseError> {
+    ) -> Result<(Self, bool), crate::database::DatabaseError> {
         options.validate()?;
 
+        let mut user_created = false;
         let user = match super::user::User::by_email(&state.database, &options.email).await? {
             Some(user) => user,
             None => {
+                if !state
+                    .settings
+                    .get_as(|s| s.app.password_login_enabled)
+                    .await?
+                {
+                    let message = if super::oauth_provider::OAuthProvider::exists_registrable(
+                        &state.database,
+                    )
+                    .await?
+                    {
+                        "user not found, they must sign in before being added"
+                    } else {
+                        "user not found, an administrator must create their account"
+                    };
+
+                    return Err(anyhow::Error::new(
+                        crate::response::DisplayError::new(message)
+                            .with_status(StatusCode::NOT_FOUND),
+                    )
+                    .into());
+                }
+
                 let username = options
                     .email
                     .split('@')
@@ -346,7 +336,7 @@ impl CreatableModel for ServerSubuser {
                     rand::distr::Alphanumeric.sample_string(&mut rand::rng(), 4)
                 );
 
-                let app_settings = state.settings.get().await?;
+                let language = state.settings.get_as(|s| s.app.language.clone()).await?;
 
                 let create_options = super::user::CreateUserOptions {
                     role_uuid: None,
@@ -360,12 +350,16 @@ impl CreatableModel for ServerSubuser {
                     frozen: false,
                     suspended: false,
                     verify_email: false,
-                    send_email: true,
-                    language: app_settings.app.language.clone(),
+                    send_email: false,
+                    language,
                 };
-                drop(app_settings);
-                match super::user::User::create(state, create_options).await {
-                    Ok(user) => user,
+                match super::user::User::create_with_transaction(state, create_options, transaction)
+                    .await
+                {
+                    Ok(user) => {
+                        user_created = true;
+                        user
+                    }
                     Err(err) => {
                         tracing::error!(username = %username, email = %options.email, "failed to create subuser user: {:?}", err);
                         return Err(err);
@@ -386,7 +380,7 @@ impl CreatableModel for ServerSubuser {
 
         let mut query_builder = InsertQueryBuilder::new("server_subusers");
 
-        Self::run_create_handlers(&mut options, &mut query_builder, state, transaction).await?;
+        Self::run_create_handlers(options, &mut query_builder, state, transaction).await?;
 
         query_builder
             .set("server_uuid", options.server.uuid)
@@ -413,26 +407,131 @@ impl CreatableModel for ServerSubuser {
 
         let mut result = Self::map(None, &row)?;
 
-        Self::run_after_create_handlers(&mut result, &options, state, transaction).await?;
+        Self::run_after_create_handlers(&mut result, options, state, transaction).await?;
 
-        let settings = state.settings.get().await?;
+        Ok((result, user_created))
+    }
+
+    async fn send_added_to_server_email(
+        &self,
+        state: &crate::State,
+        server: &super::server::Server,
+    ) -> Result<(), crate::database::DatabaseError> {
+        let app_url = state.settings.get_as(|s| s.app.url.clone()).await?;
+
         state
             .mail
             .send_template(
                 state,
                 "added_to_server",
-                &user,
+                &self.user,
                 minijinja::context! {
-                    user => minijinja::value::Serde(&user),
-                    server => minijinja::value::Serde(&options.server),
-                    server_link => format!(
-                        "{}/server/{:08x}",
-                        settings.app.url,
-                        options.server.uuid_short,
-                    )
+                    user => minijinja::value::Serde(&self.user),
+                    server => minijinja::value::Serde(server),
+                    server_link => format!("{app_url}/server/{:08x}", server.uuid_short),
                 },
             )
             .await;
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl CreatableModel for ServerSubuser {
+    type CreateOptions<'a> = CreateServerSubuserOptions<'a>;
+    type CreateResult = Self;
+
+    fn get_create_handlers() -> &'static LazyLock<CreateListenerList<Self>> {
+        static CREATE_LISTENERS: LazyLock<CreateListenerList<ServerSubuser>> =
+            LazyLock::new(|| Arc::new(ModelHandlerList::default()));
+
+        &CREATE_LISTENERS
+    }
+
+    async fn create(
+        state: &crate::State,
+        mut options: Self::CreateOptions<'_>,
+    ) -> Result<Self, crate::database::DatabaseError> {
+        let mut transaction = state.database.write().begin().await?;
+
+        let (result, user_created) =
+            match Self::create_inner(state, &mut options, &mut transaction).await {
+                Ok(result) => result,
+                Err(err) => {
+                    transaction.rollback().await?;
+                    return Err(err);
+                }
+            };
+
+        transaction.commit().await?;
+
+        super::invalidate_cache_keys(&state.database, &result.cache_invalidation_keys()).await;
+        if user_created {
+            super::invalidate_cache_keys(&state.database, &result.user.cache_invalidation_keys())
+                .await;
+        }
+
+        result.invalidate_wings_permissions(&state.database).await;
+
+        if user_created {
+            let token = async {
+                let mut transaction = state.database.write().begin().await?;
+                let token = result
+                    .user
+                    .create_account_created_token_with_transaction(state, &mut transaction)
+                    .await?;
+                transaction.commit().await?;
+
+                Ok::<_, crate::database::DatabaseError>(token)
+            }
+            .await;
+
+            match token {
+                Ok(Some(token)) => {
+                    if let Err(err) = result.user.send_account_created_email(state, &token).await {
+                        tracing::warn!(user = %result.user.uuid, "failed to send account created email: {:#?}", err);
+                    }
+                }
+                Ok(None) => {}
+                Err(err) => {
+                    tracing::warn!(user = %result.user.uuid, "failed to create account created token: {:#?}", err);
+                }
+            }
+        }
+
+        if let Err(err) = result
+            .send_added_to_server_email(state, options.server)
+            .await
+        {
+            tracing::warn!(user = %result.user.uuid, "failed to send added to server email: {:#?}", err);
+        }
+
+        Ok(result)
+    }
+
+    async fn create_with_transaction(
+        state: &crate::State,
+        mut options: Self::CreateOptions<'_>,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<Self, crate::database::DatabaseError> {
+        let (result, user_created) = Self::create_inner(state, &mut options, transaction).await?;
+
+        if user_created
+            && let Some(token) = result
+                .user
+                .create_account_created_token_with_transaction(state, transaction)
+                .await?
+        {
+            result
+                .user
+                .send_account_created_email(state, &token)
+                .await?;
+        }
+
+        result
+            .send_added_to_server_email(state, options.server)
+            .await?;
 
         Ok(result)
     }

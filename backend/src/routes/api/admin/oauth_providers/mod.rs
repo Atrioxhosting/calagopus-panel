@@ -112,6 +112,14 @@ mod post {
             .ok();
         }
 
+        if !permissions.is_unrestricted_admin() && data.api_linkable {
+            return ApiResponse::error(
+                "only administrators can create an oauth provider that api keys may link accounts to",
+            )
+            .with_status(StatusCode::FORBIDDEN)
+            .ok();
+        }
+
         let oauth_provider = match OAuthProvider::create(&state, data).await {
             Ok(oauth_provider) => oauth_provider,
             Err(err) if err.is_unique_violation() => {
@@ -130,9 +138,11 @@ mod post {
                     "description": oauth_provider.description,
                     "icon": oauth_provider.icon,
                     "enabled": oauth_provider.enabled,
+                    "login_viewable": oauth_provider.login_viewable,
                     "login_only": oauth_provider.login_only,
                     "login_bypass_two_factor": oauth_provider.login_bypass_two_factor,
                     "link_viewable": oauth_provider.link_viewable,
+                    "api_linkable": oauth_provider.api_linkable,
                     "user_manageable": oauth_provider.user_manageable,
                     "basic_auth": oauth_provider.basic_auth,
                     "pkce": oauth_provider.pkce,

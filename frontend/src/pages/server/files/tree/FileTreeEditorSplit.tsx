@@ -1,20 +1,23 @@
-import { Fragment, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { CSSProperties, Fragment, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import Select from '@/elements/input/Select.tsx';
 import {
-  FILE_TREE_EDITOR_DRAG_TYPE,
+  acceptsFileTreeEditorDrop,
+  clearActiveFileTreeEditorTabDrag,
   FILE_TREE_EDITOR_TAB_DRAG_TYPE,
+  getActiveFileTreeEditorTabDrag,
 } from '@/pages/server/files/tree/fileTreeEditor.ts';
-import { FileTreeEditorPaneState } from '@/pages/server/files/tree/fileTreeWorkspaceState.ts';
+import { FileTreeEditorPaneState, FileTreePaneDropTarget } from '@/pages/server/files/tree/fileTreeWorkspaceState.ts';
+import { usePageBreakpoint } from '@/plugins/viewport/usePageBreakpoint.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 
 interface FileTreeEditorSplitProps {
   panes: FileTreeEditorPaneState[];
   activePaneId: string;
-  dropLabel: string;
   resizeLabel: string;
   onActivatePane: (paneId: string) => void;
-  onDrop: (paneId: string, dataTransfer: DataTransfer) => void;
+  onDrop: (target: FileTreePaneDropTarget, dataTransfer: DataTransfer) => void;
   onResize: (leftPaneId: string, rightPaneId: string, leftSize: number, rightSize: number) => void;
+  onEqualize: () => void;
   renderPane: (pane: FileTreeEditorPaneState, index: number) => ReactNode;
 }
 
@@ -32,25 +35,38 @@ interface ResizeSession {
   frame: number | null;
 }
 
-const acceptsEditorDrop = (dataTransfer: DataTransfer) => {
-  const types = Array.from(dataTransfer.types);
-  return types.includes(FILE_TREE_EDITOR_DRAG_TYPE) || types.includes(FILE_TREE_EDITOR_TAB_DRAG_TYPE);
+type DropZone = 'left' | 'right' | 'center';
+
+const MINIMUM_PANE_WIDTH = 200;
+const MINIMUM_SPLIT_PANE_WIDTH = 280;
+const EDGE_ZONE_RATIO = 0.3;
+const EDGE_ZONE_HYSTERESIS = 16;
+
+const dropZoneInsets: Record<DropZone, CSSProperties> = {
+  left: { left: '0.25rem', right: '50%' },
+  right: { left: '50%', right: '0.25rem' },
+  center: { left: '0.25rem', right: '0.25rem' },
 };
+
+const isOverTabStrip = (event: React.DragEvent) =>
+  !!(event.target as Element).closest('[data-file-manager-editor-tabs]');
 
 export default function FileTreeEditorSplit({
   panes,
   activePaneId,
-  dropLabel,
   resizeLabel,
   onActivatePane,
   onDrop,
   onResize,
+  onEqualize,
   renderPane,
 }: FileTreeEditorSplitProps) {
   const { t } = useTranslations();
+  const wide = usePageBreakpoint('md');
+  const splitRef = useRef<HTMLDivElement>(null);
   const paneElements = useRef(new Map<string, HTMLDivElement>());
   const resizeSession = useRef<ResizeSession | null>(null);
-  const [dropPaneId, setDropPaneId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ paneId: string; zone: DropZone } | null>(null);
   const [resizing, setResizing] = useState(false);
 
   useEffect(() => {
@@ -64,6 +80,33 @@ export default function FileTreeEditorSplit({
       document.body.style.userSelect = '';
     };
   }, [resizing]);
+
+  useEffect(() => {
+    const clear = () => setDropTarget(null);
+    const endDrag = () => {
+      clear();
+      setTimeout(clearActiveFileTreeEditorTabDrag);
+    };
+    const clearOutsidePanes = (event: DragEvent) => {
+      if (!(event.target instanceof Element) || !event.target.closest('[data-file-manager-editor-pane]')) clear();
+    };
+    const clearOnWindowLeave = (event: DragEvent) => {
+      if (!event.relatedTarget) clear();
+    };
+
+    window.addEventListener('dragover', clearOutsidePanes, true);
+    window.addEventListener('dragleave', clearOnWindowLeave, true);
+    window.addEventListener('dragend', endDrag, true);
+    window.addEventListener('drop', endDrag, true);
+    window.addEventListener('blur', clear);
+    return () => {
+      window.removeEventListener('dragover', clearOutsidePanes, true);
+      window.removeEventListener('dragleave', clearOnWindowLeave, true);
+      window.removeEventListener('dragend', endDrag, true);
+      window.removeEventListener('drop', endDrag, true);
+      window.removeEventListener('blur', clear);
+    };
+  }, []);
 
   const finishResize = useCallback(() => {
     const session = resizeSession.current;
@@ -120,13 +163,8 @@ export default function FileTreeEditorSplit({
 
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
-    const configuredMinimum = Number.parseFloat(getComputedStyle(leftElement).minWidth);
     const leftWidth = leftElement.getBoundingClientRect().width;
     const rightWidth = rightElement.getBoundingClientRect().width;
-    const minimumWidth = Math.min(
-      Math.max(Number.isFinite(configuredMinimum) ? configuredMinimum : 0, 200),
-      (leftWidth + rightWidth) / 2,
-    );
 
     resizeSession.current = {
       leftPaneId: leftPane.id,
@@ -136,7 +174,7 @@ export default function FileTreeEditorSplit({
       startX: event.clientX,
       leftWidth,
       rightWidth,
-      minimumWidth,
+      minimumWidth: Math.min(MINIMUM_PANE_WIDTH, (leftWidth + rightWidth) / 2),
       combinedSize: leftPane.size + rightPane.size,
       nextLeftWidth: leftWidth,
       frame: null,
@@ -162,20 +200,64 @@ export default function FileTreeEditorSplit({
     onResize(leftPane.id, rightPane.id, leftSize, combined - leftSize);
   };
 
-  const showDropTarget = (event: React.DragEvent, paneId: string) => {
-    if (!acceptsEditorDrop(event.dataTransfer)) return;
+  const getDropZone = (event: React.DragEvent<HTMLDivElement>, pane: FileTreeEditorPaneState): DropZone | null => {
+    const tabDrag = event.dataTransfer.types.includes(FILE_TREE_EDITOR_TAB_DRAG_TYPE)
+      ? getActiveFileTreeEditorTabDrag()
+      : null;
+    const fromThisPane = tabDrag?.paneId === pane.id;
+    const sourcePane = tabDrag ? panes.find((candidate) => candidate.id === tabDrag.paneId) : undefined;
+    const paneCountAfterSplit = panes.length + (sourcePane?.tabIds.length === 1 ? 0 : 1);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const canSplit =
+      wide &&
+      pane.tabIds.length > 0 &&
+      (!fromThisPane || pane.tabIds.length > 1) &&
+      (splitRef.current?.clientWidth ?? 0) / paneCountAfterSplit >= MINIMUM_SPLIT_PANE_WIDTH;
+
+    if (canSplit) {
+      const current = dropTarget?.paneId === pane.id ? dropTarget.zone : null;
+      const edge = bounds.width * EDGE_ZONE_RATIO;
+      const x = event.clientX - bounds.left;
+      if (x < edge + (current === 'left' ? EDGE_ZONE_HYSTERESIS : 0)) return 'left';
+      if (x > bounds.width - edge - (current === 'right' ? EDGE_ZONE_HYSTERESIS : 0)) return 'right';
+    }
+
+    return fromThisPane ? null : 'center';
+  };
+
+  const trackDrop = (event: React.DragEvent<HTMLDivElement>, pane: FileTreeEditorPaneState) => {
+    if (!acceptsFileTreeEditorDrop(event.dataTransfer)) return;
+    if (isOverTabStrip(event)) {
+      setDropTarget(null);
+      return;
+    }
 
     event.preventDefault();
     event.stopPropagation();
-    if (
-      event.dataTransfer.types.includes(FILE_TREE_EDITOR_TAB_DRAG_TYPE) &&
-      (event.target as Element).closest('[data-file-manager-editor-tabs]')
-    ) {
-      setDropPaneId(null);
-      return;
-    }
-    event.dataTransfer.dropEffect = 'copy';
-    setDropPaneId(paneId);
+    const zone = getDropZone(event, pane);
+    event.dataTransfer.dropEffect = !zone
+      ? 'none'
+      : event.dataTransfer.types.includes(FILE_TREE_EDITOR_TAB_DRAG_TYPE)
+        ? 'move'
+        : 'copy';
+    setDropTarget((current) =>
+      !zone ? null : current?.paneId === pane.id && current.zone === zone ? current : { paneId: pane.id, zone },
+    );
+  };
+
+  const drop = (event: React.DragEvent<HTMLDivElement>, pane: FileTreeEditorPaneState) => {
+    if (!acceptsFileTreeEditorDrop(event.dataTransfer) || isOverTabStrip(event)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    const zone = getDropZone(event, pane);
+    setDropTarget(null);
+    if (!zone) return;
+
+    onDrop(
+      zone === 'center' ? { paneId: pane.id, position: null } : { paneId: pane.id, split: zone },
+      event.dataTransfer,
+    );
   };
 
   return (
@@ -199,13 +281,14 @@ export default function FileTreeEditorSplit({
         />
       )}
       <div
+        ref={splitRef}
         data-file-manager-editor-split
         data-pane-count={panes.length}
         className='flex min-h-0 w-full min-w-0 flex-1 overflow-hidden'
       >
         {panes.map((pane, index) => {
           const nextPane = panes[index + 1];
-          const active = pane.id === activePaneId;
+          const zone = dropTarget?.paneId === pane.id ? dropTarget.zone : null;
 
           return (
             <Fragment key={pane.id}>
@@ -215,33 +298,23 @@ export default function FileTreeEditorSplit({
                   else paneElements.current.delete(pane.id);
                 }}
                 data-file-manager-editor-pane
-                data-active={active || undefined}
+                data-active={pane.id === activePaneId || undefined}
+                data-drop-zone={zone ?? undefined}
                 className='relative flex h-full min-w-0 overflow-hidden'
                 style={panes.length === 1 ? { flex: '1 0 100%', width: '100%' } : { flex: `${pane.size} 1 0` }}
                 onPointerDownCapture={() => onActivatePane(pane.id)}
                 onFocusCapture={() => onActivatePane(pane.id)}
-                onDragEnter={(event) => showDropTarget(event, pane.id)}
-                onDragOver={(event) => showDropTarget(event, pane.id)}
-                onDragLeave={(event) => {
-                  if (event.currentTarget.contains(event.relatedTarget as Node)) return;
-                  setDropPaneId((current) => (current === pane.id ? null : current));
-                }}
-                onDrop={(event) => {
-                  if (!acceptsEditorDrop(event.dataTransfer)) return;
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setDropPaneId(null);
-                  onDrop(pane.id, event.dataTransfer);
-                }}
+                onDragEnterCapture={(event) => trackDrop(event, pane)}
+                onDragOverCapture={(event) => trackDrop(event, pane)}
+                onDropCapture={(event) => drop(event, pane)}
               >
                 {renderPane(pane, index)}
-                {dropPaneId === pane.id && (
+                {zone && (
                   <div
-                    data-file-manager-editor-drop-overlay
-                    className='pointer-events-none absolute inset-2 z-50 flex items-center justify-center rounded-md border-2 border-dashed border-(--mantine-primary-color-filled) bg-(--mantine-color-body)/85 p-4 text-center font-medium text-(--mantine-primary-color-light-color)'
-                  >
-                    {dropLabel}
-                  </div>
+                    data-file-manager-editor-drop-indicator
+                    className='pointer-events-none absolute inset-y-1 z-50 rounded-md border-2 border-(--mantine-primary-color-filled) bg-(--mantine-primary-color-light) transition-[left,right] duration-150 ease-out motion-reduce:transition-none'
+                    style={dropZoneInsets[zone]}
+                  />
                 )}
               </div>
 
@@ -257,6 +330,7 @@ export default function FileTreeEditorSplit({
                   onPointerMove={resize}
                   onPointerUp={finishResize}
                   onPointerCancel={finishResize}
+                  onDoubleClick={onEqualize}
                   onKeyDown={(event) => resizeWithKeyboard(event, pane, nextPane)}
                 />
               )}

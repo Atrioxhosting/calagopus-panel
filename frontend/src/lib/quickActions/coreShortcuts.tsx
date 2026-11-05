@@ -175,6 +175,24 @@ function buildCoreShortcutDefinitions(): ShortcutDefinition[] {
       preventDefault: true,
     },
     {
+      id: 'files.increaseEditorFontSize',
+      category: fileManager,
+      description: () => getTranslations().t('pages.account.shortcuts.fileManager.increaseEditorFontSize', {}),
+      defaultBinding: binding('=', ['ctrlOrMeta']),
+    },
+    {
+      id: 'files.decreaseEditorFontSize',
+      category: fileManager,
+      description: () => getTranslations().t('pages.account.shortcuts.fileManager.decreaseEditorFontSize', {}),
+      defaultBinding: binding('-', ['ctrlOrMeta']),
+    },
+    {
+      id: 'files.resetEditorFontSize',
+      category: fileManager,
+      description: () => getTranslations().t('pages.account.shortcuts.fileManager.resetEditorFontSize', {}),
+      defaultBinding: binding('0', ['ctrlOrMeta']),
+    },
+    {
       id: 'table.previousPage',
       category: table,
       description: () => getTranslations().t('pages.account.shortcuts.table.previousPage', {}),
@@ -230,6 +248,24 @@ function buildCoreShortcutDefinitions(): ShortcutDefinition[] {
       description: () => getTranslations().t('pages.account.shortcuts.console.nextCommand', {}),
       defaultBinding: binding('ArrowDown'),
       allowWhenInputFocused: true,
+    },
+    {
+      id: 'console.increaseFontSize',
+      category: console,
+      description: () => getTranslations().t('pages.account.shortcuts.console.increaseFontSize', {}),
+      defaultBinding: binding('=', ['ctrlOrMeta']),
+    },
+    {
+      id: 'console.decreaseFontSize',
+      category: console,
+      description: () => getTranslations().t('pages.account.shortcuts.console.decreaseFontSize', {}),
+      defaultBinding: binding('-', ['ctrlOrMeta']),
+    },
+    {
+      id: 'console.resetFontSize',
+      category: console,
+      description: () => getTranslations().t('pages.account.shortcuts.console.resetFontSize', {}),
+      defaultBinding: binding('0', ['ctrlOrMeta']),
     },
   ];
 }

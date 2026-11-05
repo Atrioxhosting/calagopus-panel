@@ -263,6 +263,7 @@ export const adminSettingsRatelimitsSchema = z.object({
   clientServersBackupsCreate: adminSettingsRatelimitConfigurationSchema,
   clientServersFilesPull: adminSettingsRatelimitConfigurationSchema,
   clientServersFilesPullQuery: adminSettingsRatelimitConfigurationSchema,
+  clientServersSubusersCreate: adminSettingsRatelimitConfigurationSchema,
   remote: adminSettingsRatelimitConfigurationSchema,
   remoteSftpAuth: adminSettingsRatelimitConfigurationSchema,
   remoteEnroll: adminSettingsRatelimitConfigurationSchema,

@@ -90,7 +90,7 @@ mod post {
             CreatableModel, IntoApiObject,
             server::{GetServer, GetServerActivityLogger},
             server_subuser::ServerSubuser,
-            user::GetPermissionManager,
+            user::{GetPermissionManager, GetUser},
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -124,7 +124,9 @@ mod post {
         (status = OK, body = inline(Response)),
         (status = BAD_REQUEST, body = ApiError),
         (status = UNAUTHORIZED, body = ApiError),
+        (status = NOT_FOUND, body = ApiError),
         (status = CONFLICT, body = ApiError),
+        (status = EXPECTATION_FAILED, body = ApiError),
     ), params(
         (
             "server" = uuid::Uuid,
@@ -135,6 +137,7 @@ mod post {
     pub async fn route(
         state: GetState,
         permissions: GetPermissionManager,
+        user: GetUser,
         ip: shared::GetIp,
         server: GetServer,
         activity_logger: GetServerActivityLogger,
@@ -164,6 +167,29 @@ mod post {
         }
 
         permissions.has_server_permission("subusers.create")?;
+
+        let ratelimit = state
+            .settings
+            .get_as(|s| s.ratelimits.client_servers_subusers_create)
+            .await?;
+        state
+            .cache
+            .ratelimit(
+                "client/servers/subusers/create",
+                ratelimit.hits,
+                ratelimit.window_seconds,
+                ip.to_string(),
+            )
+            .await?;
+        state
+            .cache
+            .ratelimit(
+                "client/servers/subusers/create:user",
+                ratelimit.hits,
+                ratelimit.window_seconds,
+                user.uuid.to_string(),
+            )
+            .await?;
 
         if let Err(error) = state.captcha.verify(ip, data.captcha).await {
             return ApiResponse::error(&error)

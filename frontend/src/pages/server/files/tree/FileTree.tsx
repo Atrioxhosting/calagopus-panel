@@ -3,13 +3,13 @@ import { basename, dirname, resolve } from 'pathe';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { httpErrorToHuman } from '@/api/axios.ts';
-import copyFile from '@/api/server/files/copyFile.ts';
 import loadDirectory from '@/api/server/files/loadDirectory.ts';
 import searchFiles from '@/api/server/files/searchFiles.ts';
 import Card from '@/elements/data-display/Card.tsx';
 import ContextMenu from '@/elements/overlays/ContextMenu.tsx';
 import { bandwidthUploadError, isBandwidthBlocked } from '@/lib/files/bandwidthUpload.ts';
 import { useDraggedFileMove } from '@/pages/server/files/hooks/useDraggedFileMove.ts';
+import { useDuplicateFile } from '@/pages/server/files/hooks/useDuplicateFile.ts';
 import { getFilesFromDataTransfer } from '@/pages/server/files/hooks/useFileDragAndDrop.ts';
 import FileMassContextMenu from '@/pages/server/files/list/FileMassContextMenu.tsx';
 import FileTreeToolbar from '@/pages/server/files/tree/FileTreeToolbar.tsx';
@@ -62,6 +62,7 @@ function FileTree({
 }: FileTreeProps) {
   const { t } = useTranslations();
   const { addToast } = useToast();
+  const duplicateFile = useDuplicateFile();
   const [, setSearchParams] = useSearchParams();
   const server = useServerStore((state) => state.server);
   const bandwidthBlocked = useServerStore((state) => isBandwidthBlocked(state.stats?.bandwidth.state));
@@ -844,9 +845,7 @@ function FileTree({
             return;
           }
 
-          copyFile(server.uuid, selected[0].path, null)
-            .then(() => addToast(t('pages.server.files.toast.fileCopyingStarted', {}), 'success'))
-            .catch((msg) => addToast(httpErrorToHuman(msg), 'error'));
+          duplicateFile(selected[0].path);
         },
       },
       {

@@ -2,6 +2,7 @@ use super::State;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 mod delete_failed;
+mod retry_failed_deletions;
 
 mod get {
     use crate::routes::api::admin::system_backup_policies::_system_backup_policy_::GetSystemBackupPolicy;
@@ -23,6 +24,7 @@ mod get {
         #[schema(inline)]
         backups: Pagination<shared::models::server_backup::AdminApiNodeServerBackup>,
         failed: i64,
+        failed_deletions: i64,
     }
 
     #[utoipa::path(get, path = "/", responses(
@@ -92,6 +94,11 @@ mod get {
                 FailedServerBackupScope::SystemBackupPolicy(system_backup_policy.uuid),
             )
             .await?,
+            failed_deletions: ServerBackup::count_failed_deletions(
+                &state.database,
+                FailedServerBackupScope::SystemBackupPolicy(system_backup_policy.uuid),
+            )
+            .await?,
         })
         .ok()
     }
@@ -101,5 +108,9 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
     OpenApiRouter::new()
         .routes(routes!(get::route))
         .nest("/delete-failed", delete_failed::router(state))
+        .nest(
+            "/retry-failed-deletions",
+            retry_failed_deletions::router(state),
+        )
         .with_state(state.clone())
 }

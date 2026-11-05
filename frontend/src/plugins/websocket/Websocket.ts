@@ -6,6 +6,7 @@ import {
   ServerWebsocketSendEvent,
   serverWebsocketProtocolEvents,
 } from 'shared';
+import { toBase64 } from '@/plugins/websocket/args.ts';
 import { getTranslations } from '@/providers/TranslationProvider.tsx';
 
 export enum SocketState {
@@ -40,6 +41,11 @@ export interface SocketError {
   closeReason?: string;
 }
 
+const MSGPACK_PROBE = 'msgpack-probe';
+const NEGOTIATION_TIMEOUT_MS = 10000;
+
+type TransmissionMode = 'unconfigured' | 'negotiating' | 'msgpack' | 'binary';
+
 function isForwardableFrame(frame: ServerWebsocketFrame): boolean {
   return (
     typeof frame.event === 'string' && Array.isArray(frame.args) && !serverWebsocketProtocolEvents.has(frame.event)
@@ -52,6 +58,9 @@ export class Websocket extends EventEmitter {
   private token = '';
   private authGapped = false;
   private useBinary = false;
+  private transmissionMode: TransmissionMode = 'unconfigured';
+  private negotiationTimer: ReturnType<typeof setTimeout> | null = null;
+  private heldFrames: ServerWebsocketFrame[] = [];
 
   private state: SocketState = SocketState.CLOSED;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -118,6 +127,7 @@ export class Websocket extends EventEmitter {
   close(code?: number, reason?: string): void {
     this.intentionallyClosed = true;
     this.clearReconnectTimer();
+    this.resetTransmissionMode();
     this.destroySocket(code, reason);
     this.state = SocketState.CLOSED;
     this.url = null;
@@ -132,9 +142,21 @@ export class Websocket extends EventEmitter {
    * Clears the auth gap before listeners run, so a listener reacting to 'auth success' can
    * send without depending on the order handlers were registered in.
    */
-  private dispatch(event: string, args: string[]): void {
+  private dispatch(event: string, args: unknown[]): void {
     if (event === 'auth success') {
       this.authGapped = false;
+      if (this.transmissionMode === 'unconfigured') {
+        this.negotiateTransmissionMode();
+      }
+    } else if (event === 'socket configured') {
+      if (this.transmissionMode === 'negotiating' && args[0] === 'transmission mode' && args[1] === 'msgpack') {
+        this.resolveTransmissionMode('msgpack');
+      }
+    } else if (event === 'pong' && args[0] === MSGPACK_PROBE) {
+      if (this.transmissionMode === 'negotiating') {
+        this.fallBackTransmissionMode();
+      }
+      return;
     }
 
     const handlers = window.extensionContext.extensionRegistry.events.serverWebsocket.messageHandlers;
@@ -151,7 +173,50 @@ export class Websocket extends EventEmitter {
     this.emit(message.data.event, ...message.data.args);
   }
 
-  private interceptSend(event: string, args: string[]): ServerWebsocketFrame | null {
+  private negotiateTransmissionMode(): void {
+    this.transmissionMode = 'negotiating';
+    this.sendFrame({ event: 'configure socket', args: ['transmission mode', 'msgpack'] });
+    this.sendFrame({ event: 'ping', args: [MSGPACK_PROBE] });
+
+    this.negotiationTimer = setTimeout(() => {
+      this.negotiationTimer = null;
+      if (this.transmissionMode === 'negotiating') {
+        this.fallBackTransmissionMode();
+      }
+    }, NEGOTIATION_TIMEOUT_MS);
+  }
+
+  private fallBackTransmissionMode(): void {
+    this.sendFrame({ event: 'configure socket', args: ['transmission mode', 'binary'] });
+    this.resolveTransmissionMode('binary');
+  }
+
+  private resolveTransmissionMode(mode: 'msgpack' | 'binary'): void {
+    if (this.negotiationTimer !== null) {
+      clearTimeout(this.negotiationTimer);
+      this.negotiationTimer = null;
+    }
+
+    this.transmissionMode = mode;
+
+    const held = this.heldFrames;
+    this.heldFrames = [];
+    for (const frame of held) {
+      this.sendFrame(frame);
+    }
+  }
+
+  private resetTransmissionMode(): void {
+    if (this.negotiationTimer !== null) {
+      clearTimeout(this.negotiationTimer);
+      this.negotiationTimer = null;
+    }
+
+    this.transmissionMode = 'unconfigured';
+    this.heldFrames = [];
+  }
+
+  private interceptSend(event: string, args: unknown[]): ServerWebsocketFrame | null {
     const handlers = window.extensionContext.extensionRegistry.events.serverWebsocket.sendHandlers;
     if (serverWebsocketProtocolEvents.has(event) || handlers.handlers.length === 0) {
       return { event, args };
@@ -177,7 +242,7 @@ export class Websocket extends EventEmitter {
   /**
    * Sends a message over the socket. Silently drops messages if not connected.
    */
-  send(event: string, payload?: string | string[]): void {
+  send(event: string, payload?: string | unknown[]): void {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       return;
     }
@@ -190,11 +255,31 @@ export class Websocket extends EventEmitter {
       return;
     }
 
+    // wings decodes binary arguments by the mode it is in when the frame arrives, so frames
+    // carrying them wait until it is settled
+    if (this.transmissionMode === 'negotiating' && frame.args.some((arg) => arg instanceof Uint8Array)) {
+      this.heldFrames.push(frame);
+      return;
+    }
+
+    this.sendFrame(frame);
+  }
+
+  private sendFrame(frame: ServerWebsocketFrame): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    const args =
+      this.transmissionMode === 'msgpack'
+        ? frame.args
+        : frame.args.map((arg) => (arg instanceof Uint8Array ? toBase64(arg) : arg));
+
     try {
       if (this.useBinary) {
-        this.socket.send(encode([frame.event, frame.args]));
+        this.socket.send(encode([frame.event, args]));
       } else {
-        this.socket.send(JSON.stringify({ event: frame.event, args: frame.args }));
+        this.socket.send(JSON.stringify({ event: frame.event, args }));
       }
     } catch (err) {
       console.warn('Failed to send websocket message.', err);
@@ -217,6 +302,7 @@ export class Websocket extends EventEmitter {
     this.socket.binaryType = 'arraybuffer';
 
     this.socket.onopen = () => {
+      this.resetTransmissionMode();
       this.reconnectAttempts = 0;
       this.nextRetryMs = null;
       this.clearReconnectTimer();
@@ -233,10 +319,10 @@ export class Websocket extends EventEmitter {
         this.emit('SOCKET_MESSAGE', e);
 
         if (typeof e.data === 'string') {
-          const { event, args } = JSON.parse(e.data) as { event: string; args: string[] };
+          const { event, args } = JSON.parse(e.data) as { event: string; args: unknown[] };
           this.dispatch(event, args);
         } else if (e.data instanceof ArrayBuffer) {
-          const [event, args] = decode(e.data) as [string, string[]];
+          const [event, args] = decode(e.data) as [string, unknown[]];
           this.dispatch(event, args);
         }
       } catch (ex) {

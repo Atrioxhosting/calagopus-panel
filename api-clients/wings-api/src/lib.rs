@@ -404,6 +404,9 @@ nestify::nest! {
             pub last_checkpoint: i64,
         },
         #[schema(inline)]
+        #[serde(default)]
+        pub trash_bytes: u64,
+        #[schema(inline)]
         pub state: ServerState,
         #[schema(inline)]
         pub network: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct ResourceUsageNetwork {
@@ -937,6 +940,8 @@ pub enum WebsocketEvent {
     Auth,
     #[serde(rename = "configure socket")]
     ConfigureSocket,
+    #[serde(rename = "socket configured")]
+    SocketConfigured,
     #[serde(rename = "set state")]
     SetState,
     #[serde(rename = "send logs")]
@@ -2830,7 +2835,15 @@ pub mod servers_server_script {
     pub mod post {
         use super::*;
 
-        pub type RequestBody = InstallationScript;
+        nestify::nest! {
+            #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct RequestBody {
+                #[schema(inline)]
+                #[serde(flatten)]
+                pub installation_script: InstallationScript,
+                #[schema(inline)]
+                pub timeout_seconds: Option<u64>,
+            }
+        }
 
         pub type Response200 = AsyncResponseReader;
 

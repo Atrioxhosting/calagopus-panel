@@ -49,6 +49,22 @@ mod post {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("oauth-providers.create")?;
 
+        if !permissions.is_unrestricted_admin() && oauth_provider.login_bypass_two_factor {
+            return ApiResponse::error(
+                "only administrators can duplicate an oauth provider that bypasses two-factor authentication",
+            )
+            .with_status(StatusCode::FORBIDDEN)
+            .ok();
+        }
+
+        if !permissions.is_unrestricted_admin() && oauth_provider.api_linkable {
+            return ApiResponse::error(
+                "only administrators can duplicate an oauth provider that api keys may link accounts to",
+            )
+            .with_status(StatusCode::FORBIDDEN)
+            .ok();
+        }
+
         let options = DuplicateOAuthProviderOptions { name: data.name };
         let duplicated = match DuplicableModel::duplicate(&oauth_provider.0, &state, options).await
         {

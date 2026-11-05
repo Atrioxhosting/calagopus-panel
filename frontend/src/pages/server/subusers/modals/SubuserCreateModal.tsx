@@ -1,7 +1,9 @@
 import { ModalProps } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { zod4Resolver } from 'mantine-form-zod-resolver';
 import { z } from 'zod';
+import { httpErrorToHuman } from '@/api/axios.ts';
 import createSubuser from '@/api/server/subusers/createSubuser.ts';
 import Button from '@/elements/buttons/Button.tsx';
 import Captcha, { useCaptcha } from '@/elements/captcha/Captcha.tsx';
@@ -59,6 +61,22 @@ export default function SubuserCreateModal({ ...props }: ModalProps) {
           queryKey: queryKeys.server(server.uuid).subusers.all(),
         });
         addToast(t('pages.server.subusers.modal.createSubuser.toast.created', {}), 'success');
+      },
+      onError: (err) => {
+        const message = httpErrorToHuman(err);
+
+        if (isAxiosError(err) && err.response?.status === 404) {
+          if (message === 'user not found, they must sign in before being added') {
+            addToast(t('pages.server.subusers.modal.createSubuser.toast.userMustSignIn', {}), 'error');
+            return;
+          }
+          if (message === 'user not found, an administrator must create their account') {
+            addToast(t('pages.server.subusers.modal.createSubuser.toast.userMustBeCreatedByAdmin', {}), 'error');
+            return;
+          }
+        }
+
+        addToast(message, 'error');
       },
     },
   );

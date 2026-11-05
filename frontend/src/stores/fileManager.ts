@@ -214,6 +214,10 @@ export type FileManagerSettingField =
   | 'imageViewerSmoothing'
   | 'audioPlayerVolume';
 
+export const EDITOR_FONT_SIZE_DEFAULT = 14;
+export const EDITOR_FONT_SIZE_MIN = 6;
+export const EDITOR_FONT_SIZE_MAX = 72;
+
 const userSettingFields: {
   [K in FileManagerSettingField]: {
     key: string;
@@ -230,7 +234,11 @@ const userSettingFields: {
     schema: booleanSchema,
     fallback: () => window.matchMedia('(pointer: coarse)').matches,
   },
-  editorFontSize: { key: 'file_manager::editor_font_size', schema: numberSchema, fallback: () => 14 },
+  editorFontSize: {
+    key: 'file_manager::editor_font_size',
+    schema: numberSchema,
+    fallback: () => EDITOR_FONT_SIZE_DEFAULT,
+  },
   editorEngine: {
     key: 'file_manager::editor_engine',
     schema: z.enum(['monaco', 'pierre']),

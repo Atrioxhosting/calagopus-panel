@@ -1,9 +1,16 @@
 import { CancellableEvent, EventHandler, EventHandlerList, EventHandlerOptions, Registry } from 'shared';
 import type { Websocket } from '@/plugins/websocket/Websocket.ts';
 
+export { binaryArg, structuredArg } from '@/plugins/websocket/args.ts';
+
+/**
+ * Arguments are strings, except where wings sends structured or binary data: in `msgpack`
+ * transmission mode those arrive as values and `Uint8Array`s, otherwise as JSON and base64
+ * strings. Read them through `structuredArg` and `binaryArg` to handle both.
+ */
 export interface ServerWebsocketFrame {
   event: string;
-  args: string[];
+  args: unknown[];
 }
 
 export const serverWebsocketProtocolEvents: ReadonlySet<string> = new Set([
@@ -13,6 +20,7 @@ export const serverWebsocketProtocolEvents: ReadonlySet<string> = new Set([
   'token expired',
   'jwt error',
   'configure socket',
+  'socket configured',
 ]);
 
 export class ServerWebsocketMessageEvent extends CancellableEvent<ServerWebsocketFrame> {

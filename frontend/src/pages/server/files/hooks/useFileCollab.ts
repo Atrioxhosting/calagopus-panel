@@ -11,11 +11,10 @@ import {
   bindPierreEditor,
   createMonacoBinding,
   cursorColor,
-  fromBase64,
   normalizePath,
-  toBase64,
   updateCursorStyles,
 } from '@/lib/files/collab.ts';
+import { binaryArg, structuredArg } from '@/plugins/websocket/args.ts';
 import { SocketEvent, SocketRequest } from '@/plugins/websocket/useWebsocketEvent.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
@@ -48,7 +47,7 @@ interface UseFileCollabOptions {
   onError: (message: string) => void;
 }
 
-const UPDATE_CHUNK_SIZE = 16 * 1024;
+const UPDATE_CHUNK_SIZE = 12 * 1024;
 
 let editorSequence = 0;
 
@@ -130,22 +129,21 @@ export default function useFileCollab({
       return normalized === normalizePath(path) || normalized === sessionKey;
     };
 
-    let pendingUpdates: [string, string][] = [];
+    let pendingUpdates: [string, Uint8Array][] = [];
 
     const sendUpdate = (update: Uint8Array) => {
-      const encoded = toBase64(update);
-      for (let i = 0; i < encoded.length; i += UPDATE_CHUNK_SIZE) {
-        const finished = i + UPDATE_CHUNK_SIZE >= encoded.length;
+      for (let i = 0; i < update.length; i += UPDATE_CHUNK_SIZE) {
+        const finished = i + UPDATE_CHUNK_SIZE >= update.length;
         socket.send(SocketRequest.FILE_COLLAB_UPDATE, [
           path,
           finished ? '1' : '0',
-          encoded.slice(i, i + UPDATE_CHUNK_SIZE),
+          update.subarray(i, i + UPDATE_CHUNK_SIZE),
           editorId,
         ]);
       }
     };
 
-    const onSync = (syncPath: string, state: string, meta?: string, rawPath?: string, stateVector?: string) => {
+    const onSync = (syncPath: string, state: unknown, meta?: unknown, rawPath?: string, stateVector?: unknown) => {
       if (!(rawPath !== undefined && normalizePath(rawPath) === normalizePath(path)) && !matchesSession(syncPath)) {
         return;
       }
@@ -154,7 +152,9 @@ export default function useFileCollab({
       let syncConflict: CollabConflict | null = null;
       let epoch: string | null = null;
       try {
-        const parsed = JSON.parse(meta ?? '{}');
+        const parsed = structuredArg<{ dirty?: unknown; conflict?: CollabConflict | null; epoch?: unknown }>(
+          meta ?? '{}',
+        );
         dirty = Boolean(parsed.dirty);
         syncConflict = parsed.conflict ?? null;
         epoch = typeof parsed.epoch === 'string' ? parsed.epoch : null;
@@ -168,13 +168,13 @@ export default function useFileCollab({
       const existing = docRef.current;
       if (existing && stateVector && epoch !== null && epoch === syncedEpoch) {
         sessionKey = normalizePath(syncPath);
-        Y.applyUpdate(existing, fromBase64(state), 'remote');
+        Y.applyUpdate(existing, binaryArg(state), 'remote');
 
         // pushed unconditionally: deletions carry no new operations, so no comparison of
         // state vectors can tell whether this document holds edits wings is missing. an
         // update that turns out to be redundant only marks the session dirty, which the
         // daemon's reconciler clears within a second
-        sendUpdate(Y.encodeStateAsUpdate(existing, fromBase64(stateVector)));
+        sendUpdate(Y.encodeStateAsUpdate(existing, binaryArg(stateVector)));
 
         // onActivated is deliberately not called here: the session was already active, and
         // it resets the editor's saved-content baseline, which would report unsaved edits
@@ -197,7 +197,7 @@ export default function useFileCollab({
       syncedEpoch = epoch;
 
       const doc = new Y.Doc();
-      Y.applyUpdate(doc, fromBase64(state), 'remote');
+      Y.applyUpdate(doc, binaryArg(state), 'remote');
       const text = doc.getText('content');
 
       doc.on('update', (update: Uint8Array, origin: unknown) => {
@@ -206,7 +206,7 @@ export default function useFileCollab({
       });
 
       for (const [updatePath, update] of pendingUpdates) {
-        if (matchesSession(updatePath)) Y.applyUpdate(doc, fromBase64(update), 'remote');
+        if (matchesSession(updatePath)) Y.applyUpdate(doc, update, 'remote');
       }
       pendingUpdates = [];
       if (restoreContentRef.current !== undefined) {
@@ -238,10 +238,7 @@ export default function useFileCollab({
           ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
             if (origin === 'remote') return;
             const changed = added.concat(updated, removed);
-            socket.send(SocketRequest.FILE_COLLAB_AWARENESS, [
-              path,
-              toBase64(encodeAwarenessUpdate(awareness, changed)),
-            ]);
+            socket.send(SocketRequest.FILE_COLLAB_AWARENESS, [path, encodeAwarenessUpdate(awareness, changed)]);
           },
         );
 
@@ -249,10 +246,7 @@ export default function useFileCollab({
         awarenessRef.current = awareness;
         styleRef.current = styleEl;
 
-        socket.send(SocketRequest.FILE_COLLAB_AWARENESS, [
-          path,
-          toBase64(encodeAwarenessUpdate(awareness, [doc.clientID])),
-        ]);
+        socket.send(SocketRequest.FILE_COLLAB_AWARENESS, [path, encodeAwarenessUpdate(awareness, [doc.clientID])]);
       } else {
         const awareness = new Awareness(doc);
         awareness.setLocalStateField('user', {
@@ -265,10 +259,7 @@ export default function useFileCollab({
           ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
             if (origin === 'remote') return;
             const changed = added.concat(updated, removed);
-            socket.send(SocketRequest.FILE_COLLAB_AWARENESS, [
-              path,
-              toBase64(encodeAwarenessUpdate(awareness, changed)),
-            ]);
+            socket.send(SocketRequest.FILE_COLLAB_AWARENESS, [path, encodeAwarenessUpdate(awareness, changed)]);
           },
         );
 
@@ -282,10 +273,7 @@ export default function useFileCollab({
         );
         awarenessRef.current = awareness;
 
-        socket.send(SocketRequest.FILE_COLLAB_AWARENESS, [
-          path,
-          toBase64(encodeAwarenessUpdate(awareness, [doc.clientID])),
-        ]);
+        socket.send(SocketRequest.FILE_COLLAB_AWARENESS, [path, encodeAwarenessUpdate(awareness, [doc.clientID])]);
       }
 
       docRef.current = doc;
@@ -295,54 +283,54 @@ export default function useFileCollab({
       callbacksRef.current.onActivated(dirty);
     };
 
-    const onUpdate = (updatePath: string, update: string) => {
+    const onUpdate = (updatePath: string, update: unknown) => {
       if (!docRef.current) {
         if (pendingUpdates.length < 64) {
-          pendingUpdates.push([updatePath, update]);
+          pendingUpdates.push([updatePath, binaryArg(update)]);
         }
         return;
       }
       if (!matchesSession(updatePath)) return;
 
-      Y.applyUpdate(docRef.current, fromBase64(update), 'remote');
+      Y.applyUpdate(docRef.current, binaryArg(update), 'remote');
     };
 
-    const onAwareness = (awarenessPath: string, update: string) => {
+    const onAwareness = (awarenessPath: string, update: unknown) => {
       if (!matchesSession(awarenessPath)) return;
       if (!awarenessRef.current) return;
 
-      applyAwarenessUpdate(awarenessRef.current, fromBase64(update), 'remote');
+      applyAwarenessUpdate(awarenessRef.current, binaryArg(update), 'remote');
     };
 
-    const onParticipants = (participantsPath: string, data: string) => {
+    const onParticipants = (participantsPath: string, data: unknown) => {
       if (!matchesSession(participantsPath)) return;
 
       try {
-        setParticipants(JSON.parse(data));
+        setParticipants(structuredArg(data));
       } catch {
         // ignore malformed payloads
       }
     };
 
-    const onSavedEvent = (savedPath: string, data: string) => {
+    const onSavedEvent = (savedPath: string, data: unknown) => {
       if (!matchesSession(savedPath)) return;
 
       pendingSaveRef.current = null;
       setConflict(null);
       try {
-        const payload = JSON.parse(data);
+        const payload = structuredArg<{ user: string; revision_id?: number | null }>(data);
         callbacksRef.current.onSaved({ user: payload.user, revisionId: payload.revision_id ?? null });
       } catch {
         // ignore
       }
     };
 
-    const onConflictEvent = (conflictPath: string, data: string) => {
+    const onConflictEvent = (conflictPath: string, data: unknown) => {
       if (!matchesSession(conflictPath)) return;
 
       let parsed: CollabConflict | null = null;
       try {
-        parsed = JSON.parse(data);
+        parsed = structuredArg(data);
       } catch {
         // ignore malformed payloads
       }

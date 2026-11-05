@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import deleteFailedServerBackups from '@/api/admin/servers/backups/deleteFailedServerBackups.ts';
 import getServerBackups from '@/api/admin/servers/backups/getServerBackups.ts';
+import retryFailedServerBackupDeletions from '@/api/admin/servers/backups/retryFailedServerBackupDeletions.ts';
 import AdminSubContentContainer from '@/elements/containers/AdminSubContentContainer.tsx';
 import Table from '@/elements/data-display/Table.tsx';
 import Switch from '@/elements/input/Switch.tsx';
@@ -11,6 +12,7 @@ import { serverBackupTableColumns } from '@/lib/tableColumns.ts';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import DeleteFailedBackupsButton from '../../nodes/backups/DeleteFailedBackupsButton.tsx';
+import RetryFailedDeletionsButton from '../../nodes/backups/RetryFailedDeletionsButton.tsx';
 import AdminServerBackupRow from './AdminServerBackupRow.tsx';
 
 export default function AdminServerBackups({ server }: { server: AdminServer }) {
@@ -53,6 +55,16 @@ export default function AdminServerBackups({ server }: { server: AdminServer }) 
             failed={serverBackups?.failed ?? 0}
             onDelete={(force) =>
               deleteFailedServerBackups(server.uuid, {
+                partiallyDetached: showPartiallyDetachedServerBackups,
+                force,
+              })
+            }
+          />
+
+          <RetryFailedDeletionsButton
+            failedDeletions={serverBackups?.failedDeletions ?? 0}
+            onRetry={(force) =>
+              retryFailedServerBackupDeletions(server.uuid, {
                 partiallyDetached: showPartiallyDetachedServerBackups,
                 force,
               })

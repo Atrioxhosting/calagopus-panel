@@ -26,6 +26,9 @@ import openConsolePopout from '../openConsolePopout.ts';
 
 export const CONSOLE_FONT_SIZE_KEY = 'console::font_size';
 export const consoleFontSizeSchema = z.number();
+export const CONSOLE_FONT_SIZE_DEFAULT = 14;
+export const CONSOLE_FONT_SIZE_MIN = 10;
+export const CONSOLE_FONT_SIZE_MAX = 24;
 
 interface TerminalHeaderProps {
   websocketPing: number;
@@ -50,7 +53,11 @@ export default function TerminalHeader({
   const server = useServerStore((state) => state.server);
   const socketConnected = useServerStore((state) => state.socketConnected);
   const socketInstance = useServerStore((state) => state.socketInstance);
-  const [consoleFontSize, setConsoleFontSize] = useUserSetting(CONSOLE_FONT_SIZE_KEY, consoleFontSizeSchema, 14);
+  const [consoleFontSize, setConsoleFontSize] = useUserSetting(
+    CONSOLE_FONT_SIZE_KEY,
+    consoleFontSizeSchema,
+    CONSOLE_FONT_SIZE_DEFAULT,
+  );
 
   return (
     <div className='flex flex-col gap-2 md:flex-row md:justify-between md:items-center mb-2 text-xs'>
@@ -203,7 +210,7 @@ export default function TerminalHeader({
               size='xs'
               radius={0}
               variant='transparent'
-              onClick={() => setConsoleFontSize((size) => Math.max(10, size - 1))}
+              onClick={() => setConsoleFontSize((size) => Math.max(CONSOLE_FONT_SIZE_MIN, size - 1))}
             >
               <FontAwesomeIcon
                 icon={faMinus}
@@ -220,7 +227,7 @@ export default function TerminalHeader({
               size='xs'
               radius={0}
               variant='transparent'
-              onClick={() => setConsoleFontSize((size) => Math.min(24, size + 1))}
+              onClick={() => setConsoleFontSize((size) => Math.min(CONSOLE_FONT_SIZE_MAX, size + 1))}
             >
               <FontAwesomeIcon
                 icon={faPlus}

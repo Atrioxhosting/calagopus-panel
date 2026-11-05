@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { z } from 'zod';
 import { useShallow } from 'zustand/react/shallow';
 import { serverImagePullProgressSchema, serverInstallProgressSchema } from '@/lib/schemas/server/server.ts';
+import { structuredArg } from '@/plugins/websocket/args.ts';
 import useWebsocketEvent, { SocketEvent } from '@/plugins/websocket/useWebsocketEvent.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -27,10 +28,10 @@ export default function useServerInstallSocket() {
     };
   }, [clearImagePulls]);
 
-  useWebsocketEvent(SocketEvent.IMAGE_PULL_PROGRESS, (id, data) => {
+  useWebsocketEvent(SocketEvent.IMAGE_PULL_PROGRESS, (id, data: unknown) => {
     let wsData: z.infer<typeof serverImagePullProgressSchema>;
     try {
-      wsData = JSON.parse(data);
+      wsData = structuredArg(data);
     } catch {
       return;
     }
@@ -47,10 +48,10 @@ export default function useServerInstallSocket() {
     updateServer({ status: 'installing' });
   });
 
-  useWebsocketEvent(SocketEvent.INSTALL_PROGRESS, (data) => {
+  useWebsocketEvent(SocketEvent.INSTALL_PROGRESS, (data: unknown) => {
     let wsData: z.infer<typeof serverInstallProgressSchema>;
     try {
-      wsData = JSON.parse(data);
+      wsData = structuredArg(data);
     } catch {
       return;
     }

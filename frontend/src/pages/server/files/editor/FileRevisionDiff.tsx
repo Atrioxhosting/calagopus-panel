@@ -1,5 +1,6 @@
 import { faArrowLeft, faRotateLeft } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useMergedRef } from '@mantine/hooks';
 import type { editor } from 'monaco-editor';
 import { basename, dirname } from 'pathe';
 import { useEffect, useRef, useState } from 'react';
@@ -26,6 +27,7 @@ import { FileManagerProvider, useFileManager } from '@/providers/FileManagerProv
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useServerStore } from '@/stores/server.ts';
+import useEditorFontSizeZoom from '../hooks/useEditorFontSizeZoom.ts';
 import useFileDraft from '../hooks/useFileDraft.ts';
 import useFileDraftPersistence from '../hooks/useFileDraftPersistence.ts';
 import FileEditorDraftModal from '../modals/FileEditorDraftModal.tsx';
@@ -68,6 +70,7 @@ function FileRevisionDiffComponent() {
 
   const diffEditorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const mergedEditorContainerRef = useMergedRef(editorContainerRef, useEditorFontSizeZoom());
 
   useEffect(() => {
     mountedRef.current = true;
@@ -130,6 +133,7 @@ function FileRevisionDiffComponent() {
     loading,
     getParent,
     layout: () => diffEditorRef.current?.layout(),
+    minHeightFraction: 0.6,
     deps: [loading, getParent],
   });
 
@@ -263,7 +267,7 @@ function FileRevisionDiffComponent() {
       ) : (
         <div className='flex flex-col relative mt-4'>
           <div className='relative'>
-            <div ref={editorContainerRef} className='flex max-w-full w-full z-1 absolute'>
+            <div ref={mergedEditorContainerRef} className='flex max-w-full w-full z-1 absolute'>
               <FileRevisionDiffEditor
                 original={originalContent}
                 modified={modifiedContent}

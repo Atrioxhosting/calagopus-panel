@@ -23,7 +23,7 @@ import {
 import { uploadPathOf } from '@/lib/files/uploadPaths.ts';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { serverFileOperationSchema } from '@/lib/schemas/server/files.ts';
-import { ToastAction, ToastType } from '@/providers/contexts/toastContext.ts';
+import { PendingToast, ToastAction, ToastType } from '@/providers/contexts/toastContext.ts';
 import { getTranslations } from '@/providers/contexts/translationContext.ts';
 import { readUserSettingField } from '@/stores/fileManager.ts';
 import {
@@ -44,6 +44,7 @@ export interface UploadResult {
 interface UploadManagerExternals {
   queryClient: QueryClient;
   addToast: (message: ReactNode, type?: ToastType, actions?: ToastAction[]) => void;
+  addPendingToast: (message: ReactNode) => PendingToast;
   onUploadsComplete: (destination: UploadDestination, fileCount: number) => void;
 }
 
@@ -68,13 +69,20 @@ export function setUploadConflictResolver(resolver: UploadConflictResolver | nul
 async function resolveUploadConflicts(destination: UploadDestination, files: File[]): Promise<File[]> {
   if (destination.type !== 'server' || !conflictResolver || readUserSettingField('alwaysOverwrite')) return files;
 
+  const { t, tItem } = getTranslations();
+
+  const checkingToast = externals?.addPendingToast(
+    t('elements.fileUpload.toast.checkingConflicts', { files: tItem('file', files.length) }),
+  );
+
   let conflicts: UploadConflict[];
   try {
     conflicts = await findUploadConflicts(destination.serverUuid, destination.directory, files);
   } catch {
-    const { t } = getTranslations();
     addToastSafely(t('elements.fileUpload.toast.conflictCheckFailed', {}), 'warning');
     return files;
+  } finally {
+    checkingToast?.settle();
   }
 
   if (conflicts.length === 0) return files;

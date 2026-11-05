@@ -345,6 +345,7 @@ export default function TunnelCanvas({
     loading: false,
     getParent,
     layout: fit,
+    minHeightFraction: 0.6,
     deps: [fit, getParent],
   });
 

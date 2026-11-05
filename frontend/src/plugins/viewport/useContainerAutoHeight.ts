@@ -8,6 +8,8 @@ interface UseContainerAutoHeightOptions {
   layout: () => void;
   extraObserveRef?: RefObject<HTMLDivElement | null>;
   useVisualViewportInset?: boolean;
+  /** Never shrink below this fraction of the frame height; the page scrolls instead when content above pushes the element down. */
+  minHeightFraction?: number;
   /** Set this custom property to the measured height instead of sizing the element itself. */
   cssVariable?: string;
   deps: unknown[];
@@ -20,6 +22,7 @@ export function useContainerAutoHeight({
   layout,
   extraObserveRef,
   useVisualViewportInset = false,
+  minHeightFraction,
   cssVariable,
   deps,
 }: UseContainerAutoHeightOptions) {
@@ -41,7 +44,18 @@ export function useContainerAutoHeight({
         bottomEdge = virtualWindowEl ? virtualWindowEl.getBoundingClientRect().bottom : window.innerHeight;
       }
 
-      const newHeight = Math.max(0, bottomEdge - elRect.top);
+      let scrollOffset = 0;
+      for (let node = el.parentElement; node; node = node.parentElement) {
+        scrollOffset += node.scrollTop;
+        if (node === virtualWindowEl) break;
+      }
+
+      let newHeight = Math.max(0, bottomEdge - (elRect.top + scrollOffset));
+      if (minHeightFraction) {
+        const frameTop = virtualWindowEl ? virtualWindowEl.getBoundingClientRect().top : 0;
+        newHeight = Math.max(newHeight, (bottomEdge - frameTop) * minHeightFraction);
+      }
+
       if (cssVariable) el.style.setProperty(cssVariable, `${newHeight}px`);
       else el.style.height = `${newHeight}px`;
 

@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import getWebsocketToken from '@/api/server/getWebsocketToken.ts';
-import { SocketRequest } from '@/plugins/websocket/useWebsocketEvent.ts';
 import { SocketError, SocketErrorType, Websocket } from '@/plugins/websocket/Websocket.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
@@ -99,7 +98,6 @@ export default function WebsocketHandler() {
           setSocketConnectionState(true);
           tokenRefreshFailuresRef.current = 0;
           expiryFailureCountedRef.current = false;
-          socket.send(SocketRequest.CONFIGURE_SOCKET, ['transmission mode', 'binary']);
         });
 
         socket.on('SOCKET_RECONNECT', () => {

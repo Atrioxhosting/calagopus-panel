@@ -32,7 +32,8 @@ export default function StepDecompressFile({
         onChange={(v) => form.setFieldValue('action.file', v)}
       />
       <Switch
-        label={t('pages.server.schedules.form.runInForeground', {})}
+        label={t('pages.server.schedules.form.waitForCompletion', {})}
+        description={t('pages.server.schedules.form.waitForCompletionDescription', {})}
         {...form.getInputProps('action.foreground', { type: 'checkbox' })}
       />
       <Switch

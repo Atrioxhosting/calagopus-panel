@@ -2,14 +2,17 @@ import { ClipboardCancelledError, ClipboardCopyEvent } from 'shared';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { getTranslations } from '@/providers/TranslationProvider.tsx';
 
-export function copyToClipboard(text: string) {
+export function applyClipboardCopyHandlers(text: string): string | null {
   const handlers = window.extensionContext.extensionRegistry.events.clipboard.copyHandlers;
-  if (handlers.handlers.length) {
-    const event = handlers.emit(new ClipboardCopyEvent(text));
-    if (event.cancelled) return Promise.reject(new ClipboardCancelledError());
+  if (!handlers.handlers.length) return text;
 
-    text = event.data;
-  }
+  const event = handlers.emit(new ClipboardCopyEvent(text));
+  return event.cancelled ? null : event.data;
+}
+
+export function copyToClipboard(rawText: string) {
+  const text = applyClipboardCopyHandlers(rawText);
+  if (text === null) return Promise.reject(new ClipboardCancelledError());
 
   if (!window.isSecureContext) {
     const textArea = document.createElement('textarea');

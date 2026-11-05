@@ -1,14 +1,17 @@
 import { z } from 'zod';
 import deleteFailedBackupConfigurationBackups from '@/api/admin/backup-configurations/backups/deleteFailedBackupConfigurationBackups.ts';
 import getBackupConfigurationBackups from '@/api/admin/backup-configurations/backups/getBackupConfigurationBackups.ts';
+import retryFailedBackupConfigurationBackupDeletions from '@/api/admin/backup-configurations/backups/retryFailedBackupConfigurationBackupDeletions.ts';
 import AdminSubContentContainer from '@/elements/containers/AdminSubContentContainer.tsx';
 import Table from '@/elements/data-display/Table.tsx';
+import Group from '@/elements/layout/Group.tsx';
 import { queryKeys } from '@/lib/queryKeys.ts';
 import { adminBackupConfigurationSchema } from '@/lib/schemas/admin/backupConfigurations.ts';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import DeleteFailedBackupsButton from '../../nodes/backups/DeleteFailedBackupsButton.tsx';
 import NodeServerBackupRow from '../../nodes/backups/NodeServerBackupRow.tsx';
+import RetryFailedDeletionsButton from '../../nodes/backups/RetryFailedDeletionsButton.tsx';
 
 export default function AdminBackupConfigurationBackups({
   backupConfiguration,
@@ -40,10 +43,17 @@ export default function AdminBackupConfigurationBackups({
       search={search}
       setSearch={setSearch}
       contentRight={
-        <DeleteFailedBackupsButton
-          failed={backupConfigurationBackups?.failed ?? 0}
-          onDelete={(force) => deleteFailedBackupConfigurationBackups(backupConfiguration.uuid, { force })}
-        />
+        <Group>
+          <DeleteFailedBackupsButton
+            failed={backupConfigurationBackups?.failed ?? 0}
+            onDelete={(force) => deleteFailedBackupConfigurationBackups(backupConfiguration.uuid, { force })}
+          />
+
+          <RetryFailedDeletionsButton
+            failedDeletions={backupConfigurationBackups?.failedDeletions ?? 0}
+            onRetry={(force) => retryFailedBackupConfigurationBackupDeletions(backupConfiguration.uuid, { force })}
+          />
+        </Group>
       }
       registry={window.extensionContext.extensionRegistry.pages.admin.backupConfigurations.view.backups.subContainer}
       registryProps={{ backupConfiguration }}

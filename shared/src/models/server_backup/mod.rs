@@ -521,6 +521,27 @@ impl ServerBackup {
         row.try_map(|row| Self::map(None, &row))
     }
 
+    pub async fn by_node_uuid_uuid_or_shared(
+        database: &crate::database::Database,
+        node_uuid: uuid::Uuid,
+        uuid: uuid::Uuid,
+    ) -> Result<Option<Self>, crate::database::DatabaseError> {
+        let row = sqlx::query(sqlx::AssertSqlSafe(format!(
+            r#"
+            SELECT {}
+            FROM server_backups
+            WHERE (server_backups.node_uuid = $1 OR server_backups.shared = true) AND server_backups.uuid = $2
+            "#,
+            Self::columns_sql(None)
+        )))
+        .bind(node_uuid)
+        .bind(uuid)
+        .fetch_optional(database.read())
+        .await?;
+
+        row.try_map(|row| Self::map(None, &row))
+    }
+
     pub async fn by_server_uuid_with_pagination(
         database: &crate::database::Database,
         server_uuid: uuid::Uuid,
@@ -2355,6 +2376,51 @@ impl FailedServerBackupScope {
     }
 }
 
+/// Which backups an admin sweep over a [`FailedServerBackupScope`] takes.
+#[derive(Clone, Copy)]
+enum FailedServerBackupSweep {
+    Backups,
+    Deletions,
+}
+
+impl FailedServerBackupSweep {
+    #[inline]
+    fn condition(self) -> &'static str {
+        match self {
+            Self::Backups => {
+                r#"
+                server_backups.deleted IS NULL
+                AND server_backups.completed IS NOT NULL
+                AND NOT server_backups.successful
+                AND NOT server_backups.locked
+                AND ($2::uuid IS NULL OR server_backups.node_uuid != $2)
+                AND (server_backups.deleting IS NULL OR server_backups.deletion_retries >= $3)
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM backup_configurations
+                    WHERE backup_configurations.uuid = server_backups.backup_configuration_uuid
+                        AND backup_configurations.maintenance_enabled
+                )
+                "#
+            }
+            Self::Deletions => {
+                r#"
+                server_backups.deleted IS NULL
+                AND server_backups.deleting IS NOT NULL
+                AND server_backups.deletion_retries >= $3
+                AND ($2::uuid IS NULL OR server_backups.node_uuid != $2)
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM backup_configurations
+                    WHERE backup_configurations.uuid = server_backups.backup_configuration_uuid
+                        AND backup_configurations.maintenance_enabled
+                )
+                "#
+            }
+        }
+    }
+}
+
 impl ServerBackup {
     pub const MAX_DELETION_RETRIES: i32 = 8;
 
@@ -2837,24 +2903,6 @@ impl ServerBackup {
         }
     }
 
-    /// Rows a failed-backup sweep may take: a completed but unsuccessful backup that is not
-    /// locked, is not already mid-deletion, and whose configuration is not in maintenance. Uses
-    /// `$2` for the node partially detached backups must not live on and `$3` for the retry cap.
-    const FAILED_SWEEP_CONDITION: &'static str = r#"
-        server_backups.deleted IS NULL
-        AND server_backups.completed IS NOT NULL
-        AND NOT server_backups.successful
-        AND NOT server_backups.locked
-        AND ($2::uuid IS NULL OR server_backups.node_uuid != $2)
-        AND (server_backups.deleting IS NULL OR server_backups.deletion_retries >= $3)
-        AND NOT EXISTS (
-            SELECT 1
-            FROM backup_configurations
-            WHERE backup_configurations.uuid = server_backups.backup_configuration_uuid
-                AND backup_configurations.maintenance_enabled
-        )
-    "#;
-
     const FAILED_SWEEP_CHUNK: i64 = 250;
     const FAILED_SWEEP_CONCURRENCY: usize = 5;
     const BULK_CONCURRENCY: usize = 5;
@@ -2862,6 +2910,21 @@ impl ServerBackup {
     pub async fn count_failed(
         database: &crate::database::Database,
         scope: FailedServerBackupScope,
+    ) -> Result<i64, sqlx::Error> {
+        Self::count_swept(database, scope, FailedServerBackupSweep::Backups).await
+    }
+
+    pub async fn count_failed_deletions(
+        database: &crate::database::Database,
+        scope: FailedServerBackupScope,
+    ) -> Result<i64, sqlx::Error> {
+        Self::count_swept(database, scope, FailedServerBackupSweep::Deletions).await
+    }
+
+    async fn count_swept(
+        database: &crate::database::Database,
+        scope: FailedServerBackupScope,
+        sweep: FailedServerBackupSweep,
     ) -> Result<i64, sqlx::Error> {
         let (scope_uuid, excluded_node_uuid) = scope.bindings();
 
@@ -2872,7 +2935,7 @@ impl ServerBackup {
             WHERE {} AND {}
             "#,
             scope.condition(),
-            Self::FAILED_SWEEP_CONDITION
+            sweep.condition()
         )))
         .bind(scope_uuid)
         .bind(excluded_node_uuid)
@@ -2884,9 +2947,10 @@ impl ServerBackup {
     /// Claims one chunk of the sweep, returning the backups now marked deleting alongside the
     /// uuid the next chunk must start after. Backups are only rejected before the claim, since a
     /// claim erroring mid-transaction would take the whole chunk down with it.
-    async fn claim_failed_deletions(
+    async fn claim_swept_deletions(
         state: &crate::State,
         scope: FailedServerBackupScope,
+        sweep: FailedServerBackupSweep,
         options: &DeleteServerBackupOptions,
         after: Option<uuid::Uuid>,
     ) -> Result<(Vec<Self>, Option<uuid::Uuid>), anyhow::Error> {
@@ -2907,7 +2971,7 @@ impl ServerBackup {
             "#,
             Self::columns_sql(None),
             scope.condition(),
-            Self::FAILED_SWEEP_CONDITION
+            sweep.condition()
         )))
         .bind(scope_uuid)
         .bind(excluded_node_uuid)
@@ -3113,12 +3177,31 @@ impl ServerBackup {
         deleted
     }
 
-    /// Deletes every failed backup in `scope`, returning how many deletions were dispatched. Each
-    /// chunk is claimed in its own transaction so the rows show as deleting straight away, and a
-    /// panel restart mid-sweep leaves them to `redispatch_stale_deletions`.
+    /// Deletes every failed backup in `scope`, returning how many deletions were dispatched.
     pub async fn delete_failed(
         state: &crate::State,
         scope: FailedServerBackupScope,
+        force: bool,
+    ) -> Result<u64, anyhow::Error> {
+        Self::sweep(state, scope, FailedServerBackupSweep::Backups, force).await
+    }
+
+    /// Retries every backup deletion in `scope` that ran out of retries, returning how many
+    /// deletions were dispatched.
+    pub async fn retry_failed_deletions(
+        state: &crate::State,
+        scope: FailedServerBackupScope,
+        force: bool,
+    ) -> Result<u64, anyhow::Error> {
+        Self::sweep(state, scope, FailedServerBackupSweep::Deletions, force).await
+    }
+
+    /// Each chunk is claimed in its own transaction so the rows show as deleting straight away,
+    /// and a panel restart mid-sweep leaves them to `redispatch_stale_deletions`.
+    async fn sweep(
+        state: &crate::State,
+        scope: FailedServerBackupScope,
+        sweep: FailedServerBackupSweep,
         force: bool,
     ) -> Result<u64, anyhow::Error> {
         let options = DeleteServerBackupOptions {
@@ -3131,7 +3214,7 @@ impl ServerBackup {
 
         loop {
             let (claimed, cursor) =
-                Self::claim_failed_deletions(state, scope, &options, after).await?;
+                Self::claim_swept_deletions(state, scope, sweep, &options, after).await?;
 
             let mut futures = Vec::with_capacity(claimed.len());
             for backup in &claimed {

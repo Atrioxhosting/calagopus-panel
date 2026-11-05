@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { startStagingUploadsClock } from '@/lib/files/stagingUploads.ts';
 import { serverDirectoryUploadSchema } from '@/lib/schemas/server/files.ts';
 import { safeParseFromApi } from '@/lib/serialization/api-transform.ts';
+import { structuredArg } from '@/plugins/websocket/args.ts';
 import useWebsocketEvent, { SocketEvent } from '@/plugins/websocket/useWebsocketEvent.ts';
 import { useFileManagerApi, useFileManagerStore } from '@/stores/fileManager.ts';
 
@@ -70,10 +71,10 @@ export default function useFileUploadSocket() {
 
   useEffect(() => startStagingUploadsClock(store), [store]);
 
-  useWebsocketEvent(SocketEvent.FILE_UPLOADS, (data) => {
+  useWebsocketEvent(SocketEvent.FILE_UPLOADS, (data: unknown) => {
     let wsData: unknown;
     try {
-      wsData = JSON.parse(data);
+      wsData = structuredArg(data);
     } catch {
       return;
     }

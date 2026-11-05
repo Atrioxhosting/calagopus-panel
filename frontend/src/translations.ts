@@ -96,6 +96,7 @@ const baseTranslations = defineTranslations({
         undo: 'Undo',
         clearUserFilter: 'Clear User Filter',
         deleteFailedBackups: 'Delete {count} Failed',
+        retryFailedDeletions: 'Retry {count} Failed Deletions',
       },
       alert: {
         error: 'Error',
@@ -243,10 +244,19 @@ const baseTranslations = defineTranslations({
               'Force deletion removes these backups even if their configuration is missing or the remote storage cannot be reached. The backup files themselves may not be fully cleaned up, leaving orphaned data behind.',
           },
         },
+        retryFailedDeletions: {
+          title: 'Confirm Failed Deletion Retry',
+          content:
+            'Are you sure you want to retry deleting `{count}` backups whose deletion failed? Backups whose configuration is in maintenance are skipped. Deletion runs in the background and may take a while to finish.',
+        },
       },
       toast: {
         duplicated: '{resource} duplicated.',
+        preparingDownload: 'Preparing download...',
+        downloadFailed: 'The download could not be started.',
+        importing: 'Importing {file}...',
         failedBackupDeletionStarted: 'Deleting {count} failed backups in the background.',
+        failedDeletionRetryStarted: 'Retrying {count} failed backup deletions in the background.',
         requestBlockedByExtension: 'This request was blocked by an extension.',
       },
       settingScope: {
@@ -430,6 +440,10 @@ const baseTranslations = defineTranslations({
           server: 'Server',
           address: 'Address',
           eggs: 'Eggs',
+          nodes: 'Nodes',
+          servers: 'Servers',
+          users: 'Users',
+          databases: 'Databases',
           template: 'Template',
           version: 'Version',
           host: 'Host',
@@ -999,6 +1013,7 @@ const baseTranslations = defineTranslations({
         },
         toast: {
           uploading: 'Started uploading {files}...',
+          checkingConflicts: 'Checking {files} for existing files...',
           conflictCheckFailed: 'Could not check for existing files; uploading anyway.',
           failed: 'Upload failed: {error}',
           cancelledFile: 'Successfully cancelled upload of `{file}`.',
@@ -1739,6 +1754,9 @@ const baseTranslations = defineTranslations({
             closeEditorTab: 'Close the active editor tab',
             nextEditorTab: 'Next editor tab',
             previousEditorTab: 'Previous editor tab',
+            increaseEditorFontSize: 'Increase the editor font size',
+            decreaseEditorFontSize: 'Decrease the editor font size',
+            resetEditorFontSize: 'Reset the editor font size',
           },
           table: {
             title: 'Table Navigation',
@@ -1754,6 +1772,9 @@ const baseTranslations = defineTranslations({
             searchContent: 'Search in console output',
             previousCommand: 'Previous command in history',
             nextCommand: 'Next command in history',
+            increaseFontSize: 'Increase the console font size',
+            decreaseFontSize: 'Decrease the console font size',
+            resetFontSize: 'Reset the console font size',
           },
           serverList: {
             selectServer: 'Hold S and click to select/deselect server',
@@ -2785,6 +2806,7 @@ const baseTranslations = defineTranslations({
           card: {
             version: 'Version',
             authors: 'Authors',
+            panelVersion: 'Panel Version',
           },
           section: {
             pendingExtensions: 'Pending extensions',
@@ -4475,8 +4497,10 @@ const baseTranslations = defineTranslations({
           },
           card: {
             repository: 'Repository',
-            author: 'Author',
+            path: 'Path',
             installedIn: 'Installed in',
+            dockerImages: 'Docker Images',
+            features: 'Features',
           },
           badge: {
             manual: 'Manual',
@@ -5048,8 +5072,14 @@ const baseTranslations = defineTranslations({
                     'Allows users logging in with this provider to bypass their panel 2FA.',
                   linkViewable: 'Link Viewable to User',
                   linkViewableDescription: 'Allows the user to see the connection and its identifier in the client UI.',
+                  apiLinkable: 'Linkable with API Keys',
+                  apiLinkableDescription:
+                    'Allows API keys holding the users.oauth-links and users.impersonate permissions to link accounts they could impersonate to this provider, such as for billing integrations. Only enable this for providers whose identifiers you trust the integration to assign.',
                   userManageable: 'Link Manageable by User',
                   userManageableDescription: 'Allows the user to connect and disconnect with this provider.',
+                  loginViewable: 'Viewable on Login',
+                  loginViewableDescription:
+                    'Shows this provider on the login page. Turned off, the provider stays enabled, can still be connected from the account page and users can still sign in through its direct redirect URL.',
                 },
                 button: {
                   discover: 'Import from OpenID Discovery',
@@ -5853,7 +5883,6 @@ const baseTranslations = defineTranslations({
             revealInTree: 'Reveal in Tree',
             revealNotFound: 'Could not find {path} in the file tree.',
             unsavedTab: '{name} has unsaved changes',
-            dropToSplit: 'Drop to open in a new editor pane',
             resizeEditorPanes: 'Resize editor panes',
             resizeFileTree: 'Resize file tree',
             selectPane: 'Select editor pane',
@@ -5872,6 +5901,10 @@ const baseTranslations = defineTranslations({
           },
           diskUsage: {
             details: '{used} of {total} used ({percentage}%)',
+            section: {
+              files: 'Files',
+              trash: 'Trash',
+            },
           },
           button: {
             new: 'New',
@@ -6024,6 +6057,7 @@ const baseTranslations = defineTranslations({
             archiveCreationStarted: 'Archive creation has begun.',
             decompressionStarted: 'Archive extraction has started.',
             fileCopyingStarted: 'File copying has started.',
+            duplicating: 'Duplicating file...',
             fileCopyingStartedMany: 'File copying to {servers} has started.',
             fileCopyingStartedPartial: 'File copying to {successfulServers} has started. {failedServers} failed:',
             fileInfoRetrieved: 'File information retrieved successfully.',
@@ -6172,7 +6206,8 @@ const baseTranslations = defineTranslations({
             },
             createSymlink: {
               title: 'Create Symlink',
-              targetDescription: 'Relative to the directory the symlink is created in.',
+              targetDescription:
+                'Relative to the directory the symlink is created in, or to the server root when starting with /.',
               createdAs: 'This symlink will be created as ',
               pointsTo: 'It will point to ',
             },
@@ -7014,6 +7049,8 @@ const baseTranslations = defineTranslations({
             },
             badge: {
               running: 'Running',
+              waits: 'Waits',
+              background: 'Background',
             },
             tooltip: {
               cannotRun: 'Cannot run a disabled schedule',
@@ -7048,7 +7085,9 @@ const baseTranslations = defineTranslations({
             rootPath: 'Root Path',
             outputInto: 'Output into',
             ignoreFailure: 'Ignore Failure',
-            runInForeground: 'Run in Foreground',
+            waitForCompletion: 'Wait for Completion',
+            waitForCompletionDescription:
+              'The schedule waits for this step to finish before continuing, and a failure counts as a failed step. When off, it runs in the background: the next step starts right away and failures are not reported.',
             sourceDatabaseInstance: 'Only Consider Backups From',
             sourceDatabaseInstanceDescription:
               'Only pick database backups that were taken from this managed database. Leave empty to consider backups from any managed database on this server.',
@@ -7094,6 +7133,8 @@ const baseTranslations = defineTranslations({
                 time: 'At',
                 weekday: 'On',
                 dayOfMonth: 'On day',
+                weekInterval: 'Every (weeks)',
+                weekAnchor: 'Aligned to the week of',
                 advanced: 'Edit as cron expression',
               },
               frequency: {
@@ -7103,6 +7144,7 @@ const baseTranslations = defineTranslations({
                 weekly: 'Weekly',
                 monthly: 'Monthly',
               },
+              everyWeeks: 'every {weeks} weeks',
               timezoneHint: 'Times use the server timezone ({timezone}).',
               card: {
                 content: 'On Cron Interval {schedule}, Next run is {timestamp} - Last run was {lastTimestamp}.',
@@ -7175,7 +7217,8 @@ const baseTranslations = defineTranslations({
             noActionSelected: 'Select an action type to configure',
             noActionDetails: 'Action details not available',
             ignoreFailure: 'Ignore Failure: {value}',
-            foreground: 'Foreground: {value}',
+            waitsForCompletion: 'Waits for this step to finish before continuing',
+            runsInBackground: 'Runs in the background, the next step starts right away and failures are not reported',
             sourceDatabaseInstance: 'Only From Managed Database: {uuid}',
             sourceDatabaseInstanceAny: 'Only From Managed Database: Any',
             backupSelector: {
@@ -7665,6 +7708,10 @@ const baseTranslations = defineTranslations({
               title: 'Create Subuser',
               toast: {
                 created: 'Subuser created.',
+                userMustSignIn:
+                  'No account uses this email. They need to sign in to the panel once first, using an account with this exact email, then you can add them.',
+                userMustBeCreatedByAdmin:
+                  'No account uses this email. Ask an administrator to create their account first, then you can add them.',
               },
               form: {
                 emailPlaceholder: 'Enter the email that this subuser should be saved as.',

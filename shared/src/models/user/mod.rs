@@ -212,6 +212,73 @@ impl BaseModel for User {
 }
 
 impl User {
+    pub async fn create_account_created_token_with_transaction(
+        &self,
+        state: &crate::State,
+        transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    ) -> Result<Option<String>, crate::database::DatabaseError> {
+        let token = match super::user_password_reset::UserPasswordReset::create_with_transaction(
+            transaction,
+            self.uuid,
+            true,
+        )
+        .await
+        {
+            Ok(token) => token,
+            Err(err) => {
+                tracing::warn!(
+                    user = %self.uuid,
+                    "failed to create user password reset token: {:#?}",
+                    err
+                );
+                return Ok(None);
+            }
+        };
+
+        super::user_activity::UserActivity::create_with_transaction(
+            state,
+            super::user_activity::CreateUserActivityOptions {
+                user_uuid: self.uuid,
+                impersonator_uuid: None,
+                api_key_uuid: None,
+                event: "email:account-created".into(),
+                ip: None,
+                data: serde_json::json!({}),
+                created: None,
+            },
+            transaction,
+        )
+        .await?;
+
+        Ok(Some(token))
+    }
+
+    pub async fn send_account_created_email(
+        &self,
+        state: &crate::State,
+        token: &str,
+    ) -> Result<(), crate::database::DatabaseError> {
+        let app_url = state.settings.get_as(|s| s.app.url.clone()).await?;
+
+        state
+            .mail
+            .send_template(
+                state,
+                "account_created",
+                self,
+                minijinja::context! {
+                    user => minijinja::value::Serde(self),
+                    reset_link => format!(
+                        "{app_url}/auth/reset-password?token={}",
+                        urlencoding::encode(token),
+                    )
+                },
+            )
+            .await;
+
+        Ok(())
+    }
+
     pub async fn create_automatic_admin(
         database: &crate::database::Database,
         username: &str,
@@ -1130,56 +1197,12 @@ impl CreatableModel for User {
 
         Self::run_after_create_handlers(&mut result, &options, state, transaction).await?;
 
-        if options.send_email {
-            match super::user_password_reset::UserPasswordReset::create_with_transaction(
-                transaction,
-                result.uuid,
-            )
-            .await
-            {
-                Ok(token) => {
-                    let settings = state.settings.get().await?;
-
-                    super::user_activity::UserActivity::create_with_transaction(
-                        state,
-                        super::user_activity::CreateUserActivityOptions {
-                            user_uuid: result.uuid,
-                            impersonator_uuid: None,
-                            api_key_uuid: None,
-                            event: "email:account-created".into(),
-                            ip: None,
-                            data: serde_json::json!({}),
-                            created: None,
-                        },
-                        transaction,
-                    )
-                    .await?;
-
-                    state
-                        .mail
-                        .send_template(
-                            state,
-                            "account_created",
-                            &result,
-                            minijinja::context! {
-                                user => minijinja::value::Serde(&result),
-                                reset_link => format!(
-                                    "{}/auth/reset-password?token={}",
-                                    settings.app.url,
-                                    urlencoding::encode(&token),
-                                )
-                            },
-                        )
-                        .await;
-                }
-                Err(err) => {
-                    tracing::warn!(
-                        user = %result.uuid,
-                        "failed to create user password reset token: {:#?}",
-                        err
-                    );
-                }
-            };
+        if options.send_email
+            && let Some(token) = result
+                .create_account_created_token_with_transaction(state, transaction)
+                .await?
+        {
+            result.send_account_created_email(state, &token).await?;
         }
 
         Ok(result)

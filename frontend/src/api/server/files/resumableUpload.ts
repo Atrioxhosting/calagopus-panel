@@ -26,7 +26,11 @@ function parseOffset(value: unknown, fallback: number): number {
  * which appending must continue. `0` if the daemon has no partial yet (fresh or moved node).
  */
 export async function headUploadOffset(uploadUrl: string, signal: AbortSignal): Promise<number> {
-  const res = await axiosInstance.head(uploadUrl, { signal });
+  // An offset changes after every chunk. Some proxies cache HEAD as GET even when
+  // the origin sends no-store, so each status check needs its own cache key.
+  const offsetUrl = new URL(uploadUrl);
+  offsetUrl.searchParams.set('_offset', crypto.randomUUID());
+  const res = await axiosInstance.head(offsetUrl.toString(), { signal });
   return parseOffset(res.headers[UPLOAD_OFFSET_HEADER], 0);
 }
 

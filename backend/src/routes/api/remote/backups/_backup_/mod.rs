@@ -7,7 +7,11 @@ use axum::{
 };
 use shared::{
     GetState,
-    models::{node::GetNode, server_backup::ServerBackup},
+    database::DatabaseError,
+    models::{
+        node::{GetNode, Node},
+        server_backup::ServerBackup,
+    },
     response::ApiResponse,
 };
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -26,24 +30,47 @@ pub async fn auth(
     state: GetState,
     node: GetNode,
     Path(backup): Path<uuid::Uuid>,
-    mut req: Request,
+    req: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
     let backup = ServerBackup::by_node_uuid_uuid(&state.database, node.uuid, backup).await;
+
+    Ok(attach(backup, node.0, req, next).await)
+}
+
+pub async fn auth_shared(
+    state: GetState,
+    node: GetNode,
+    Path(backup): Path<uuid::Uuid>,
+    req: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let backup =
+        ServerBackup::by_node_uuid_uuid_or_shared(&state.database, node.uuid, backup).await;
+
+    Ok(attach(backup, node.0, req, next).await)
+}
+
+async fn attach(
+    backup: Result<Option<ServerBackup>, DatabaseError>,
+    node: Node,
+    mut req: Request,
+    next: Next,
+) -> Response {
     let backup = match backup {
         Ok(Some(backup)) => backup,
         Ok(None) => {
-            return Ok(ApiResponse::error("backup not found")
+            return ApiResponse::error("backup not found")
                 .with_status(StatusCode::NOT_FOUND)
-                .into_response());
+                .into_response();
         }
-        Err(err) => return Ok(ApiResponse::from(err).into_response()),
+        Err(err) => return ApiResponse::from(err).into_response(),
     };
 
     req.extensions_mut().insert(backup);
-    req.extensions_mut().insert(node.0);
+    req.extensions_mut().insert(node);
 
-    Ok(next.run(req).await)
+    next.run(req).await
 }
 
 mod post {
@@ -318,11 +345,18 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .routes(routes!(post::route))
         .nest("/deletion", deletion::router(state))
         .nest("/s3", s3::router(state))
-        .nest("/pbs", pbs::router(state))
-        .nest("/restic", restic::router(state))
-        .nest("/kopia", kopia::router(state))
-        .nest("/restore", restore::router(state))
         .nest("/database", database::router(state))
         .route_layer(axum::middleware::from_fn_with_state(state.clone(), auth))
+        .merge(
+            OpenApiRouter::new()
+                .nest("/pbs", pbs::router(state))
+                .nest("/restic", restic::router(state))
+                .nest("/kopia", kopia::router(state))
+                .nest("/restore", restore::router(state))
+                .route_layer(axum::middleware::from_fn_with_state(
+                    state.clone(),
+                    auth_shared,
+                )),
+        )
         .with_state(state.clone())
 }

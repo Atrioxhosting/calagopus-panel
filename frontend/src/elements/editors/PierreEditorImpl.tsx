@@ -17,6 +17,7 @@ import {
   type EditorChangeEvent,
   type EditorFactory,
   type EditorOptions,
+  type EditorViewState,
   type TextEdit,
 } from '@pierre/diffs/edit';
 import { EditProvider, File, FileDiff, Virtualizer } from '@pierre/diffs/react';
@@ -81,8 +82,21 @@ export interface PierreDiffEditorProps extends CommonPierreProps {
   onMount?: (handle: PierreEditorHandle) => void;
 }
 
+const detachedEditors = new WeakSet<object>();
+
+const trackDetach = <T extends { cleanUp: (reason?: 'discard' | 'recycle' | 'complete') => void }>(editor: T): T => {
+  const cleanUp = editor.cleanUp.bind(editor);
+  editor.cleanUp = (reason) => {
+    detachedEditors.add(editor);
+    cleanUp(reason);
+  };
+  return editor;
+};
+
 const createEditor: EditorFactory<undefined, PierreCaretMetadata> = (editorType, options, editStateKey) =>
-  new Editor(editorType, options, editStateKey);
+  trackDetach(new Editor(editorType, options, editStateKey));
+
+const attached = (editor: PierreFileEditor | null) => (editor && !detachedEditors.has(editor) ? editor : null);
 
 const renderRemoteCaret = ({ metadata }: PierreCaret): HTMLElement => {
   const caret = document.createElement('span');
@@ -220,6 +234,7 @@ export const PierreEditor = memo(
 
     const instanceRef = useRef<PierreFileEditor | null>(null);
     const focusedRef = useRef(false);
+    const viewStateRef = useRef<EditorViewState | null>(null);
     const defaultValueRef = useRef(defaultValue);
 
     const file = useMemo(
@@ -231,15 +246,16 @@ export const PierreEditor = memo(
       () => ({
         getValue: () => instanceRef.current?.getText() ?? defaultValueRef.current,
         setValue: (val) => {
-          if (instanceRef.current) replaceBuffer(instanceRef.current, val);
+          const editor = attached(instanceRef.current);
+          if (editor) replaceBuffer(editor, val);
         },
         applyEdits: (edits, updateHistory) => {
-          instanceRef.current?.applyEdits(edits, updateHistory);
+          attached(instanceRef.current)?.applyEdits(edits, updateHistory);
         },
         setCarets: (carets) => {
-          instanceRef.current?.setCarets(carets);
+          attached(instanceRef.current)?.setCarets(carets);
         },
-        focus: () => instanceRef.current?.focus(),
+        focus: () => attached(instanceRef.current)?.focus(),
       }),
       [],
     );
@@ -248,7 +264,7 @@ export const PierreEditor = memo(
 
     useEffect(() => {
       defaultValueRef.current = defaultValue;
-      const editor = instanceRef.current;
+      const editor = attached(instanceRef.current);
       if (editor) replaceBuffer(editor, defaultValue);
     }, [defaultValue, path]);
 
@@ -258,11 +274,15 @@ export const PierreEditor = memo(
       let lastKey: string | null = null;
 
       const publishSelection = () => {
-        const editor = instanceRef.current;
+        const editor = attached(instanceRef.current);
         const notify = callbacks.current.onSelectionChange;
-        if (!editor || !notify || !focusedRef.current) return;
+        if (!editor || !focusedRef.current) return;
 
-        const selection = editor.getViewState().selections?.at(-1);
+        const viewState = editor.getViewState();
+        viewStateRef.current = viewState;
+        if (!notify) return;
+
+        const selection = viewState.selections?.at(-1);
         if (!selection) {
           if (lastKey === null) return;
           lastKey = null;
@@ -295,8 +315,14 @@ export const PierreEditor = memo(
         historyMaxEntries: 1000,
         renderCaret: renderRemoteCaret,
         onAttach: (editor) => {
+          detachedEditors.delete(editor);
           instanceRef.current = editor;
           replaceBuffer(editor, defaultValueRef.current);
+
+          if (focusedRef.current) {
+            if (viewStateRef.current) editor.setViewState({ selections: viewStateRef.current.selections });
+            editor.focus();
+          }
 
           for (const handler of window.extensionContext.extensionRegistry.elements.pierreEditor.onMountHandlers) {
             handler(handle, editor);
