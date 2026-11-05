@@ -307,38 +307,22 @@ impl Node {
         per_page: i64,
         search: Option<&str>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-            r#"
-            SELECT {}, COUNT(*) OVER() AS total_count
-            FROM nodes
-            JOIN locations ON locations.uuid = nodes.location_uuid
-            WHERE nodes.location_uuid = $1 AND {search}
-            ORDER BY nodes.created
-            LIMIT $3 OFFSET $4
-            "#,
+        super::PaginatedQueryBuilder::new(
             Self::columns_sql(None),
-            search = super::search_sql(2, &["nodes.name"], &["nodes.uuid"])
-        )))
+            format!(
+                r#"
+                FROM nodes
+                JOIN locations ON locations.uuid = nodes.location_uuid
+                WHERE nodes.location_uuid = $1 AND {search}
+                "#,
+                search = super::search_sql(2, &["nodes.name"], &["nodes.uuid"]),
+            ),
+            "nodes.created, nodes.uuid",
+        )
         .bind(location_uuid)
         .bind(search)
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(database.read())
-        .await?;
-
-        Ok(super::Pagination {
-            total: rows
-                .first()
-                .map_or(Ok(0), |row| row.try_get("total_count"))?,
-            per_page,
-            page,
-            data: rows
-                .into_iter()
-                .map(|row| Self::map(None, &row))
-                .try_collect_vec()?,
-        })
+        .fetch(database, page, per_page)
+        .await
     }
 
     pub async fn by_backup_configuration_uuid_with_pagination(
@@ -348,38 +332,22 @@ impl Node {
         per_page: i64,
         search: Option<&str>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-            r#"
-            SELECT {}, COUNT(*) OVER() AS total_count
-            FROM nodes
-            JOIN locations ON locations.uuid = nodes.location_uuid
-            WHERE nodes.backup_configuration_uuid = $1 AND {search}
-            ORDER BY nodes.created
-            LIMIT $3 OFFSET $4
-            "#,
+        super::PaginatedQueryBuilder::new(
             Self::columns_sql(None),
-            search = super::search_sql(2, &["nodes.name"], &["nodes.uuid"])
-        )))
+            format!(
+                r#"
+                FROM nodes
+                JOIN locations ON locations.uuid = nodes.location_uuid
+                WHERE nodes.backup_configuration_uuid = $1 AND {search}
+                "#,
+                search = super::search_sql(2, &["nodes.name"], &["nodes.uuid"]),
+            ),
+            "nodes.created, nodes.uuid",
+        )
         .bind(backup_configuration_uuid)
         .bind(search)
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(database.read())
-        .await?;
-
-        Ok(super::Pagination {
-            total: rows
-                .first()
-                .map_or(Ok(0), |row| row.try_get("total_count"))?,
-            per_page,
-            page,
-            data: rows
-                .into_iter()
-                .map(|row| Self::map(None, &row))
-                .try_collect_vec()?,
-        })
+        .fetch(database, page, per_page)
+        .await
     }
 
     pub async fn all_with_pagination(
@@ -388,37 +356,21 @@ impl Node {
         per_page: i64,
         search: Option<&str>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-            r#"
-            SELECT {}, COUNT(*) OVER() AS total_count
-            FROM nodes
-            JOIN locations ON locations.uuid = nodes.location_uuid
-            WHERE {search}
-            ORDER BY nodes.created
-            LIMIT $2 OFFSET $3
-            "#,
+        super::PaginatedQueryBuilder::new(
             Self::columns_sql(None),
-            search = super::search_sql(1, &["nodes.name"], &["nodes.uuid"])
-        )))
+            format!(
+                r#"
+                FROM nodes
+                JOIN locations ON locations.uuid = nodes.location_uuid
+                WHERE {search}
+                "#,
+                search = super::search_sql(1, &["nodes.name"], &["nodes.uuid"]),
+            ),
+            "nodes.created, nodes.uuid",
+        )
         .bind(search)
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(database.read())
-        .await?;
-
-        Ok(super::Pagination {
-            total: rows
-                .first()
-                .map_or(Ok(0), |row| row.try_get("total_count"))?,
-            per_page,
-            page,
-            data: rows
-                .into_iter()
-                .map(|row| Self::map(None, &row))
-                .try_collect_vec()?,
-        })
+        .fetch(database, page, per_page)
+        .await
     }
 
     pub async fn by_location_uuids_most_eligible(
@@ -639,12 +591,12 @@ impl Node {
         database
             .cache
             .cached(
-                &format!("node::{}::configuration", self.uuid),
+                &format!("node::{}::configuration::raw", self.uuid),
                 120,
                 || async {
-                    Ok::<_, anyhow::Error>(
+                    Ok::<_, anyhow::Error>(wings_api::Config(
                         self.api_client(database).await?.get_system_config().await?,
-                    )
+                    ))
                 },
             )
             .await
@@ -669,7 +621,7 @@ impl Node {
 
         database
             .cache
-            .invalidate(&format!("node::{}::configuration", self.uuid))
+            .invalidate(&format!("node::{}::configuration::raw", self.uuid))
             .await?;
 
         Ok(true)
@@ -820,6 +772,61 @@ impl Node {
         ))
     }
 
+    pub async fn upgrade_status(
+        &self,
+        state: &crate::State,
+        token: Option<compact_str::CompactString>,
+    ) -> Result<crate::updates::UpgradeStatus, anyhow::Error> {
+        let client = self.api_client(&state.database).await?;
+        let overview = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            client.get_system_overview(),
+        )
+        .await??;
+
+        if overview.upgrade.is_some() {
+            let check = tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                client.post_system_upgrade_check(
+                    &wings_api::system_upgrade_check::post::RequestBody {
+                        token,
+                        force: false,
+                    },
+                ),
+            )
+            .await;
+
+            match check {
+                Ok(Ok(check)) => {
+                    if let Some(latest_version) = check.latest_version {
+                        return Ok(crate::updates::UpgradeStatus {
+                            current_version: overview.version,
+                            latest_version: Some(latest_version),
+                            update_available: check.update_available,
+                            upgradable: true,
+                            source: crate::updates::UpgradeStatusSource::Daemon,
+                        });
+                    }
+                }
+                Ok(Err(err)) => {
+                    tracing::warn!(node = %self.uuid, "failed to check for wings upgrades: {:?}", err);
+                }
+                Err(_) => {
+                    tracing::warn!(node = %self.uuid, "timed out checking for wings upgrades");
+                }
+            }
+        }
+
+        let update_information = state.updates.get_update_information().await;
+
+        Ok(crate::updates::UpgradeStatus::from_calagopus(
+            overview.version,
+            update_information
+                .as_ref()
+                .map(|information| &information.latest_wings_version),
+        ))
+    }
+
     /// Tells wings that permissions changed: live sessions continue with their new
     /// permissions and only those that lost access end. Must run after the change is
     /// committed. Nodes that predate invalidation end the affected users' sessions instead.
@@ -962,13 +969,7 @@ impl Node {
                 .ok()?
                 .ok()?;
 
-        Some(
-            !config.system.user.rootless.enabled
-                && !matches!(
-                    config.docker.firewall.backend,
-                    wings_api::FirewallBackendKind::Disabled
-                ),
-        )
+        firewall_supported(&config).ok()
     }
 
     /// The node's `allowed_mounts` / `allowed_devices`, `None` when its configuration could
@@ -985,7 +986,7 @@ impl Node {
                 .ok()?
                 .ok()?;
 
-        Some(NodeAllowedSources::from_config(&config))
+        NodeAllowedSources::from_config(&config).ok()
     }
 
     /// What the node reports about its mesh daemon, `None` when it could not be reached in
@@ -1086,6 +1087,35 @@ impl Node {
     ) -> Result<String, anyhow::Error> {
         Ok(jwt.create_custom(self.token.decrypt(database).await?.as_bytes(), payload)?)
     }
+}
+
+/// Whether a node with this config enforces firewall rules, see [`Node::fetch_firewall_support`].
+fn firewall_supported(config: &wings_api::Config) -> Result<bool, serde_json::Error> {
+    nestify::nest! {
+        #[derive(Default, Deserialize)] #[serde(default)] struct FirewallConfig {
+            system: #[derive(Default, Deserialize)] #[serde(default)] struct FirewallConfigSystem {
+                user: #[derive(Default, Deserialize)] #[serde(default)] struct FirewallConfigSystemUser {
+                    rootless: #[derive(Default, Deserialize)] #[serde(default)] struct FirewallConfigSystemUserRootless {
+                        enabled: bool,
+                    },
+                },
+            },
+            docker: #[derive(Default, Deserialize)] #[serde(default)] struct FirewallConfigDocker {
+                // absent on wings releases predating firewalling
+                firewall: Option<#[derive(Default, Deserialize)] #[serde(default)] struct FirewallConfigDockerFirewall {
+                    backend: compact_str::CompactString,
+                }>,
+            },
+        }
+    }
+
+    let config: FirewallConfig = config.view()?;
+
+    Ok(!config.system.user.rootless.enabled
+        && config
+            .docker
+            .firewall
+            .is_some_and(|firewall| firewall.backend != "disabled"))
 }
 
 #[async_trait::async_trait]
@@ -1687,4 +1717,58 @@ pub struct AdminApiNode {
     pub bandwidth_per_gib: i64,
 
     pub created: chrono::DateTime<chrono::Utc>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    // firewall_supported
+    #[test]
+    fn firewall_is_unsupported_without_a_firewall_section() {
+        let config = wings_api::Config(json!({ "docker": { "network": {} } }));
+
+        assert!(!firewall_supported(&config).unwrap());
+    }
+
+    #[test]
+    fn firewall_is_supported_when_the_section_has_no_backend() {
+        let config = wings_api::Config(json!({ "docker": { "firewall": {} } }));
+
+        assert!(firewall_supported(&config).unwrap());
+    }
+
+    #[test]
+    fn firewall_is_unsupported_when_the_backend_is_disabled() {
+        let config = wings_api::Config(json!({
+            "docker": { "firewall": { "backend": "disabled" } },
+        }));
+
+        assert!(!firewall_supported(&config).unwrap());
+    }
+
+    #[test]
+    fn unknown_firewall_backends_count_as_supported() {
+        let config = wings_api::Config(json!({
+            "docker": { "firewall": { "backend": "some_future_backend", "new_option": 1 } },
+        }));
+
+        assert!(firewall_supported(&config).unwrap());
+    }
+
+    #[test]
+    fn firewall_is_unsupported_when_rootless() {
+        let rootless = wings_api::Config(json!({
+            "system": { "user": { "rootless": { "enabled": true } } },
+            "docker": { "firewall": { "backend": "nftables" } },
+        }));
+        let rootful = wings_api::Config(json!({
+            "system": { "user": { "rootless": { "enabled": false } } },
+            "docker": { "firewall": { "backend": "nftables" } },
+        }));
+
+        assert!(!firewall_supported(&rootless).unwrap());
+        assert!(firewall_supported(&rootful).unwrap());
+    }
 }

@@ -170,6 +170,7 @@ export const usersTable = pgTable(
   },
   (cols) => [
     index('users_role_uuid_idx').on(cols.role_uuid),
+    index('users_created_idx').on(cols.created),
     uniqueIndex('users_external_id_idx').on(cols.external_id),
     uniqueIndex('users_username_idx').on(sql`lower(${cols.username})`),
     uniqueIndex('users_email_idx').on(sql`lower(${cols.email})`),
@@ -457,6 +458,7 @@ export const oauthProvidersTable = pgTable(
     uuid: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
     name: varchar({ length: 255 * UTF8_MAX_SCALAR_SIZE }).notNull(),
     description: text(),
+    icon: varchar({ length: 128 }),
     client_id: varchar({ length: 255 }).notNull(),
     client_secret: bytea(),
     auth_url: varchar({ length: 255 }).notNull(),
@@ -786,7 +788,7 @@ export const nodeAllocationsTable = pgTable(
     created: timestamp().defaultNow().notNull(),
   },
   (cols) => [
-    index('allocations_node_uuid_idx').on(cols.node_uuid),
+    index('allocations_node_uuid_ip_inet_port_idx').on(cols.node_uuid, cols.ip, cols.port),
     uniqueIndex('allocations_node_uuid_ip_port_idx').on(cols.node_uuid, sql`host(${cols.ip})`, cols.port),
   ],
 );
@@ -1122,6 +1124,7 @@ export const serversTable = pgTable(
     index('servers_egg_uuid_idx').on(cols.egg_uuid),
     index('servers_backup_configuration_uuid_idx').on(cols.backup_configuration_uuid),
     uniqueIndex('servers_uuid_short_idx').on(cols.uuid_short),
+    index('servers_created_idx').on(cols.created),
   ],
 );
 
@@ -1258,7 +1261,7 @@ export const serverActivitiesTable = pgTable(
     created: timestamp().defaultNow().notNull(),
   },
   (cols) => [
-    index('server_activities_server_uuid_idx').on(cols.server_uuid),
+    index('server_activities_server_uuid_created_idx').on(cols.server_uuid, cols.created),
     index('server_activities_impersonator_uuid_idx').on(cols.impersonator_uuid),
     index('server_activities_api_key_uuid_idx').on(cols.api_key_uuid),
     index('server_activities_schedule_uuid_idx').on(cols.schedule_uuid),
@@ -1377,6 +1380,7 @@ export const serverBackupsTable = pgTable(
   (cols) => [
     index('server_backups_server_uuid_idx').on(cols.server_uuid),
     index('server_backups_node_uuid_idx').on(cols.node_uuid),
+    index('server_backups_node_uuid_created_idx').on(cols.node_uuid, cols.created).where(sql`${cols.deleted} IS NULL`),
     index('server_backups_backup_configuration_uuid_idx').on(cols.backup_configuration_uuid),
     index('server_backups_backup_group_uuid_idx').on(cols.backup_group_uuid),
     index('server_backups_system_backup_policy_uuid_idx').on(cols.system_backup_policy_uuid),

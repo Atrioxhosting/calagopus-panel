@@ -41,7 +41,7 @@ export default function DashboardRouter({ isNormal }: { isNormal: boolean }) {
     if (!routeOrder) {
       return allAccountRoutes
         .filter((route) => !!route.name && (!route.filter || route.filter()))
-        .map((route) => ({ type: 'route' as const, route }));
+        .map((route) => ({ type: 'route' as const, route, icon: null }));
     }
 
     return routeOrder
@@ -49,7 +49,7 @@ export default function DashboardRouter({ isNormal }: { isNormal: boolean }) {
         if (item.type === 'route') {
           const route = allAccountRoutes.find((r) => r.path === item.path);
           if (!route || !route.name || (route.filter && !route.filter())) return null;
-          return { type: 'route' as const, route };
+          return { type: 'route' as const, route, icon: item.icon };
         }
 
         if (item.type === 'divider') {
@@ -59,7 +59,7 @@ export default function DashboardRouter({ isNormal }: { isNormal: boolean }) {
 
         if (item.type === 'redirect') {
           const name = (language !== 'en' && item.nameTranslations[language]) || item.name;
-          return { type: 'redirect' as const, name, destination: item.destination };
+          return { type: 'redirect' as const, name, destination: item.destination, icon: item.icon };
         }
 
         return null;
@@ -121,6 +121,7 @@ export default function DashboardRouter({ isNormal }: { isNormal: boolean }) {
                     key={`redirect-${index}`}
                     to={item.destination}
                     icon={faArrowUpRightFromSquare}
+                    customIcon={item.icon}
                     name={item.name}
                   />
                 );
@@ -134,6 +135,7 @@ export default function DashboardRouter({ isNormal }: { isNormal: boolean }) {
                   to={to(route.path, '/account')}
                   end={route.exact}
                   icon={route.icon}
+                  customIcon={item.icon}
                   name={resolveString(route.name)}
                   activeMatches={route.activeMatches}
                 />

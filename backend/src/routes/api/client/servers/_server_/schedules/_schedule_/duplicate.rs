@@ -65,6 +65,19 @@ mod post {
 
         permissions.has_server_permission("schedules.create")?;
 
+        if let Some(permission) = permissions.missing_server_permission(
+            schedule
+                .triggers
+                .iter()
+                .flat_map(|trigger| trigger.permissions()),
+        ) {
+            return ApiResponse::error(format!(
+                "unable to duplicate schedule trigger that requires permission: {permission}"
+            ))
+            .with_status(StatusCode::FORBIDDEN)
+            .ok();
+        }
+
         let schedules_lock = state
             .cache
             .lock(

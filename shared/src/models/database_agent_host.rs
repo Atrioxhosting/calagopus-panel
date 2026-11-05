@@ -209,40 +209,24 @@ impl DatabaseAgentHost {
         per_page: i64,
         search: Option<&str>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-            r#"
-            SELECT {}, COUNT(*) OVER() AS total_count
-            FROM database_agent_hosts
-            WHERE {search}
-            ORDER BY database_agent_hosts.created
-            LIMIT $2 OFFSET $3
-            "#,
+        super::PaginatedQueryBuilder::new(
             Self::columns_sql(None),
-            search = super::search_sql(
-                1,
-                &["database_agent_hosts.name"],
-                &["database_agent_hosts.uuid"]
-            )
-        )))
+            format!(
+                r#"
+                FROM database_agent_hosts
+                WHERE {search}
+                "#,
+                search = super::search_sql(
+                    1,
+                    &["database_agent_hosts.name"],
+                    &["database_agent_hosts.uuid"]
+                ),
+            ),
+            "database_agent_hosts.created, database_agent_hosts.uuid",
+        )
         .bind(search)
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(database.read())
-        .await?;
-
-        Ok(super::Pagination {
-            total: rows
-                .first()
-                .map_or(Ok(0), |row| row.try_get("total_count"))?,
-            per_page,
-            page,
-            data: rows
-                .into_iter()
-                .map(|row| Self::map(None, &row))
-                .try_collect_vec()?,
-        })
+        .fetch(database, page, per_page)
+        .await
     }
 
     pub async fn by_node_most_eligible(
@@ -340,22 +324,77 @@ impl DatabaseAgentHost {
         ))
     }
 
+    pub async fn upgrade_status(
+        &self,
+        state: &crate::State,
+        token: Option<compact_str::CompactString>,
+    ) -> Result<crate::updates::UpgradeStatus, anyhow::Error> {
+        let client = self.api_client(&state.database).await?;
+        let overview = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            client.get_system_overview(),
+        )
+        .await??;
+
+        if overview.upgrade.is_none() {
+            let update_information = state.updates.get_update_information().await;
+
+            return Ok(crate::updates::UpgradeStatus::from_calagopus(
+                overview.version,
+                update_information
+                    .as_ref()
+                    .map(|information| &information.latest_db_agent_version),
+            ));
+        }
+
+        let check = tokio::time::timeout(
+            std::time::Duration::from_secs(5),
+            client.post_system_upgrade_check(
+                &db_agent_api::system_upgrade_check::post::RequestBody {
+                    token,
+                    force: false,
+                },
+            ),
+        )
+        .await;
+
+        let (latest_version, update_available) = match check {
+            Ok(Ok(check)) => (check.latest_version, check.update_available),
+            Ok(Err(err)) => {
+                tracing::warn!(database_agent_host = %self.uuid, "failed to check for database agent upgrades: {:?}", err);
+                (None, false)
+            }
+            Err(_) => {
+                tracing::warn!(database_agent_host = %self.uuid, "timed out checking for database agent upgrades");
+                (None, false)
+            }
+        };
+
+        Ok(crate::updates::UpgradeStatus {
+            current_version: overview.version,
+            latest_version,
+            update_available,
+            upgradable: true,
+            source: crate::updates::UpgradeStatusSource::Daemon,
+        })
+    }
+
     /// Fetch the current configuration of this database agent host
     ///
     /// Cached for 120 seconds.
     pub async fn fetch_configuration(
         &self,
         database: &crate::database::Database,
-    ) -> Result<db_agent_api::system_config::get::Response, anyhow::Error> {
+    ) -> Result<db_agent_api::Config, anyhow::Error> {
         database
             .cache
             .cached(
-                &format!("database_agent_host::{}::configuration", self.uuid),
+                &format!("database_agent_host::{}::configuration::raw", self.uuid),
                 120,
                 || async {
-                    Ok::<_, anyhow::Error>(
+                    Ok::<_, anyhow::Error>(db_agent_api::Config(
                         self.api_client(database).await?.get_system_config().await?,
-                    )
+                    ))
                 },
             )
             .await
@@ -407,7 +446,7 @@ impl DatabaseAgentHost {
         database
             .cache
             .invalidate(&format!(
-                "database_agent_host::{}::configuration",
+                "database_agent_host::{}::configuration::raw",
                 self.uuid
             ))
             .await?;

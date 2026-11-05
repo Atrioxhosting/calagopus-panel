@@ -89,7 +89,7 @@ fn validate_git_repository(
         gix::url::Scheme::Http | gix::url::Scheme::Https | gix::url::Scheme::Ssh => {}
         _ => {
             return Err(garde::Error::new(
-                "Invalid git repository: only http, https and ssh urls are supported, scp-style urls have to be written as ssh://user@host/path",
+                "Invalid git repository: only http, https, ssh and scp-style (user@host:path) urls are supported",
             ));
         }
     }
@@ -99,6 +99,20 @@ fn validate_git_repository(
     }
 
     Ok(())
+}
+
+/// Stored credentials are only ever sent back to the scheme, host and port they were entered for.
+fn same_origin(a: &str, b: &str) -> bool {
+    match (gix::url::parse(a), gix::url::parse(b)) {
+        (Ok(a), Ok(b)) => {
+            a.scheme == b.scheme
+                && a.port_or_default() == b.port_or_default()
+                && a.host()
+                    .zip(b.host())
+                    .is_some_and(|(a, b)| a.eq_ignore_ascii_case(b))
+        }
+        _ => false,
+    }
 }
 
 #[derive(ToSchema, Validate, Serialize, Deserialize, Clone)]
@@ -136,7 +150,14 @@ impl EggRepositoryCredentials {
             .unwrap_or(gix::url::Scheme::Https);
 
         match self {
-            EggRepositoryCredentials::None => {}
+            EggRepositoryCredentials::None => {
+                if scheme == gix::url::Scheme::Ssh {
+                    return Err(crate::response::DisplayError::new(
+                        "ssh repositories need credentials, use an https repository url for public repositories",
+                    )
+                    .into());
+                }
+            }
             EggRepositoryCredentials::Password { .. } => {
                 if scheme == gix::url::Scheme::Http {
                     return Err(crate::response::DisplayError::new(
@@ -390,36 +411,21 @@ impl EggRepository {
         per_page: i64,
         search: Option<&str>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-            r#"
-            SELECT {}, COUNT(*) OVER() AS total_count
-            FROM egg_repositories
-            WHERE {search}
-            ORDER BY egg_repositories.created
-            LIMIT $2 OFFSET $3
-            "#,
+        super::PaginatedQueryBuilder::new(
             Self::columns_sql(None),
-            search = super::search_sql(1, &["egg_repositories.name"], &["egg_repositories.uuid"])
-        )))
+            format!(
+                r#"
+                FROM egg_repositories
+                WHERE {search}
+                "#,
+                search =
+                    super::search_sql(1, &["egg_repositories.name"], &["egg_repositories.uuid"]),
+            ),
+            "egg_repositories.created, egg_repositories.uuid",
+        )
         .bind(search)
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(database.read())
-        .await?;
-
-        Ok(super::Pagination {
-            total: rows
-                .first()
-                .map_or(Ok(0), |row| row.try_get("total_count"))?,
-            per_page,
-            page,
-            data: rows
-                .into_iter()
-                .map(|row| Self::map(None, &row))
-                .try_collect_vec()?,
-        })
+        .fetch(database, page, per_page)
+        .await
     }
 
     pub async fn all_auto_sync(
@@ -430,7 +436,7 @@ impl EggRepository {
             SELECT {}
             FROM egg_repositories
             WHERE egg_repositories.auto_sync
-            ORDER BY egg_repositories.created
+            ORDER BY egg_repositories.created, egg_repositories.uuid
             "#,
             Self::columns_sql(None)
         )))
@@ -537,7 +543,10 @@ impl EggRepository {
                                 Err(_) => continue,
                             }
                         } else {
-                            match serde_norway::from_str(file_content.trim()) {
+                            match serde_saphyr::from_str_with_options(
+                                file_content.trim(),
+                                crate::utils::yaml_deserialize_options(),
+                            ) {
                                 Ok(egg) => egg,
                                 Err(_) => continue,
                             }
@@ -889,6 +898,15 @@ impl UpdatableModel for EggRepository {
         transaction: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     ) -> Result<(), crate::database::DatabaseError> {
         options.validate()?;
+
+        if options.credentials.is_none()
+            && options
+                .git_repository
+                .as_deref()
+                .is_some_and(|git_repository| !same_origin(git_repository, &self.git_repository))
+        {
+            options.credentials = Some(EggRepositoryCredentials::None);
+        }
 
         let mut query_builder = UpdateQueryBuilder::new("egg_repositories");
 

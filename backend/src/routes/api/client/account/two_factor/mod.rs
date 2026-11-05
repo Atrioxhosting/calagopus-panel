@@ -122,6 +122,7 @@ mod post {
         shared::Payload(data): shared::Payload<Payload>,
     ) -> ApiResponseResult {
         permissions.has_user_permission("account.two-factor")?;
+        permissions.deny_while_impersonating()?;
 
         if user.totp_enabled {
             return ApiResponse::error("two-factor authentication is already enabled")
@@ -229,6 +230,7 @@ mod delete {
         shared::Payload(data): shared::Payload<Payload>,
     ) -> ApiResponseResult {
         permissions.has_user_permission("account.two-factor")?;
+        permissions.deny_while_impersonating()?;
 
         if !user.totp_enabled {
             return ApiResponse::error("two-factor authentication is not enabled")

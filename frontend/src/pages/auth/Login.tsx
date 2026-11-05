@@ -30,6 +30,7 @@ import { useAuth } from '@/providers/AuthProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useGlobalStore } from '@/stores/global.ts';
 import AuthWrapper from './AuthWrapper.tsx';
+import OAuthProviderButton from './OAuthProviderButton.tsx';
 
 export default function Login() {
   const { doLogin } = useAuth();
@@ -278,7 +279,7 @@ export default function Login() {
           <>
             <div>
               <Title order={2}>{t('pages.auth.login.step.username.title', {})}</Title>
-              <Text className='text-neutral-400!'>
+              <Text c='dimmed'>
                 {settings.app.passwordLoginEnabled || webauthnEnabled
                   ? t('pages.auth.login.step.username.subtitle', {})
                   : t('pages.auth.login.step.username.subtitleProviderOnly', {})}
@@ -300,7 +301,7 @@ export default function Login() {
                           {...usernameForm.getInputProps('username')}
                         />
                         {settings.app.passwordLoginEnabled && (
-                          <NavLink className='text-neutral-400' to='/auth/forgot-password'>
+                          <NavLink className='text-(--mantine-color-dimmed)' to='/auth/forgot-password'>
                             {t('pages.auth.login.step.username.link.forgotPassword', {})}
                           </NavLink>
                         )}
@@ -343,25 +344,13 @@ export default function Login() {
                     oAuthProviders.length > 0 && (
                       <>
                         {oAuthProviders.map((oAuthProvider) => (
-                          <Button
-                            key={oAuthProvider.uuid}
-                            leftSection={<FontAwesomeIcon icon={faFingerprint} />}
-                            size='md'
-                            fullWidth
-                            onClick={() => {
-                              window.location.href = `/api/auth/oauth/redirect/${oAuthProvider.uuid}`;
-                            }}
-                          >
-                            {t('pages.auth.button.loginWith', {
-                              name: oAuthProvider.name,
-                            })}
-                          </Button>
+                          <OAuthProviderButton key={oAuthProvider.uuid} oAuthProvider={oAuthProvider} />
                         ))}
                       </>
                     )
                   )}
                   {settings.app.registrationEnabled && settings.app.passwordLoginEnabled && (
-                    <NavLink to='/auth/register' className='text-neutral-400 flex gap-1 items-center'>
+                    <NavLink to='/auth/register' className='text-(--mantine-color-dimmed) flex gap-1 items-center'>
                       {t('pages.auth.login.step.username.link.notRegistered', {})}{' '}
                       <p>{t('pages.auth.login.step.username.link.createAccount', {})}</p>
                     </NavLink>
@@ -374,7 +363,7 @@ export default function Login() {
           <>
             <div>
               <Title order={2}>{t('pages.auth.login.step.passkey.title', {})}</Title>
-              <Text className='text-neutral-400!'>
+              <Text c='dimmed'>
                 {t('pages.auth.login.step.passkey.subtitle', {
                   username: usernameForm.values.username,
                 })}
@@ -409,7 +398,7 @@ export default function Login() {
           <>
             <div>
               <Title order={2}>{t('pages.auth.login.step.password.title', {})}</Title>
-              <Text className='text-neutral-400!'>
+              <Text c='dimmed'>
                 {t('pages.auth.login.step.password.subtitle', {
                   username: usernameForm.values.username,
                 })}
@@ -436,7 +425,7 @@ export default function Login() {
                   />
                   <Button
                     type='submit'
-                    disabled={!passwordForm.isValid() || !captcha.isValid}
+                    disabled={!passwordForm.isValid() || (!captcha.isValid && !loading)}
                     loading={loading}
                     size='md'
                     fullWidth

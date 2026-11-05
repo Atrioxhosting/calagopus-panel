@@ -24,8 +24,10 @@ const admin = {
     capacity: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'capacity'] as const,
     capacities: () => ['admin', 'nodes', 'capacities'] as const,
     systemOverview: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'system', 'overview'] as const,
+    systemStats: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'system', 'stats'] as const,
     systemDirect: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'system', 'direct'] as const,
     systemIps: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'system', 'ips'] as const,
+    upgradeStatus: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'upgrade'] as const,
     config: (nodeUuid: string) => ['admin', 'nodes', nodeUuid, 'config'] as const,
     mountAllowed: (nodeUuid: string, mountUuid: string) =>
       ['admin', 'nodes', nodeUuid, 'mounts', mountUuid, 'allowed'] as const,
@@ -116,6 +118,8 @@ const admin = {
     all: () => ['admin', 'database-hosts'] as const,
     detail: (uuid: string) => ['admin', 'database-hosts', { uuid }] as const,
     databases: (hostUuid: string) => ['admin', 'database-hosts', hostUuid, 'databases'] as const,
+    databaseSizes: (hostUuid: string) => ['admin', 'database-hosts', hostUuid, 'databases', 'sizes'] as const,
+    version: (hostUuid: string) => ['admin', 'database-hosts', hostUuid, 'version'] as const,
   },
 
   databaseAgentHosts: {
@@ -125,6 +129,8 @@ const admin = {
     capacity: (uuid: string) => ['admin', 'database-agent-hosts', uuid, 'capacity'] as const,
     capacities: () => ['admin', 'database-agent-hosts', 'capacities'] as const,
     systemOverview: (uuid: string) => ['admin', 'database-agent-hosts', uuid, 'system', 'overview'] as const,
+    systemStats: (uuid: string) => ['admin', 'database-agent-hosts', uuid, 'system', 'stats'] as const,
+    upgradeStatus: (uuid: string) => ['admin', 'database-agent-hosts', uuid, 'upgrade'] as const,
   },
 
   databaseAgentTemplates: {
@@ -250,7 +256,7 @@ const server = (serverUuid: string) => ({
     all: () => ['server', serverUuid, 'databases'] as const,
     hosts: () => ['server', serverUuid, 'databases', 'hosts'] as const,
     detail: (databaseUuid: string) => ['server', serverUuid, 'databases', { uuid: databaseUuid }] as const,
-    size: (databaseUuid: string) => ['server', serverUuid, 'databases', databaseUuid, 'size'] as const,
+    hostSizes: (hostUuid: string) => ['server', serverUuid, 'databases', 'hosts', hostUuid, 'sizes'] as const,
     schema: (databaseUuid: string) => ['server', serverUuid, 'databases', databaseUuid, 'schema'] as const,
     rows: (databaseUuid: string) => ['server', serverUuid, 'databases', databaseUuid, 'rows'] as const,
     columnTypes: (databaseUuid: string) => ['server', serverUuid, 'databases', databaseUuid, 'column-types'] as const,
@@ -354,4 +360,13 @@ const user = {
   },
 };
 
-export const queryKeys = { admin, server, user };
+const global = {
+  iconManifest: {
+    all: () => ['global', 'iconManifest'] as const,
+  },
+  timezones: {
+    all: () => ['global', 'timezones'] as const,
+  },
+};
+
+export const queryKeys = { admin, global, server, user };

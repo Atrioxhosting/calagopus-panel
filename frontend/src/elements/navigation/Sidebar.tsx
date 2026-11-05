@@ -30,14 +30,17 @@ import ContextMenu, { ContextMenuItem } from '@/elements/overlays/ContextMenu.ts
 import Drawer from '@/elements/overlays/Drawer.tsx';
 import { useLogoutConfirmation } from '@/elements/useLogoutConfirmation.tsx';
 import { isAdmin } from '@/lib/auth/permissions.ts';
+import { useCustomIcon } from '@/lib/icons.ts';
 import { openUrl } from '@/lib/network/url.ts';
 import { isNamedRoutePathAccessible } from '@/lib/routes.ts';
 import { resetAllDeviceOverrides, useDeviceOverrideCount } from '@/lib/userSettings.ts';
 import { useRedactAddresses } from '@/plugins/privacy/useRedactAddresses.ts';
 import { useAuth } from '@/providers/AuthProvider.tsx';
+import { usePendingPathname } from '@/providers/contexts/pendingNavigationContext.ts';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useWindows } from '@/providers/WindowProvider.tsx';
 import RouterRoutes from '@/RouterRoutes.tsx';
+import { preloadRouterForPath } from '@/routers/routerImports.ts';
 import { useGlobalStore } from '@/stores/global.ts';
 import { useQuickActionsStore } from '@/stores/quickActions.ts';
 import { useRelativePageStore } from '@/stores/relativePage.ts';
@@ -134,19 +137,23 @@ type LinkProps = {
   to: string;
   end?: boolean;
   icon?: IconDefinition;
+  customIcon?: string | null;
   name?: string;
   title?: string;
   className?: string;
   activeMatches?: string[];
 };
 
-function Link({ to, end, icon, name, title = name, className, activeMatches }: LinkProps) {
+function Link({ to, end, icon, customIcon, name, title = name, className, activeMatches }: LinkProps) {
   const { t } = useTranslations();
   const { addWindow } = useWindows();
   const closeMobileMenu = useContext(CloseMobileMenuContext);
   const { pathname } = useLocation();
+  const pendingPathname = usePendingPathname();
   const isLight = useComputedColorScheme('dark') === 'light';
-  const extraActive = activeMatches?.some((pattern) => matchPath({ path: pattern, end: false }, pathname)) ?? false;
+  const resolvedIcon = useCustomIcon(customIcon, icon);
+  const extraActive =
+    activeMatches?.some((pattern) => matchPath({ path: pattern, end: false }, pendingPathname ?? pathname)) ?? false;
 
   if (to.endsWith('/*')) to = to.slice(0, to.length - 2);
 
@@ -200,10 +207,15 @@ function Link({ to, end, icon, name, title = name, className, activeMatches }: L
             e.preventDefault();
             openMenu(e.clientX, e.clientY);
           }}
+          onPointerEnter={() => preloadRouterForPath(to)}
+          onFocus={() => preloadRouterForPath(to)}
           className='w-full'
         >
           {({ isActive: navActive }) => {
-            const isActive = navActive || extraActive;
+            const isActive =
+              (pendingPathname !== null ? !!matchPath({ path: to, end: !!end }, pendingPathname) : navActive) ||
+              extraActive;
+
             return (
               <Button
                 color={isActive ? 'blue' : 'gray'}
@@ -212,7 +224,7 @@ function Link({ to, end, icon, name, title = name, className, activeMatches }: L
                 fullWidth
                 styles={{ label: { width: '100%' } }}
               >
-                {icon && <FontAwesomeIcon icon={icon} className='mr-2' />} {name}
+                {resolvedIcon && <FontAwesomeIcon icon={resolvedIcon} className='mr-2' />} {name}
               </Button>
             );
           }}

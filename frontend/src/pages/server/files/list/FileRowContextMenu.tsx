@@ -5,10 +5,12 @@ import {
   faCopy,
   faEnvelopesBulk,
   faFileArrowDown,
+  faFileCirclePlus,
   faFilePen,
   faFileShield,
   faFileZipper,
   faFingerprint,
+  faFolderPlus,
   faInfoCircle,
   faLink,
   faListDots,
@@ -71,6 +73,8 @@ interface FileRowContextMenuProps {
   writableDirectory?: boolean;
   upload?: FileUploadState;
   surface?: 'table' | 'tree';
+  onCreateFile?: () => void;
+  onCreateDirectory?: () => void;
   children: (props: { items: ContextMenuItem[]; openMenu: (x: number, y: number) => void }) => React.ReactNode;
 }
 
@@ -82,6 +86,8 @@ export default function FileRowContextMenu({
   writableDirectory,
   upload,
   surface = 'table',
+  onCreateFile,
+  onCreateDirectory,
   children,
 }: FileRowContextMenuProps) {
   const { t } = useTranslations();
@@ -232,6 +238,29 @@ export default function FileRowContextMenu({
               onClick: openInNewTab,
               canAccess: canReadContent,
             },
+        {
+          type: 'action',
+          icon: faFileCirclePlus,
+          label: t('pages.server.files.quickAction.newFile', {}),
+          hidden: !onCreateFile || !!upload,
+          onClick: onCreateFile,
+          color: 'gray',
+          canAccess: canCreate,
+        },
+        {
+          type: 'action',
+          icon: faFolderPlus,
+          label: t('pages.server.files.quickAction.newDirectory', {}),
+          hidden: !onCreateDirectory || !!upload,
+          onClick: onCreateDirectory,
+          color: 'gray',
+          canAccess: canCreate,
+        },
+        {
+          type: 'divider',
+          hidden: (!onCreateFile && !onCreateDirectory) || !!upload,
+          canAccess: canCreate,
+        },
         {
           type: 'action',
           icon: faFilePen,

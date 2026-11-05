@@ -8,4 +8,3 @@ minimumReleaseAge: 4320 # 3 days
 blockExoticSubdeps: true
 overrides:
   dompurify: ^3.4.17
-  monaco-editor: 0.55.1

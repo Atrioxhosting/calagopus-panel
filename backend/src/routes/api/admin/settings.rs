@@ -197,7 +197,7 @@ mod put {
         #[garde(skip)]
         allow_changing_avatar: Option<bool>,
 
-        #[garde(length(max = 100))]
+        #[garde(length(max = 100), dive)]
         #[schema(max_items = 100)]
         #[serde(default, with = "::serde_with::rust::double_option")]
         route_order: Option<Option<Vec<shared::settings::RouteOrderItem>>>,
@@ -279,6 +279,16 @@ mod put {
     }
 
     #[derive(ToSchema, Validate, Deserialize)]
+    pub struct PayloadUpdates {
+        #[garde(length(chars, min = 1, max = 1024))]
+        #[serde(default, with = "::serde_with::rust::double_option")]
+        wings_release_token: Option<Option<compact_str::CompactString>>,
+        #[garde(length(chars, min = 1, max = 1024))]
+        #[serde(default, with = "::serde_with::rust::double_option")]
+        db_agent_release_token: Option<Option<compact_str::CompactString>>,
+    }
+
+    #[derive(ToSchema, Validate, Deserialize)]
     pub struct Payload {
         #[garde(skip)]
         #[serde(default, with = "::serde_with::rust::double_option")]
@@ -312,6 +322,9 @@ mod put {
         #[schema(inline)]
         #[garde(dive)]
         ratelimits: Option<PayloadRatelimits>,
+        #[schema(inline)]
+        #[garde(dive)]
+        updates: Option<PayloadUpdates>,
     }
 
     #[derive(ToSchema, Serialize)]
@@ -662,6 +675,14 @@ mod put {
                 }
 
                 settings.ratelimits.exempt_api_keys = exempt_api_keys;
+            }
+        }
+        if let Some(updates) = data.updates {
+            if let Some(wings_release_token) = updates.wings_release_token {
+                settings.updates.wings_release_token = wings_release_token;
+            }
+            if let Some(db_agent_release_token) = updates.db_agent_release_token {
+                settings.updates.db_agent_release_token = db_agent_release_token;
             }
         }
 

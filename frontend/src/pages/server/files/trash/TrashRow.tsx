@@ -27,7 +27,7 @@ import { useRestoredToast } from './useRestoredToast.ts';
 interface TrashRowProps {
   entry: z.infer<typeof serverTrashEntrySchema>;
   isSelected?: boolean;
-  onSelectionChange?: (selected: boolean) => void;
+  onSelectionChange?: (selected: boolean, range?: boolean) => void;
   onFinished: () => void;
 }
 

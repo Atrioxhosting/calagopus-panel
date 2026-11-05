@@ -204,39 +204,23 @@ impl ServerSubuser {
         per_page: i64,
         search: Option<&str>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-            r#"
-            SELECT {}, COUNT(*) OVER() AS total_count
-            FROM server_subusers
-            JOIN users ON users.uuid = server_subusers.user_uuid
-            LEFT JOIN roles ON roles.uuid = users.role_uuid
-            WHERE server_subusers.server_uuid = $1 AND {search}
-            ORDER BY server_subusers.created
-            LIMIT $3 OFFSET $4
-            "#,
+        super::PaginatedQueryBuilder::new(
             Self::columns_sql(None),
-            search = super::search_sql(2, &["users.username"], &["users.uuid"])
-        )))
+            format!(
+                r#"
+                FROM server_subusers
+                JOIN users ON users.uuid = server_subusers.user_uuid
+                LEFT JOIN roles ON roles.uuid = users.role_uuid
+                WHERE server_subusers.server_uuid = $1 AND {search}
+                "#,
+                search = super::search_sql(2, &["users.username"], &["users.uuid"]),
+            ),
+            "server_subusers.created, server_subusers.server_uuid, server_subusers.user_uuid",
+        )
         .bind(server_uuid)
         .bind(search)
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(database.read())
-        .await?;
-
-        Ok(super::Pagination {
-            total: rows
-                .first()
-                .map_or(Ok(0), |row| row.try_get("total_count"))?,
-            per_page,
-            page,
-            data: rows
-                .into_iter()
-                .map(|row| Self::map(None, &row))
-                .try_collect_vec()?,
-        })
+        .fetch(database, page, per_page)
+        .await
     }
 
     pub async fn count_by_server_uuid(
@@ -439,8 +423,8 @@ impl CreatableModel for ServerSubuser {
                 "added_to_server",
                 &user,
                 minijinja::context! {
-                    user => user,
-                    server => options.server,
+                    user => minijinja::value::Serde(&user),
+                    server => minijinja::value::Serde(&options.server),
                     server_link => format!(
                         "{}/server/{:08x}",
                         settings.app.url,
@@ -551,6 +535,8 @@ impl DeletableModel for ServerSubuser {
         state: &crate::State,
         options: Self::DeleteOptions,
     ) -> Result<(), anyhow::Error> {
+        let server = self.server.fetch_cached(&state.database).await?;
+
         let mut transaction = state.database.write().begin().await?;
 
         if let Err(err) = self
@@ -566,6 +552,19 @@ impl DeletableModel for ServerSubuser {
         super::invalidate_cache_keys(&state.database, &self.cache_invalidation_keys()).await;
 
         self.invalidate_wings_permissions(&state.database).await;
+
+        state
+            .mail
+            .send_template(
+                state,
+                "removed_from_server",
+                &self.user,
+                minijinja::context! {
+                    user => minijinja::value::Serde(&self.user),
+                    server => minijinja::value::Serde(&server),
+                },
+            )
+            .await;
 
         Ok(())
     }
@@ -592,18 +591,6 @@ impl DeletableModel for ServerSubuser {
 
         self.run_after_delete_handlers(&options, state, transaction)
             .await?;
-
-        state
-            .mail
-            .send_template(
-                state,
-                "removed_from_server",
-                &self.user,
-                minijinja::context! {
-                    user => self.user,
-                },
-            )
-            .await;
 
         Ok(())
     }

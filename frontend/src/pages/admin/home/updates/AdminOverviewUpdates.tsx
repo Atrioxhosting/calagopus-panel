@@ -1,5 +1,4 @@
 import {
-  faCheck,
   faClockRotateLeft,
   faExclamationTriangle,
   faInfoCircle,
@@ -21,7 +20,9 @@ import Table, { TableData, TableRow } from '@/elements/data-display/Table.tsx';
 import TitleCard from '@/elements/data-display/TitleCard.tsx';
 import ExtensionSlot from '@/elements/ExtensionSlot.tsx';
 import Alert from '@/elements/feedback/Alert.tsx';
+import ErrorState from '@/elements/feedback/ErrorState.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
+import StatusLine from '@/elements/feedback/StatusLine.tsx';
 import Select from '@/elements/input/Select.tsx';
 import ResourceView from '@/elements/ResourceView.tsx';
 import FormattedTimestamp from '@/elements/time/FormattedTimestamp.tsx';
@@ -32,15 +33,15 @@ import {
   adminExtensionUpdateCheckResultUpdateAvailableSchema,
 } from '@/lib/schemas/admin/system.ts';
 import { databaseAgentHostTableColumns, nodeTableColumns } from '@/lib/tableColumns.ts';
-import DatabaseAgentHostRow from '@/pages/admin/database-agent-hosts/DatabaseAgentHostRow.tsx';
 import { useResource } from '@/plugins/resource/useResource.ts';
 import { useSearchablePaginatedTable } from '@/plugins/resource/useSearchablePaginatedTable.ts';
 import { useAdminCan } from '@/plugins/usePermissions.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import { useAdminStore } from '@/stores/admin.tsx';
-import NodeRow from '../../nodes/NodeRow.tsx';
 import PanelUpdateAlert, { usePanelUpdateAvailable } from '../PanelUpdateAlert.tsx';
+import OutdatedDatabaseAgentHostRow from './OutdatedDatabaseAgentHostRow.tsx';
+import OutdatedNodeRow from './OutdatedNodeRow.tsx';
 import OutdatedResourceCard from './OutdatedResourceCard.tsx';
 
 type ExtensionUpdateEntry = [string, z.infer<typeof adminExtensionUpdateCheckResultUpdateAvailableSchema>];
@@ -51,6 +52,8 @@ export default function AdminOverviewUpdates() {
   const { t } = useTranslations();
   const updateInformation = useAdminStore((state) => state.updateInformation);
   const setUpdateInformation = useAdminStore((state) => state.setUpdateInformation);
+  const updateInformationError = useAdminStore((state) => state.updateInformationError);
+  const loadUpdateInformation = useAdminStore((state) => state.loadUpdateInformation);
   const panelUpdateAvailable = usePanelUpdateAvailable();
   const canReadNodes = useAdminCan('nodes.read');
   const canReadDatabaseAgentHosts = useAdminCan('database-agent-hosts.read');
@@ -130,13 +133,12 @@ export default function AdminOverviewUpdates() {
           icon={<FontAwesomeIcon icon={faInfoCircle} />}
         >
           <div className='flex flex-col md:flex-row gap-2 justify-between'>
-            <span>
-              <FontAwesomeIcon icon={panelUpdateAvailable ? faExclamationTriangle : faCheck} />{' '}
+            <StatusLine status={panelUpdateAvailable ? 'warning' : 'ok'}>
               {t('pages.admin.home.tabs.updates.page.panelVersion', {
                 current: updateInformation?.panelVersion || unknownLabel,
                 latest: updateInformation?.latestPanelVersion || unknownLabel,
               }).md()}
-            </span>
+            </StatusLine>
 
             <Button
               leftSection={<FontAwesomeIcon icon={faRefresh} />}
@@ -200,15 +202,16 @@ export default function AdminOverviewUpdates() {
           icon={<FontAwesomeIcon icon={faPuzzlePiece} />}
         >
           {!updateInformation ? (
-            <Spinner.Centered />
+            updateInformationError ? (
+              <ErrorState error={updateInformationError} onRetry={loadUpdateInformation} />
+            ) : (
+              <Spinner.Centered />
+            )
           ) : !extensionUpdates.length && !extensionUpdateErrors.length ? (
-            <>
-              <FontAwesomeIcon icon={faCheck} /> {t('pages.admin.home.tabs.updates.page.extensionsUpToDate', {})}
-            </>
+            <StatusLine status='ok'>{t('pages.admin.home.tabs.updates.page.extensionsUpToDate', {})}</StatusLine>
           ) : (
             <>
-              <FontAwesomeIcon icon={faExclamationTriangle} />{' '}
-              {t('pages.admin.home.tabs.updates.page.extensionsOutdated', {})}
+              <StatusLine status='warning'>{t('pages.admin.home.tabs.updates.page.extensionsOutdated', {})}</StatusLine>
               {extensionUpdates.length > 0 && (
                 <>
                   <div className='mt-4' />
@@ -238,7 +241,9 @@ export default function AdminOverviewUpdates() {
                             ))}
                           </ul>
                           {!update.changes.length && (
-                            <span>{t('pages.admin.home.tabs.updates.page.noChangelog', {})}</span>
+                            <span className='text-(--mantine-color-dimmed)'>
+                              {t('pages.admin.home.tabs.updates.page.noChangelog', {})}
+                            </span>
                           )}
                         </TableData>
                       </TableRow>
@@ -248,8 +253,7 @@ export default function AdminOverviewUpdates() {
               )}
               {extensionUpdateErrors.length > 0 && (
                 <>
-                  <Alert className='my-4' color='red'>
-                    <FontAwesomeIcon icon={faExclamationTriangle} />{' '}
+                  <Alert className='my-4' color='red' icon={<FontAwesomeIcon icon={faExclamationTriangle} />}>
                     {t('pages.admin.home.tabs.updates.page.alert.extensionUpdateErrors', {})}
                   </Alert>
 
@@ -280,18 +284,24 @@ export default function AdminOverviewUpdates() {
           <OutdatedResourceCard
             title={t('pages.admin.home.tabs.updates.page.card.outdatedNodes', {})}
             icon={<FontAwesomeIcon icon={faServer} />}
-            table={{ loading, error, data: nodes?.outdatedNodes, columns: nodeTableColumns(), onPageSelect: setPage }}
+            table={{
+              loading,
+              error,
+              data: nodes?.outdatedNodes,
+              columns: [...nodeTableColumns(), ''],
+              onPageSelect: setPage,
+              onRetry: refetch,
+            }}
             status={{
               upToDate: t('pages.admin.home.tabs.updates.page.nodesUpToDate', { failed: nodes?.failedNodes ?? 0 }),
-              outdated: t('pages.admin.home.tabs.updates.page.nodesOutdated', {
-                latest: updateInformation?.latestWingsVersion || unknownLabel,
+              outdated: t('pages.admin.home.tabs.updates.page.nodesOutdatedSummary', {
                 outdated: nodes?.outdatedNodes.total ?? 0,
                 failed: nodes?.failedNodes ?? 0,
-              }).md(),
+              }),
             }}
           >
-            {nodes?.outdatedNodes?.data.map((node) => (
-              <NodeRow key={node.node.uuid} node={node.node} />
+            {nodes?.outdatedNodes?.data.map((outdatedNode) => (
+              <OutdatedNodeRow key={outdatedNode.node.uuid} outdatedNode={outdatedNode} />
             ))}
           </OutdatedResourceCard>
         </AdminCan>
@@ -303,22 +313,25 @@ export default function AdminOverviewUpdates() {
               loading: databaseAgentHostsLoading,
               error: databaseAgentHostsError,
               data: databaseAgentHosts?.outdatedDatabaseAgentHosts,
-              columns: databaseAgentHostTableColumns(),
+              columns: [...databaseAgentHostTableColumns(), ''],
               onPageSelect: setDatabaseAgentHostsPage,
+              onRetry: refetchDatabaseAgentHosts,
             }}
             status={{
               upToDate: t('pages.admin.home.tabs.updates.page.databaseAgentHostsUpToDate', {
                 failed: databaseAgentHosts?.failedDatabaseAgentHosts ?? 0,
               }),
-              outdated: t('pages.admin.home.tabs.updates.page.databaseAgentHostsOutdated', {
-                latest: updateInformation?.latestDbAgentVersion || unknownLabel,
+              outdated: t('pages.admin.home.tabs.updates.page.databaseAgentHostsOutdatedSummary', {
                 outdated: databaseAgentHosts?.outdatedDatabaseAgentHosts.total ?? 0,
                 failed: databaseAgentHosts?.failedDatabaseAgentHosts ?? 0,
-              }).md(),
+              }),
             }}
           >
-            {databaseAgentHosts?.outdatedDatabaseAgentHosts?.data.map((host) => (
-              <DatabaseAgentHostRow key={host.databaseAgentHost.uuid} databaseAgentHost={host.databaseAgentHost} />
+            {databaseAgentHosts?.outdatedDatabaseAgentHosts?.data.map((outdatedDatabaseAgentHost) => (
+              <OutdatedDatabaseAgentHostRow
+                key={outdatedDatabaseAgentHost.databaseAgentHost.uuid}
+                outdatedDatabaseAgentHost={outdatedDatabaseAgentHost}
+              />
             ))}
           </OutdatedResourceCard>
         </AdminCan>

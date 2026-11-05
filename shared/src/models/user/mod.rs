@@ -469,14 +469,19 @@ impl User {
             secret.decrypt(database).await?
         };
 
+        let secret = totp_rs::Secret::try_from_base32(base32)?;
+        if secret.is_empty() {
+            return Err(anyhow::anyhow!("totp secret is empty"));
+        }
+
         Ok(Some(
             totp_rs::Builder::new()
                 .with_algorithm(totp_rs::Algorithm::SHA1)
                 .with_digits(6)
                 .with_skew(1)
                 .with_step_duration(30)
-                .with_secret(totp_rs::Secret::try_from_base32(base32)?)
-                .build()?,
+                .with_secret(secret)
+                .build_noncompliant(),
         ))
     }
 
@@ -601,38 +606,22 @@ impl User {
         per_page: i64,
         search: Option<&str>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-            r#"
-            SELECT {}, COUNT(*) OVER() AS total_count
-            FROM users
-            LEFT JOIN roles ON roles.uuid = users.role_uuid
-            WHERE users.role_uuid = $1 AND {search}
-            ORDER BY users.created
-            LIMIT $3 OFFSET $4
-            "#,
+        super::PaginatedQueryBuilder::new(
             Self::columns_sql(None),
-            search = super::search_sql(2, &["users.username", "users.email"], &["users.uuid"])
-        )))
+            format!(
+                r#"
+                FROM users
+                LEFT JOIN roles ON roles.uuid = users.role_uuid
+                WHERE users.role_uuid = $1 AND {search}
+                "#,
+                search = super::search_sql(2, &["users.username", "users.email"], &["users.uuid"]),
+            ),
+            "users.created, users.uuid",
+        )
         .bind(role_uuid)
         .bind(search)
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(database.read())
-        .await?;
-
-        Ok(super::Pagination {
-            total: rows
-                .first()
-                .map_or(Ok(0), |row| row.try_get("total_count"))?,
-            per_page,
-            page,
-            data: rows
-                .into_iter()
-                .map(|row| Self::map(None, &row))
-                .try_collect_vec()?,
-        })
+        .fetch(database, page, per_page)
+        .await
     }
 
     pub async fn all_with_pagination(
@@ -641,37 +630,21 @@ impl User {
         per_page: i64,
         search: Option<&str>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-            r#"
-            SELECT {}, COUNT(*) OVER() AS total_count
-            FROM users
-            LEFT JOIN roles ON roles.uuid = users.role_uuid
-            WHERE {search}
-            ORDER BY users.created
-            LIMIT $2 OFFSET $3
-            "#,
+        super::PaginatedQueryBuilder::new(
             Self::columns_sql(None),
-            search = super::search_sql(1, &["users.username", "users.email"], &["users.uuid"])
-        )))
+            format!(
+                r#"
+                FROM users
+                LEFT JOIN roles ON roles.uuid = users.role_uuid
+                WHERE {search}
+                "#,
+                search = super::search_sql(1, &["users.username", "users.email"], &["users.uuid"]),
+            ),
+            "users.created, users.uuid",
+        )
         .bind(search)
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(database.read())
-        .await?;
-
-        Ok(super::Pagination {
-            total: rows
-                .first()
-                .map_or(Ok(0), |row| row.try_get("total_count"))?,
-            per_page,
-            page,
-            data: rows
-                .into_iter()
-                .map(|row| Self::map(None, &row))
-                .try_collect_vec()?,
-        })
+        .fetch(database, page, per_page)
+        .await
     }
 
     pub async fn count(database: &crate::database::Database) -> i64 {
@@ -1189,7 +1162,7 @@ impl CreatableModel for User {
                             "account_created",
                             &result,
                             minijinja::context! {
-                                user => result,
+                                user => minijinja::value::Serde(&result),
                                 reset_link => format!(
                                     "{}/auth/reset-password?token={}",
                                     settings.app.url,

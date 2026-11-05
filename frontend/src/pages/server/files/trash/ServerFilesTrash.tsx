@@ -41,10 +41,11 @@ export default function ServerFilesTrash() {
     loading,
     error,
     setPage,
+    setPerPage,
     refetch,
   } = useSearchablePaginatedTable({
     queryKey: queryKeys.server(server.uuid).files.trash(),
-    fetcher: (page) => getTrashEntries(server.uuid, page),
+    fetcher: (page, _search, perPage) => getTrashEntries(server.uuid, page, perPage),
   });
 
   const {
@@ -141,6 +142,7 @@ export default function ServerFilesTrash() {
           loading={loading}
           pagination={entries}
           onPageSelect={setPage}
+          onPerPageSelect={setPerPage}
           error={error}
           empty={
             <EmptyState
@@ -158,7 +160,7 @@ export default function ServerFilesTrash() {
                   entry={entry}
                   ref={innerRef as Ref<HTMLTableRowElement>}
                   isSelected={selectedEntries.has(entry.uuid)}
-                  onSelectionChange={canDelete ? (selected) => toggleEntry(entry, selected) : undefined}
+                  onSelectionChange={canDelete ? (selected, range) => toggleEntry(entry, selected, range) : undefined}
                   onFinished={refetch}
                 />
               )}

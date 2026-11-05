@@ -104,6 +104,14 @@ mod post {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("oauth-providers.create")?;
 
+        if !permissions.is_unrestricted_admin() && data.login_bypass_two_factor {
+            return ApiResponse::error(
+                "only administrators can create an oauth provider that bypasses two-factor authentication",
+            )
+            .with_status(StatusCode::FORBIDDEN)
+            .ok();
+        }
+
         let oauth_provider = match OAuthProvider::create(&state, data).await {
             Ok(oauth_provider) => oauth_provider,
             Err(err) if err.is_unique_violation() => {
@@ -120,6 +128,7 @@ mod post {
                 serde_json::json!({
                     "name": oauth_provider.name,
                     "description": oauth_provider.description,
+                    "icon": oauth_provider.icon,
                     "enabled": oauth_provider.enabled,
                     "login_only": oauth_provider.login_only,
                     "login_bypass_two_factor": oauth_provider.login_bypass_two_factor,

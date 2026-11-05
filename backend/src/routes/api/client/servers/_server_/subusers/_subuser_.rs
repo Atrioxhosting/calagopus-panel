@@ -170,20 +170,9 @@ mod patch {
                 .ok();
         }
 
-        if let Some(requested) = &data.permissions
-            && !user.admin
-            && let Some(subuser_permissions) = &server.subuser_permissions
-            && requested.iter().any(|p| !subuser_permissions.contains(p))
-        {
-            return ApiResponse::error("permissions: more permissions than self")
-                .with_status(StatusCode::BAD_REQUEST)
-                .ok();
-        }
-
-        if let Some(requested) = &data.permissions
-            && requested
-                .iter()
-                .any(|p| permissions.has_server_permission(p).is_err())
+        if permissions
+            .missing_server_permission(data.permissions.iter().flatten())
+            .is_some()
         {
             return ApiResponse::error("permissions: more permissions than self")
                 .with_status(StatusCode::BAD_REQUEST)

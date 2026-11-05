@@ -51,6 +51,12 @@ mod post {
     ) -> ApiResponseResult {
         permissions.has_server_permission("schedules.update")?;
 
+        if !schedule.enabled {
+            return ApiResponse::error("cannot trigger a disabled schedule")
+                .with_status(StatusCode::BAD_REQUEST)
+                .ok();
+        }
+
         state
             .cache
             .ratelimit(

@@ -34,6 +34,7 @@ import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
 import ServerPermissionGuard from '@/routers/guards/ServerPermissionGuard.tsx';
 import serverRoutes from '@/routers/routes/serverRoutes.ts';
+import { trackActivity } from '@/stores/activity.ts';
 import { useServerStore } from '@/stores/server.ts';
 import ServerStateGuard from './guards/ServerStateGuard.tsx';
 import ServerSelectorModal from './ServerSelectorModal.tsx';
@@ -97,6 +98,7 @@ export default function ServerRouter({ isNormal }: { isNormal: boolean }) {
         .map((route) => ({
           type: 'route' as const,
           route,
+          icon: null,
         }));
     }
 
@@ -105,7 +107,7 @@ export default function ServerRouter({ isNormal }: { isNormal: boolean }) {
         if (item.type === 'route') {
           const route = allServerRoutes.find((r) => r.path === item.path);
           if (!route || !route.name || (route.filter && !route.filter())) return null;
-          return { type: 'route' as const, route };
+          return { type: 'route' as const, route, icon: item.icon };
         }
 
         if (item.type === 'divider') {
@@ -119,6 +121,7 @@ export default function ServerRouter({ isNormal }: { isNormal: boolean }) {
             type: 'redirect' as const,
             name,
             destination: item.destination,
+            icon: item.icon,
           };
         }
 
@@ -150,7 +153,7 @@ export default function ServerRouter({ isNormal }: { isNormal: boolean }) {
         import('@/pages/server/console/ServerConsole.tsx').catch(() => undefined);
       }
 
-      getServer(params.id)
+      trackActivity(getServer(params.id))
         .then((data) => {
           setSocketInstance(null);
           setServer(data);
@@ -226,6 +229,7 @@ export default function ServerRouter({ isNormal }: { isNormal: boolean }) {
                         key={`redirect-${index}`}
                         to={item.destination}
                         icon={faArrowUpRightFromSquare}
+                        customIcon={item.icon}
                         name={item.name}
                       />
                     );
@@ -241,6 +245,7 @@ export default function ServerRouter({ isNormal }: { isNormal: boolean }) {
                           to={to(route.path, `/server/${params.id}`)}
                           end={route.exact}
                           icon={route.icon}
+                          customIcon={item.icon}
                           name={name}
                           activeMatches={route.activeMatches}
                         />
@@ -251,6 +256,7 @@ export default function ServerRouter({ isNormal }: { isNormal: boolean }) {
                         to={to(route.path, `/server/${params.id}`)}
                         end={route.exact}
                         icon={route.icon}
+                        customIcon={item.icon}
                         name={name}
                         activeMatches={route.activeMatches}
                       />

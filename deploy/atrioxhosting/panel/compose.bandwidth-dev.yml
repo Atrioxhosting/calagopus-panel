@@ -1,3 +1,3 @@
 services:
   web:
-    image: calagopus-panel:1.2.6_atriox.3
+    image: calagopus-panel:1.2.7_atriox.3

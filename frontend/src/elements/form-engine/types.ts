@@ -1,3 +1,4 @@
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
   AutocompleteProps,
   CheckboxProps,
@@ -41,6 +42,11 @@ interface BaseFieldDef<T extends Record<string, unknown>> {
 export interface TextFieldDef<T extends Record<string, unknown>> extends BaseFieldDef<T> {
   type: 'text';
   props?: Partial<TextInputProps>;
+  icon?: {
+    name: keyof T & string;
+    label: LazyString;
+    fallback?: IconDefinition;
+  };
 }
 
 export interface PasswordFieldDef<T extends Record<string, unknown>> extends BaseFieldDef<T> {
@@ -119,6 +125,12 @@ export interface SizeFieldDef<T extends Record<string, unknown>> extends BaseFie
   min: number;
 }
 
+export interface TimezoneFieldDef<T extends Record<string, unknown>> extends BaseFieldDef<T> {
+  type: 'timezone';
+  withSystemOption?: boolean;
+  props?: Partial<SelectProps>;
+}
+
 export interface LocalizedTextFieldDef<T extends Record<string, unknown>> extends BaseFieldDef<T> {
   type: 'localizedtext';
   translationsName: keyof T & string;
@@ -181,6 +193,7 @@ export type FieldDef<T extends Record<string, unknown> = Record<string, unknown>
   | TagsFieldDef<T>
   | NumberTagsFieldDef<T>
   | SizeFieldDef<T>
+  | TimezoneFieldDef<T>
   | LocalizedTextFieldDef<T>
   | LocalizedTextAreaFieldDef<T>
   | MultiSelectGroupFieldDef<T>

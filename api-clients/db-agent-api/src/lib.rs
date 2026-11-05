@@ -80,12 +80,6 @@ nestify::nest! {
 pub enum AppContainerType {
     #[serde(rename = "official")]
     Official,
-    #[serde(rename = "official_aio")]
-    OfficialAio,
-    #[serde(rename = "official_heavy")]
-    OfficialHeavy,
-    #[serde(rename = "official_heavy_aio")]
-    OfficialHeavyAio,
     #[serde(rename = "unknown")]
     Unknown,
     #[serde(rename = "none")]
@@ -1644,165 +1638,10 @@ pub mod system_config {
     use super::*;
 
     pub mod get {
+        #[allow(unused_imports)]
         use super::*;
 
-        nestify::nest! {
-            #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200 {
-                #[schema(inline)]
-                pub debug: bool,
-                #[schema(inline)]
-                pub socket_dir: compact_str::CompactString,
-                #[schema(inline)]
-                pub data_dir: compact_str::CompactString,
-                #[schema(inline)]
-                pub log_dir: compact_str::CompactString,
-                #[schema(inline)]
-                pub disk_check_interval: u64,
-                #[schema(inline)]
-                pub disk_check_concurrency: u64,
-                #[schema(inline)]
-                pub boot_autostart_concurrency: u64,
-                #[schema(inline)]
-                pub websocket_log_count: u64,
-                #[schema(inline)]
-                pub tcp_congestion_control: compact_str::CompactString,
-                #[schema(inline)]
-                pub postgres: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200Postgres {
-                    #[schema(inline)]
-                    pub enabled: bool,
-                    #[schema(inline)]
-                    pub bind: compact_str::CompactString,
-                    #[schema(inline)]
-                    pub tls: Tls,
-                },
-
-                #[schema(inline)]
-                pub mariadb: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200Mariadb {
-                    #[schema(inline)]
-                    pub enabled: bool,
-                    #[schema(inline)]
-                    pub bind: compact_str::CompactString,
-                    #[schema(inline)]
-                    pub tls: Tls,
-                },
-
-                #[schema(inline)]
-                pub mongodb: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200Mongodb {
-                    #[schema(inline)]
-                    pub enabled: bool,
-                    #[schema(inline)]
-                    pub bind: compact_str::CompactString,
-                    #[schema(inline)]
-                    pub tls: Tls,
-                },
-
-                #[schema(inline)]
-                pub redis: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200Redis {
-                    #[schema(inline)]
-                    pub enabled: bool,
-                    #[schema(inline)]
-                    pub bind: compact_str::CompactString,
-                    #[schema(inline)]
-                    pub tls: Tls,
-                },
-
-                #[schema(inline)]
-                pub database: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200Database {
-                    #[schema(inline)]
-                    pub url: compact_str::CompactString,
-                    #[schema(inline)]
-                    pub migrate: bool,
-                },
-
-                #[schema(inline)]
-                pub docker: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200Docker {
-                    #[schema(inline)]
-                    pub socket: compact_str::CompactString,
-                    #[schema(inline)]
-                    pub registries: IndexMap<compact_str::CompactString, serde_json::Value>,
-                    #[schema(inline)]
-                    pub tmpfs_size: MiB,
-                    #[schema(inline)]
-                    pub shm_size: MiB,
-                    #[schema(inline)]
-                    pub container_pid_limit: u64,
-                    #[schema(inline)]
-                    pub container_apparmor_profile: compact_str::CompactString,
-                    #[schema(inline)]
-                    pub container_ulimits: Vec<#[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200DockerContainerUlimits {
-                        #[schema(inline)]
-                        pub name: compact_str::CompactString,
-                        #[schema(inline)]
-                        pub soft: i64,
-                        #[schema(inline)]
-                        pub hard: i64,
-                    }>,
-                    #[schema(inline)]
-                    pub container_sysctls: IndexMap<compact_str::CompactString, compact_str::CompactString>,
-                    #[schema(inline)]
-                    pub timezone: compact_str::CompactString,
-                    #[schema(inline)]
-                    pub userns_mode: compact_str::CompactString,
-                    #[schema(inline)]
-                    pub cpu_period: u64,
-                    #[schema(inline)]
-                    pub cfs_burst: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200DockerCfsBurst {
-                        #[schema(inline)]
-                        pub enabled: bool,
-                        #[schema(inline)]
-                        pub multiple: f64,
-                    },
-
-                    #[schema(inline)]
-                    pub registry_image_fetch_cache: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200DockerRegistryImageFetchCache {
-                        #[schema(inline)]
-                        pub enabled: bool,
-                        #[schema(inline)]
-                        pub duration: u64,
-                        #[schema(inline)]
-                        pub background_refresh: bool,
-                    },
-
-                    #[schema(inline)]
-                    pub rootless: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200DockerRootless {
-                        #[schema(inline)]
-                        pub enabled: bool,
-                    },
-
-                    #[schema(inline)]
-                    pub log_config: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200DockerLogConfig {
-                        #[schema(inline)]
-                        pub r#type: compact_str::CompactString,
-                        #[schema(inline)]
-                        pub config: IndexMap<compact_str::CompactString, compact_str::CompactString>,
-                    },
-
-                },
-
-                #[schema(inline)]
-                pub api: #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200Api {
-                    #[schema(inline)]
-                    pub bind: compact_str::CompactString,
-                    #[schema(inline)]
-                    pub tls: Tls,
-                    #[schema(inline)]
-                    pub token: compact_str::CompactString,
-                    #[schema(inline)]
-                    pub disable_openapi_docs: bool,
-                    #[schema(inline)]
-                    pub disable_remote_import: bool,
-                    #[schema(inline)]
-                    pub remote_import_blocked_cidrs: Vec<compact_str::CompactString>,
-                    #[schema(inline)]
-                    pub trusted_proxies: Vec<compact_str::CompactString>,
-                },
-
-                #[schema(inline)]
-                pub ignore_config_updates: bool,
-                #[schema(inline)]
-                pub ignore_upgrades: bool,
-            }
-        }
+        pub type Response200 = serde_json::Value;
 
         pub type Response = Response200;
     }
@@ -1922,6 +1761,15 @@ pub mod system_overview {
                 pub architecture: compact_str::CompactString,
                 #[schema(inline)]
                 pub kernel_version: compact_str::CompactString,
+                #[schema(inline)]
+                pub upgrade: Option<#[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200Upgrade {
+                    #[schema(inline)]
+                    pub provider: compact_str::CompactString,
+                    #[schema(inline)]
+                    pub repository: compact_str::CompactString,
+                    #[schema(inline)]
+                    pub api_url: compact_str::CompactString,
+                }>,
             }
         }
 
@@ -1953,15 +1801,18 @@ pub mod system_upgrade {
         nestify::nest! {
             #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct RequestBody {
                 #[schema(inline)]
-                pub url: compact_str::CompactString,
+                pub version: compact_str::CompactString,
                 #[schema(inline)]
-                pub headers: IndexMap<compact_str::CompactString, compact_str::CompactString>,
+                pub token: Option<compact_str::CompactString>,
+            }
+        }
+
+        nestify::nest! {
+            #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200 {
                 #[schema(inline)]
-                pub sha256: compact_str::CompactString,
+                pub applied: bool,
                 #[schema(inline)]
-                pub restart_command: compact_str::CompactString,
-                #[schema(inline)]
-                pub restart_command_args: Vec<compact_str::CompactString>,
+                pub version: Option<compact_str::CompactString>,
             }
         }
 
@@ -1969,11 +1820,59 @@ pub mod system_upgrade {
             #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response202 {
                 #[schema(inline)]
                 pub applied: bool,
+                #[schema(inline)]
+                pub version: Option<compact_str::CompactString>,
             }
         }
 
+        pub type Response400 = ApiError;
+
+        pub type Response404 = ApiError;
+
         pub type Response409 = ApiError;
 
-        pub type Response = Response202;
+        pub type Response501 = ApiError;
+
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        pub enum Response {
+            Ok(Response200),
+            Accepted(Response202),
+        }
+    }
+}
+pub mod system_upgrade_check {
+    use super::*;
+
+    pub mod post {
+        use super::*;
+
+        nestify::nest! {
+            #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct RequestBody {
+                #[schema(inline)]
+                pub token: Option<compact_str::CompactString>,
+                #[schema(inline)]
+                pub force: bool,
+            }
+        }
+
+        nestify::nest! {
+            #[derive(Debug, ToSchema, Deserialize, Serialize, Clone)] pub struct Response200 {
+                #[schema(inline)]
+                pub current_version: compact_str::CompactString,
+                #[schema(inline)]
+                pub latest_version: Option<compact_str::CompactString>,
+                #[schema(inline)]
+                pub update_available: bool,
+                #[schema(inline)]
+                pub checked_at: chrono::DateTime<chrono::Local>,
+            }
+        }
+
+        pub type Response501 = ApiError;
+
+        pub type Response502 = ApiError;
+
+        pub type Response = Response200;
     }
 }

@@ -96,7 +96,7 @@ mod get {
         ApiResponse::new_serialized(Response {
             time: chrono::Utc::now(),
             oobe_step: settings.oobe_step.as_deref(),
-            disabled_extensions: state.extensions.disabled(),
+            disabled_extensions: state.extensions.inactive(),
             captcha_provider: settings.captcha_provider.to_public_provider(),
             app: ResponseApp {
                 url: &settings.app.url,

@@ -198,6 +198,14 @@ mod patch {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("oauth-providers.update")?;
 
+        if !permissions.is_unrestricted_admin() && data.changes_identity(&oauth_provider) {
+            return ApiResponse::error(
+                "only administrators can change how an oauth provider identifies users or how they may sign in with it",
+            )
+            .with_status(StatusCode::FORBIDDEN)
+            .ok();
+        }
+
         if data.enabled == Some(false)
             && !state
                 .settings
@@ -229,6 +237,7 @@ mod patch {
                 serde_json::json!({
                     "name": oauth_provider.name,
                     "description": oauth_provider.description,
+                    "icon": oauth_provider.icon,
                     "enabled": oauth_provider.enabled,
                     "login_only": oauth_provider.login_only,
                     "login_bypass_two_factor": oauth_provider.login_bypass_two_factor,

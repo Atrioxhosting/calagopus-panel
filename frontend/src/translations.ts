@@ -44,6 +44,7 @@ const baseTranslations = defineTranslations({
       button: {
         create: 'Create',
         add: 'Add',
+        retry: 'Retry',
         addDefaultPort: 'Add :{port}',
         save: 'Save',
         saveAndStay: 'Save & Stay',
@@ -56,7 +57,9 @@ const baseTranslations = defineTranslations({
         disableTwoFactor: 'Disable Two-Factor',
         verify: 'Verify',
         update: 'Update',
+        upgrade: 'Upgrade',
         close: 'Close',
+        copy: 'Copy',
         cancel: 'Cancel',
         continue: 'Continue',
         skip: 'Skip',
@@ -160,6 +163,15 @@ const baseTranslations = defineTranslations({
             weekday: 'Weekday',
           },
           nextRun: 'Next run is {timestamp}.',
+        },
+        iconInput: {
+          defaultIcon: 'Default icon',
+          searchPlaceholder: 'Search icons…',
+          noResults: 'No icons match your search.',
+          moreResults: 'Showing the first {count} matches, refine your search to see more.',
+          button: {
+            reset: 'Use Default Icon',
+          },
         },
         trashRetention: {
           days: 'days',
@@ -265,6 +277,7 @@ const baseTranslations = defineTranslations({
       form: {
         force: 'Do you want to execute this deletion forcefully?',
         name: 'Name',
+        icon: 'Icon',
         newName: 'New Name',
         description: 'Description',
         author: 'Author',
@@ -377,7 +390,12 @@ const baseTranslations = defineTranslations({
         selectRow: 'Select row',
         pagination: {
           results: 'Showing {start} to {end} of {total} results.',
-          empty: "No items could be found, it's almost like they are hiding.",
+          perPage: '{count} / page',
+          perPageLabel: 'Results per page',
+        },
+        empty: {
+          title: 'No items found',
+          description: 'Try a different search, or check back once something has been added.',
         },
         columns: {
           id: 'ID',
@@ -465,6 +483,7 @@ const baseTranslations = defineTranslations({
         installed: 'Installed',
         updateAvailable: 'Update Available',
         systemBackup: 'System',
+        restarting: 'Restarting',
       },
       label: {
         noSubdirectories: 'No subdirectories',
@@ -567,6 +586,7 @@ const baseTranslations = defineTranslations({
         },
         connectionStatus: {
           connected: 'Connected',
+          connecting: 'Connecting...',
           offline: 'Offline',
         },
         serverAutoStartBehavior: {
@@ -664,9 +684,19 @@ const baseTranslations = defineTranslations({
           addRedirect: 'Add Redirect',
         },
       },
+      assetReloadNotice: {
+        title: 'Updating to the latest version',
+        reloading: 'A new version of the panel is available. Reloading...',
+        offline: 'A new version of the panel is available. Reloading once your connection is back...',
+        stalled: 'A new version of the panel is available. Reload the page to continue.',
+        button: {
+          reloadNow: 'Reload Now',
+        },
+      },
       errorBoundary: {
         message:
           'An unexpected error occurred while rendering this page. Try refreshing. If the problem persists, contact your system administrator.',
+        refresh: 'Refresh Page',
         hideDetails: 'Hide Details',
         showDetails: 'Show Details',
         errorMessage: 'Error Message:',
@@ -764,6 +794,21 @@ const baseTranslations = defineTranslations({
       },
       serverSelect: {
         showOtherUsersServers: "Show other user's servers",
+      },
+      allocationBar: {
+        tooltip: {
+          total: 'Change Total',
+        },
+        form: {
+          total: 'Measure Against',
+          customTotal: 'Custom Total',
+        },
+        total: {
+          limit: 'Configured Limit',
+          live: 'Live Capacity',
+          aggregate: 'Allocated Total',
+          custom: 'Custom',
+        },
       },
       can: {
         tooltip: {
@@ -1300,6 +1345,12 @@ const baseTranslations = defineTranslations({
       },
       account: {
         home: {
+          empty: {
+            title: 'No Servers',
+            description:
+              'This account has no servers yet. Servers created for it, or shared with it as a subuser, show up here.',
+          },
+          emptyGroup: 'This group is empty. Drag a server here to add it.',
           title: 'Servers',
           tooltip: {
             removeFromGroup: 'Remove from Group',
@@ -1314,6 +1365,12 @@ const baseTranslations = defineTranslations({
             groupedServers: {
               title: 'Grouped Servers',
               page: {
+                empty: {
+                  title: 'No Server Groups',
+                  description:
+                    'Every server is listed on its own. Create a group to sort servers into sections and reorder them by dragging.',
+                  descriptionReadOnly: 'Every server is listed on its own.',
+                },
                 button: {
                   createGroup: 'Create Group',
                 },
@@ -1367,7 +1424,6 @@ const baseTranslations = defineTranslations({
                     moved: 'Server moved to {group}.',
                   },
                 },
-                noGroups: 'No Groups could be found, time to create one?',
               },
             },
             allServers: {
@@ -1395,7 +1451,6 @@ const baseTranslations = defineTranslations({
             partial: 'Successfully {action} {successfulServers}. {failedServers} failed.',
             groupActions: 'Group Actions',
           },
-          noServers: 'No Servers could be found, time to add one?',
         },
         admin: {
           title: 'Admin',
@@ -1806,6 +1861,10 @@ const baseTranslations = defineTranslations({
             deleteOAuthLinks: {
               title: 'Confirm OAuth Link Deletion',
               content: 'Are you sure you want to delete **{oauthLinks}** from your account?',
+              alert: {
+                skipped:
+                  '{oauthLinks} will be skipped. Links to providers that do not allow unlinking cannot be removed.',
+              },
             },
             deleteOAuthLink: {
               title: 'Confirm OAuth Link Deletion',
@@ -1940,6 +1999,10 @@ const baseTranslations = defineTranslations({
           alert: {
             newPanelVersion:
               'A new version is available for the panel! You are currently on {current} and the latest version is {latest}. You may want to consider upgrading. [Click here]({upgradeUrl}) to view upgrade instructions.',
+            extensionBuildFailed: {
+              content: 'The last extension build failed.',
+              link: 'View extensions',
+            },
           },
           tabs: {
             overview: {
@@ -2019,12 +2082,12 @@ const baseTranslations = defineTranslations({
                 extensionsOutdated: 'Some extensions are outdated or had errors when checking for updates.',
                 noChangelog: 'No changelog',
                 nodesUpToDate: 'Seems like all nodes are up to date. ({failed} failed to check)',
-                nodesOutdated:
-                  'Some nodes are outdated, the latest available version is `{latest}`. ({outdated} outdated, {failed} failed to check)',
+                nodesOutdatedSummary: 'Some nodes are outdated. ({outdated} outdated, {failed} failed to check)',
                 databaseAgentHostsUpToDate:
                   'Seems like all database agent hosts are up to date. ({failed} failed to check)',
-                databaseAgentHostsOutdated:
-                  'Some database agent hosts are outdated, the latest available version is `{latest}`. ({outdated} outdated, {failed} failed to check)',
+                databaseAgentHostsOutdatedSummary:
+                  'Some database agent hosts are outdated. ({outdated} outdated, {failed} failed to check)',
+                badge: { latestVersion: 'Latest {version}' },
                 table: {
                   version: 'Version',
                   installed: 'Installed',
@@ -2276,7 +2339,6 @@ const baseTranslations = defineTranslations({
                 sidebar: {
                   templates: 'Templates',
                   globalVariables: 'Global Variables',
-                  loading: 'Loading...',
                   availableVariables: 'Available Variables',
                 },
                 alert: {
@@ -2298,7 +2360,6 @@ const baseTranslations = defineTranslations({
                     'Fragments are MiniJinja snippets with access to the same variables as the template. An empty field uses the default shown in it; languages without a value fall back to the English value, then to the built-in translation.',
                   custom: 'Custom',
                   add: 'Add Variable',
-                  loading: 'Loading...',
                   empty: 'No variables defined.',
                   error: {
                     valueRequired: 'Custom variables need an English value.',
@@ -2327,7 +2388,6 @@ const baseTranslations = defineTranslations({
                     },
                   },
                 },
-                loadingTemplate: 'Loading template...',
                 form: {
                   subject: 'Subject',
                 },
@@ -2543,6 +2603,21 @@ const baseTranslations = defineTranslations({
                 },
               },
             },
+            updates: {
+              title: 'Updates',
+              page: {
+                title: 'Update Settings',
+                alert:
+                  'Release tokens are optional. They are only needed when nodes or database agent hosts upgrade from a private fork, or when the GitHub API rate limits unauthenticated downloads. Use a fine-grained token with read-only **Contents** access to the release repository and nothing else, and give it an expiry date. The token is sent to every node or database agent host you upgrade, and only when the admin starting the upgrade can also read the panel settings.',
+                form: {
+                  wingsReleaseToken: 'Wings Release Token',
+                  dbAgentReleaseToken: 'Database Agent Release Token',
+                },
+                toast: {
+                  updated: 'Release tokens updated.',
+                },
+              },
+            },
           },
         },
         announcements: {
@@ -2623,11 +2698,16 @@ const baseTranslations = defineTranslations({
           },
         },
         extensions: {
+          empty: {
+            title: 'No Extensions Installed',
+            description:
+              'This panel runs without any extensions. Drop an extension file onto this page to install one.',
+            descriptionDisabled:
+              'This panel runs without any extensions. Extension management has been disabled, so none can be installed.',
+          },
           title: 'Extensions',
           unknownExtension: 'Unknown Extension',
           alert: {
-            noExtensions: 'No extensions installed.',
-            managementDisabled: 'Extension management has been disabled on this panel.',
             heavyImageMissing:
               "You don't seem to be using the heavy image required to install extensions, see [here]({docsUrl}) on how to switch to it.",
             supervisorUnreachable: {
@@ -2640,6 +2720,11 @@ const baseTranslations = defineTranslations({
               content:
                 'These extensions are not built again until they change, or until you retry the build explicitly.',
               failedExtensions: 'The build failed in {extensions}. Update or remove them, then retry the build.',
+            },
+            startFailed: {
+              title: 'Some extensions failed to start',
+              content:
+                'They crashed while starting, or their routes or CLI commands conflict with the panel or another extension, so they are not running. Update or remove them, then restart the panel.',
             },
             pendingRestart: {
               title: 'Some extensions were enabled or disabled',
@@ -2691,6 +2776,7 @@ const baseTranslations = defineTranslations({
             backendMissing: 'Backend missing',
             pendingBuild: 'Pending build',
             buildFailed: 'Build failed',
+            startFailed: 'Failed to start',
             pendingRemoval: 'Pending removal',
             pendingRestart: 'Pending restart',
             disabled: 'Disabled',
@@ -3008,6 +3094,7 @@ const baseTranslations = defineTranslations({
                 },
                 badge: {
                   updateAvailable: 'Update Available',
+                  latestVersionUnknown: 'Latest Version Unknown',
                 },
               },
             },
@@ -3017,6 +3104,7 @@ const baseTranslations = defineTranslations({
                   allInOneNode: 'All-in-One Node',
                   errorWhileFetchingVersion: 'Error while fetching version',
                   updateAvailable: '{version} (Update Available)',
+                  latestVersionUnknown: '{version} (Latest Version Unknown)',
                   useWingsProxyUrl: 'Use Wings Proxy URL',
                 },
                 form: {
@@ -3138,6 +3226,7 @@ const baseTranslations = defineTranslations({
                   'Resources allocated to servers on this node, measured against the limits configured in node settings, not the physical machine capacity. Deployment only checks memory and disk.',
                 card: {
                   resources: 'Allocated Resources',
+                  breakdown: 'Allocation Breakdown',
                 },
                 status: {
                   deploymentEnabled: 'Deployment Enabled',
@@ -3154,6 +3243,11 @@ const baseTranslations = defineTranslations({
                   free: '{size} free',
                   overhead: '+ {size} reserved overhead',
                   cores: '{cores} cores allocated',
+                  other: 'Other ({servers})',
+                  suspended: 'Suspended',
+                  unlimitedServers: '{servers} with no limit',
+                  overallocated: 'Overallocated by {size}',
+                  noAllocations: 'No servers allocate this resource.',
                 },
               },
             },
@@ -3170,6 +3264,10 @@ const baseTranslations = defineTranslations({
                 },
                 toast: {
                   connectionLost: 'Lost connection to the node log stream.',
+                },
+                empty: {
+                  title: 'No Log Files',
+                  description: 'This node has not written any log files yet.',
                 },
               },
             },
@@ -3458,7 +3556,6 @@ const baseTranslations = defineTranslations({
                 },
                 metrics: {
                   title: 'Live Peer Links',
-                  loading: 'Asking the node for its metrics...',
                   unreachable: 'The node could not be reached, so live metrics are unavailable.',
                   applied: 'State version {epoch}, {snapshots} applied',
                   stat: {
@@ -3554,6 +3651,20 @@ const baseTranslations = defineTranslations({
               },
               error: {
                 invalidYaml: 'Invalid YAML: {error}',
+              },
+            },
+            upgrade: {
+              title: 'Upgrade Wings - {name}',
+              content:
+                'Wings downloads the release from `{repository}` ({provider}), replaces its binary and restarts. The node is unreachable for a few seconds while it restarts.',
+              form: {
+                version: 'Version',
+                versionDescription: 'A release version such as 1.2.8, or latest for the newest stable release.',
+              },
+              toast: {
+                scheduled: 'Upgrade of {name} to {version} scheduled, the node is restarting.',
+                ignored:
+                  '{name} ignored the upgrade, its local configuration disables upgrades started from the panel.',
               },
             },
           },
@@ -4113,6 +4224,12 @@ const baseTranslations = defineTranslations({
                   variables: {
                     title: 'Variables',
                     page: {
+                      empty: {
+                        title: 'No Variables',
+                        description:
+                          'Servers using this egg have nothing to set on their Startup page. Add a variable to pass a setting into the startup command and install script.',
+                        descriptionReadOnly: 'Servers using this egg have nothing to set on their Startup page.',
+                      },
                       title: 'Egg Variables',
                       aria: {
                         reorder: 'Reorder variable',
@@ -4409,6 +4526,10 @@ const baseTranslations = defineTranslations({
                 toast: {
                   synced: 'Egg repository synchronised, found {eggs}.',
                 },
+                alert: {
+                  credentialsCleared:
+                    'Changing the scheme, host or port of the repository clears its stored credentials. Enter them again below if the new host needs them.',
+                },
                 modal: {
                   delete: {
                     title: 'Confirm Egg Repository Deletion',
@@ -4479,6 +4600,9 @@ const baseTranslations = defineTranslations({
                 button: {
                   testConnection: 'Test Connection',
                 },
+                tooltip: {
+                  errorWhileFetchingVersion: 'Error while fetching version',
+                },
                 toast: {
                   tested: 'Test successfully completed.',
                 },
@@ -4490,6 +4614,38 @@ const baseTranslations = defineTranslations({
                         'Force deletion removes all databases on this host. The databases on the host itself may not be fully cleaned up, leaving orphaned data behind.',
                     },
                   },
+                },
+              },
+            },
+            overview: {
+              title: 'Overview',
+              page: {
+                title: 'Database Host Overview',
+                status: {
+                  deploymentEnabled: 'Deployment Enabled',
+                  deploymentDisabled: 'Deployment Disabled',
+                  maintenanceEnabled: 'Maintenance Enabled',
+                  maintenanceDisabled: 'Maintenance Disabled',
+                },
+                card: {
+                  hostDetails: 'Host Details',
+                  systemInfo: 'System Information',
+                  sizes: 'Databases by Size',
+                },
+                label: {
+                  address: 'Address',
+                  publicAddress: 'Public Address',
+                  createdAt: 'Created',
+                  version: 'Version',
+                  unavailable: 'Unavailable',
+                  databases: 'Databases',
+                  totalSize: 'Total Size',
+                  share: 'Share',
+                  other: 'Other ({databases})',
+                  noDatabases: 'No databases on this host store any data yet.',
+                },
+                alert: {
+                  maintenance: 'Database sizes are unavailable while the host is in maintenance mode.',
                 },
               },
             },
@@ -4524,6 +4680,7 @@ const baseTranslations = defineTranslations({
                 tooltip: {
                   errorWhileFetchingVersion: 'Error while fetching version',
                   updateAvailable: '{version} (Update Available)',
+                  latestVersionUnknown: '{version} (Latest Version Unknown)',
                 },
                 form: {
                   typePublicHost: 'Public Host',
@@ -4656,6 +4813,7 @@ const baseTranslations = defineTranslations({
                   hostDetails: 'Host Details',
                   systemInfo: 'System Information',
                   resources: 'Allocated Resources',
+                  breakdown: 'Allocation Breakdown',
                 },
                 label: {
                   createdAt: 'Created',
@@ -4669,9 +4827,14 @@ const baseTranslations = defineTranslations({
                   noLimit: 'No host limit',
                   free: '{size} free',
                   cores: '{cores} cores allocated',
+                  other: 'Other ({instances})',
+                  unlimitedInstances: '{instances} with no limit',
+                  overallocated: 'Overallocated by {size}',
+                  noAllocations: 'No instances allocate this resource.',
                 },
                 badge: {
                   updateAvailable: 'Update Available',
+                  latestVersionUnknown: 'Latest Version Unknown',
                 },
               },
             },
@@ -4715,6 +4878,20 @@ const baseTranslations = defineTranslations({
               },
               error: {
                 invalidYaml: 'Invalid YAML: {error}',
+              },
+            },
+            upgrade: {
+              title: 'Upgrade Database Agent - {name}',
+              content:
+                'The database agent downloads the release from `{repository}` ({provider}), replaces its binary and restarts. The host is unreachable for a few seconds while it restarts.',
+              form: {
+                version: 'Version',
+                versionDescription: 'A release version such as 1.2.3, or latest for the newest stable release.',
+              },
+              toast: {
+                scheduled: 'Upgrade of {name} to {version} scheduled, the host is restarting.',
+                ignored:
+                  '{name} ignored the upgrade, its local configuration disables upgrades started from the panel.',
               },
             },
           },
@@ -5037,6 +5214,10 @@ const baseTranslations = defineTranslations({
                 modal: {
                   delete: {
                     title: 'Confirm Backup Configuration Deletion',
+                    alert: {
+                      detachWarning:
+                        'Existing backups made with this configuration will be detached from it and can no longer be restored or downloaded. Prefer editing the configuration over deleting it.',
+                    },
                   },
                   removeProvider: {
                     title: 'Confirm Provider Settings Removal',
@@ -5616,11 +5797,17 @@ const baseTranslations = defineTranslations({
           },
           stats: {
             offline: 'Server is offline',
+            connecting: 'Connecting...',
           },
           socketConnected: 'Connected ({ping}ms ping)',
           socketDisconnected: 'Disconnected',
         },
         files: {
+          empty: {
+            title: 'Empty Directory',
+            description: 'There is nothing in this directory yet. Upload files or create new ones to fill it.',
+            descriptionReadOnly: 'There is nothing in this directory yet.',
+          },
           title: 'Files',
           editorNotFound: {
             title: 'Not Found',
@@ -5668,6 +5855,7 @@ const baseTranslations = defineTranslations({
             unsavedTab: '{name} has unsaved changes',
             dropToSplit: 'Drop to open in a new editor pane',
             resizeEditorPanes: 'Resize editor panes',
+            resizeFileTree: 'Resize file tree',
             selectPane: 'Select editor pane',
             editorPane: 'Editor pane {number}',
           },
@@ -6385,8 +6573,10 @@ const baseTranslations = defineTranslations({
                 logs: 'Logs',
               },
               stats: {
+                connecting: 'Connecting...',
                 offline: 'Instance is offline',
               },
+              connectionLost: 'Lost connection to the database instance.',
             },
             databases: {
               title: 'Databases',
@@ -6814,6 +7004,14 @@ const baseTranslations = defineTranslations({
             },
           },
           view: {
+            empty: {
+              triggers: {
+                title: 'No Triggers',
+                description:
+                  'This schedule never starts on its own and only runs when started by hand. Edit it to add a trigger.',
+                descriptionReadOnly: 'This schedule never starts on its own and only runs when started by hand.',
+              },
+            },
             badge: {
               running: 'Running',
             },
@@ -6829,10 +7027,6 @@ const baseTranslations = defineTranslations({
               actions: 'Schedule Actions',
               preConditions: 'Schedule Pre-Conditions',
               triggers: 'Schedule Triggers',
-            },
-            alert: {
-              noActions: 'No actions configured for this schedule',
-              noTriggers: 'No triggers configured for this schedule',
             },
           },
           step: {
@@ -6995,12 +7189,19 @@ const baseTranslations = defineTranslations({
               limitReached: 'This schedule is limited to {max} steps.',
             },
             empty: {
+              descriptionReadOnly: 'This schedule does nothing when it runs.',
               title: 'No Steps Configured',
               description: "This schedule doesn't have any steps yet. Add some actions to get started.",
             },
             warning: {
               unclosedIf: 'An "If" block is missing its "End If". All remaining steps run as part of the block.',
               orphanBranch: 'There is an "Else", "Else If" or "End If" step without a matching "If" before it.',
+              variable: {
+                never: 'The variable "{variable}" is never set by this schedule, so it will not resolve.',
+                unavailable: 'The variable "{variable}" is not set by a trigger or an earlier step at this point.',
+                conditional:
+                  'The variable "{variable}" is only set on some runs, for example inside another branch, by one of several triggers or by a step that may fail.',
+              },
             },
             groups: {
               server: 'Server',
@@ -7532,6 +7733,8 @@ const baseTranslations = defineTranslations({
             downloadStarted: 'Download started.',
             restoringBackup: 'Restoring backup...',
             exportStarted: 'Backup export started.',
+            locked: 'Backup locked.',
+            unlocked: 'Backup unlocked.',
           },
           modal: {
             createBackup: {
@@ -7890,6 +8093,11 @@ const baseTranslations = defineTranslations({
           },
         },
         startup: {
+          empty: {
+            title: 'No Startup Variables',
+            description:
+              'The egg this server runs on has no settings to change here, so the startup command runs as it is.',
+          },
           title: 'Startup',
           variables: 'Variables',
           dockerImageDescription:
@@ -7908,7 +8116,6 @@ const baseTranslations = defineTranslations({
                 'You have unsaved changes to your startup variables. Are you sure you want to leave this page? If you leave, your changes will be lost.',
             },
           },
-          noVariables: 'No startup variables found for this server.',
           predefinedStartupCommands: 'Predefined Startup Commands',
         },
         mounts: {

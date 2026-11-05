@@ -6,7 +6,11 @@ mod post {
     use serde::{Deserialize, Serialize};
     use shared::{
         ApiError, GetState,
-        models::{node::GetNode, server::Server, user::User},
+        models::{
+            node::GetNode,
+            server::Server,
+            user::{CredentialScope, PermissionManager, User},
+        },
         response::{ApiResponse, ApiResponseResult},
     };
     use utoipa::ToSchema;
@@ -121,7 +125,13 @@ mod post {
                 .ok();
         }
 
-        let server = match Server::by_user_identifier(&state.database, &user, server).await? {
+        let server = match Server::by_user_identifier(
+            &state.database,
+            &PermissionManager::new(&user, CredentialScope::Session),
+            server,
+        )
+        .await?
+        {
             Some(server) => server,
             None => {
                 return ApiResponse::error("server not found")
@@ -142,7 +152,7 @@ mod post {
             permissions: server.wings_permissions(
                 &*state.settings.get().await?,
                 &user,
-                &shared::models::user::CredentialScope::Session,
+                &CredentialScope::Session,
             ),
             ignored_files: server.subuser_ignored_files.as_deref().unwrap_or(&[]),
             as_of,

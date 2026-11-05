@@ -7,6 +7,7 @@ import Button from '@/elements/buttons/Button.tsx';
 import CopyOnClick from '@/elements/CopyOnClick.tsx';
 import Card from '@/elements/data-display/Card.tsx';
 import ThemeIcon from '@/elements/data-display/ThemeIcon.tsx';
+import Spinner from '@/elements/feedback/Spinner.tsx';
 import ScrollingText from '@/elements/ScrollingText.tsx';
 import RedactedText from '@/elements/typography/RedactedText.tsx';
 import { usageColor } from '@/lib/format/usage.ts';
@@ -26,6 +27,7 @@ export default function StatCard({
   total,
   valueColor,
   redact,
+  loading,
 }: {
   icon?: IconDefinition;
   label: string;
@@ -41,12 +43,14 @@ export default function StatCard({
   total?: number | null;
   valueColor?: MantineColor;
   redact?: boolean;
+  loading?: boolean;
 }) {
   const displayValue = redact ? <RedactedText value={value} /> : value;
-  const color = usageColor(progress, total);
+  const shownProgress = loading ? null : progress;
+  const color = usageColor(shownProgress, total);
 
   return (
-    <Card className={className} style={{ order }} progress={progress} total={total} progressColor={color}>
+    <Card className={className} style={{ order }} progress={shownProgress} total={total} progressColor={color}>
       <div className='flex flex-row items-center'>
         {icon && (
           <ThemeIcon size='xl' radius='md' color={color}>
@@ -56,7 +60,7 @@ export default function StatCard({
         <div className={classNames('flex flex-col w-full min-w-0', icon && 'ml-4')}>
           <div className='w-full flex justify-between items-baseline gap-2'>
             <span className='text-sm text-left text-(--mantine-color-dimmed) font-bold shrink-0'>{label}</span>
-            {details && <span className='text-xs text-(--mantine-color-dimmed) truncate'>{details}</span>}
+            {details && !loading && <span className='text-xs text-(--mantine-color-dimmed) truncate'>{details}</span>}
             {popover && (
               <Popover position='bottom' withArrow shadow='md'>
                 <Popover.Target>
@@ -72,7 +76,11 @@ export default function StatCard({
             className='text-lg font-bold max-w-full'
             style={valueColor ? { color: `var(--mantine-color-${valueColor}-text)` } : undefined}
           >
-            {copyOnClick ? (
+            {loading ? (
+              <span className='flex h-7 items-center'>
+                <Spinner size={18} />
+              </span>
+            ) : copyOnClick ? (
               <ScrollingText>
                 <CopyOnClick content={value} className='text-left block'>
                   {displayValue} {limit && <span className='text-sm text-(--mantine-color-dimmed)'>/ {limit}</span>}

@@ -1,4 +1,4 @@
-use crate::database::DatabaseError;
+use crate::{database::DatabaseError, prelude::IteratorExt};
 use compact_str::CompactStringExt;
 use futures_util::{StreamExt, TryStreamExt};
 use garde::Validate;
@@ -338,6 +338,34 @@ pub async fn invalidate_cache_keys(
     }
 }
 
+pub trait CreatedModelResult {
+    fn created_cache_invalidation_keys(&self) -> Vec<compact_str::CompactString>;
+}
+
+impl<T: BaseModel> CreatedModelResult for T {
+    fn created_cache_invalidation_keys(&self) -> Vec<compact_str::CompactString> {
+        self.cache_invalidation_keys()
+    }
+}
+
+impl<T: BaseModel> CreatedModelResult for (String, T) {
+    fn created_cache_invalidation_keys(&self) -> Vec<compact_str::CompactString> {
+        self.1.cache_invalidation_keys()
+    }
+}
+
+impl CreatedModelResult for () {
+    fn created_cache_invalidation_keys(&self) -> Vec<compact_str::CompactString> {
+        Vec::new()
+    }
+}
+
+impl CreatedModelResult for String {
+    fn created_cache_invalidation_keys(&self) -> Vec<compact_str::CompactString> {
+        Vec::new()
+    }
+}
+
 pub trait EventEmittingModel: BaseModel {
     type Event: Send + Sync + 'static;
 
@@ -377,7 +405,7 @@ pub type CreateListenerList<M> =
 #[async_trait::async_trait]
 pub trait CreatableModel: BaseModel + Send + Sync + 'static {
     type CreateOptions<'a>: Send + Sync + Validate;
-    type CreateResult: Send;
+    type CreateResult: Send + CreatedModelResult;
 
     fn get_create_handlers() -> &'static LazyLock<CreateListenerList<Self>>;
 
@@ -482,6 +510,8 @@ pub trait CreatableModel: BaseModel + Send + Sync + 'static {
         };
 
         transaction.commit().await?;
+
+        invalidate_cache_keys(&state.database, &result.created_cache_invalidation_keys()).await;
 
         Ok(result)
     }
@@ -785,7 +815,7 @@ pub type DuplicateHandlerList<M> =
 #[async_trait::async_trait]
 pub trait DuplicableModel: BaseModel + Send + Sync + 'static {
     type DuplicateOptions<'a>: Send + Sync + Validate;
-    type DuplicateResult: Send;
+    type DuplicateResult: Send + CreatedModelResult;
 
     fn get_duplicate_handlers() -> &'static LazyLock<DuplicateHandlerList<Self>>;
 
@@ -895,6 +925,12 @@ pub trait DuplicableModel: BaseModel + Send + Sync + 'static {
         };
 
         transaction.commit().await?;
+
+        invalidate_cache_keys(
+            &state.database,
+            &duplicated.created_cache_invalidation_keys(),
+        )
+        .await;
 
         Ok(duplicated)
     }
@@ -1349,6 +1385,98 @@ impl<'a> InsertQueryBuilder<'a> {
         sqlx::query_with(sqlx::AssertSqlSafe(sql), self.arguments)
             .fetch_one(executor)
             .await
+    }
+}
+
+/// Builds a paginated list query out of a select list, a `FROM ... WHERE ...` body and an
+/// `ORDER BY` clause. The page is fetched without a window count, and the total is derived
+/// from the page when possible; otherwise the body is counted in a second query on the same
+/// connection, which lets Postgres skip the select list and drop unreferenced `LEFT JOIN`s.
+///
+/// `LIMIT`/`OFFSET` are appended as the next two parameters after the bound ones, so the
+/// body must reference exactly the parameters bound through [`Self::bind`].
+pub struct PaginatedQueryBuilder<'a> {
+    select: compact_str::CompactString,
+    body: compact_str::CompactString,
+    order_by: &'a str,
+    arguments: Result<PgArguments, BoxDynError>,
+}
+
+impl<'a> PaginatedQueryBuilder<'a> {
+    pub fn new(
+        select: impl Into<compact_str::CompactString>,
+        body: impl Into<compact_str::CompactString>,
+        order_by: &'a str,
+    ) -> Self {
+        Self {
+            select: select.into(),
+            body: body.into(),
+            order_by,
+            arguments: Ok(PgArguments::default()),
+        }
+    }
+
+    pub fn bind<T: sqlx::Encode<'a, Postgres> + sqlx::Type<Postgres>>(mut self, value: T) -> Self {
+        if let Ok(arguments) = &mut self.arguments
+            && let Err(err) = arguments.add(value)
+        {
+            self.arguments = Err(err);
+        }
+
+        self
+    }
+
+    pub async fn fetch<M: BaseModel>(
+        self,
+        database: &crate::database::Database,
+        page: i64,
+        per_page: i64,
+    ) -> Result<Pagination<M>, DatabaseError> {
+        let mut arguments = self.arguments.map_err(sqlx::Error::Encode)?;
+        let count_arguments = arguments.clone();
+        let offset = (page - 1) * per_page;
+
+        let limit_param = arguments.len() + 1;
+        arguments.add(per_page).map_err(sqlx::Error::Encode)?;
+        arguments.add(offset).map_err(sqlx::Error::Encode)?;
+
+        let mut connection = database.read().acquire().await?;
+
+        let rows = sqlx::query_with(
+            sqlx::AssertSqlSafe(format!(
+                "SELECT {} {} ORDER BY {} LIMIT ${} OFFSET ${}",
+                self.select,
+                self.body,
+                self.order_by,
+                limit_param,
+                limit_param + 1
+            )),
+            arguments,
+        )
+        .fetch_all(&mut *connection)
+        .await?;
+
+        let len = rows.len() as i64;
+        let total = if len < per_page && (len > 0 || offset == 0) {
+            offset + len
+        } else {
+            sqlx::query_scalar_with(
+                sqlx::AssertSqlSafe(format!("SELECT COUNT(*) {}", self.body)),
+                count_arguments,
+            )
+            .fetch_one(&mut *connection)
+            .await?
+        };
+
+        Ok(Pagination {
+            total,
+            per_page,
+            page,
+            data: rows
+                .into_iter()
+                .map(|row| M::map(None, &row))
+                .try_collect_vec()?,
+        })
     }
 }
 

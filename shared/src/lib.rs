@@ -32,6 +32,7 @@ pub mod extract;
 pub mod git;
 #[cfg(unix)]
 pub mod heavy;
+pub mod icons;
 pub mod ignore_list;
 pub mod jwt;
 pub mod mail;

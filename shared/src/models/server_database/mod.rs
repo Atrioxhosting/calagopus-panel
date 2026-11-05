@@ -178,38 +178,23 @@ impl ServerDatabase {
         per_page: i64,
         search: Option<&str>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-            r#"
-            SELECT {}, COUNT(*) OVER() AS total_count
-            FROM server_databases
-            JOIN database_hosts ON database_hosts.uuid = server_databases.database_host_uuid
-            WHERE server_databases.database_host_uuid = $1 AND {search}
-            ORDER BY server_databases.created
-            LIMIT $3 OFFSET $4
-            "#,
+        super::PaginatedQueryBuilder::new(
             Self::columns_sql(None),
-            search = super::search_sql(2, &["server_databases.name"], &["server_databases.uuid"])
-        )))
+            format!(
+                r#"
+                FROM server_databases
+                JOIN database_hosts ON database_hosts.uuid = server_databases.database_host_uuid
+                WHERE server_databases.database_host_uuid = $1 AND {search}
+                "#,
+                search =
+                    super::search_sql(2, &["server_databases.name"], &["server_databases.uuid"]),
+            ),
+            "server_databases.created, server_databases.uuid",
+        )
         .bind(database_host_uuid)
         .bind(search)
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(database.read())
-        .await?;
-
-        Ok(super::Pagination {
-            total: rows
-                .first()
-                .map_or(Ok(0), |row| row.try_get("total_count"))?,
-            per_page,
-            page,
-            data: rows
-                .into_iter()
-                .map(|row| Self::map(None, &row))
-                .try_collect_vec()?,
-        })
+        .fetch(database, page, per_page)
+        .await
     }
 
     pub async fn by_server_uuid_with_pagination(
@@ -219,38 +204,23 @@ impl ServerDatabase {
         per_page: i64,
         search: Option<&str>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-            r#"
-            SELECT {}, COUNT(*) OVER() AS total_count
-            FROM server_databases
-            JOIN database_hosts ON database_hosts.uuid = server_databases.database_host_uuid
-            WHERE server_databases.server_uuid = $1 AND {search}
-            ORDER BY server_databases.created
-            LIMIT $3 OFFSET $4
-            "#,
+        super::PaginatedQueryBuilder::new(
             Self::columns_sql(None),
-            search = super::search_sql(2, &["server_databases.name"], &["server_databases.uuid"])
-        )))
+            format!(
+                r#"
+                FROM server_databases
+                JOIN database_hosts ON database_hosts.uuid = server_databases.database_host_uuid
+                WHERE server_databases.server_uuid = $1 AND {search}
+                "#,
+                search =
+                    super::search_sql(2, &["server_databases.name"], &["server_databases.uuid"]),
+            ),
+            "server_databases.created, server_databases.uuid",
+        )
         .bind(server_uuid)
         .bind(search)
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(database.read())
-        .await?;
-
-        Ok(super::Pagination {
-            total: rows
-                .first()
-                .map_or(Ok(0), |row| row.try_get("total_count"))?,
-            per_page,
-            page,
-            data: rows
-                .into_iter()
-                .map(|row| Self::map(None, &row))
-                .try_collect_vec()?,
-        })
+        .fetch(database, page, per_page)
+        .await
     }
 
     pub async fn all_by_server_uuid(
@@ -311,6 +281,24 @@ impl ServerDatabase {
         rows.into_iter()
             .map(|row| Self::map(None, &row))
             .try_collect_vec()
+    }
+
+    pub async fn uuids_by_server_uuid_database_host_uuid(
+        database: &crate::database::Database,
+        server_uuid: uuid::Uuid,
+        database_host_uuid: uuid::Uuid,
+    ) -> Result<Vec<uuid::Uuid>, crate::database::DatabaseError> {
+        Ok(sqlx::query_scalar!(
+            r#"
+            SELECT server_databases.uuid
+            FROM server_databases
+            WHERE server_databases.server_uuid = $1 AND server_databases.database_host_uuid = $2
+            "#,
+            server_uuid,
+            database_host_uuid
+        )
+        .fetch_all(database.read())
+        .await?)
     }
 
     pub async fn count_by_database_host_uuid(
@@ -417,39 +405,12 @@ impl ServerDatabase {
         &mut self,
         database: &crate::database::Database,
     ) -> Result<i64, crate::database::DatabaseError> {
-        match self.database_host.get_connection(database).await? {
-            crate::models::database_host::DatabasePool::Mysql(pool) => {
-                let row = sqlx::query(
-                    "SELECT CAST(SUM(data_length + index_length) AS SIGNED) FROM information_schema.tables WHERE table_schema = ?",
-                )
-                .bind(&self.name)
-                .fetch_one(&pool)
-                .await?;
+        let sizes = self
+            .database_host
+            .get_database_sizes(database, std::slice::from_ref(&self.name))
+            .await?;
 
-                Ok(row.get::<Option<i64>, _>(0).unwrap_or(0))
-            }
-            crate::models::database_host::DatabasePool::Postgres(pool) => {
-                let row = sqlx::query("SELECT pg_database_size($1)")
-                    .bind(&self.name)
-                    .fetch_one(&pool)
-                    .await?;
-
-                Ok(row.get::<Option<i64>, _>(0).unwrap_or(0))
-            }
-            crate::models::database_host::DatabasePool::Mongodb(client) => {
-                let cmd = mongodb::bson::doc! { "dbStats": 1, "scale": 1 };
-                let stats = client.database(&self.name).run_command(cmd).await?;
-
-                let size = match stats.get("dataSize") {
-                    Some(mongodb::bson::Bson::Int32(i)) => *i as i64,
-                    Some(mongodb::bson::Bson::Int64(i)) => *i,
-                    Some(mongodb::bson::Bson::Double(f)) => *f as i64,
-                    _ => 0,
-                };
-
-                Ok(size)
-            }
-        }
+        Ok(sizes.get(&self.name).copied().unwrap_or(0))
     }
 
     pub async fn recreate(
@@ -643,6 +604,7 @@ impl IntoApiObject for ServerDatabase {
         let api_object = finish_extendible!(
             ApiServerDatabase {
                 uuid: self.uuid,
+                database_host_uuid: self.database_host.uuid,
                 r#type: self.database_host.r#type,
                 host: self.database_host.public_host.unwrap_or(details.host),
                 port: self
@@ -1137,6 +1099,7 @@ pub struct AdminApiServerDatabase {
 #[schema(title = "ServerDatabase")]
 pub struct ApiServerDatabase {
     pub uuid: uuid::Uuid,
+    pub database_host_uuid: uuid::Uuid,
 
     pub r#type: DatabaseType,
     pub host: compact_str::CompactString,

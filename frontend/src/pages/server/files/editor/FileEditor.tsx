@@ -1,6 +1,5 @@
 import { faTriangleExclamation } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { type OnMount } from '@monaco-editor/react';
 import { join } from 'pathe';
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { createSearchParams, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
@@ -18,6 +17,7 @@ import ScreenBlock from '@/elements/feedback/ScreenBlock.tsx';
 import Spinner from '@/elements/feedback/Spinner.tsx';
 import Group from '@/elements/layout/Group.tsx';
 import ConfirmationModal from '@/elements/modals/ConfirmationModal.tsx';
+import { type OnMount } from '@/lib/editor/monacoLoader.ts';
 import { readFileDraft, removeFileDraft } from '@/lib/files/fileDrafts.ts';
 import { useBlocker } from '@/plugins/useBlocker.ts';
 import { useServerCan } from '@/plugins/usePermissions.ts';
@@ -26,6 +26,7 @@ import { useCurrentWindow } from '@/providers/CurrentWindowProvider.tsx';
 import { FileManagerProvider, useFileManager } from '@/providers/FileManagerProvider.tsx';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import { trackActivity } from '@/stores/activity.ts';
 import { useServerStore } from '@/stores/server.ts';
 import FileRevisionsDrawer from '../drawers/FileRevisionsDrawer.tsx';
 import FileBreadcrumbs from '../FileBreadcrumbs.tsx';
@@ -206,7 +207,7 @@ function FileEditorComponent() {
 
     let cancelled = false;
     setLoading(true);
-    getFileContent(server.uuid, join(browsingDirectory, fileName))
+    trackActivity(getFileContent(server.uuid, join(browsingDirectory, fileName)))
       .then((content) => {
         if (matchedFileEditorAction?.contentType === 'blob') {
           return content;

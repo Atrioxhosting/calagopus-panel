@@ -122,8 +122,13 @@ export default function FileSearchModal({ treeView = false, ...props }: ModalPro
       return;
     }
 
-    if (!searchInfo) {
-      setQuery('');
+    const seededQuery = store.getState().searchModalQuery;
+    if (seededQuery !== null) {
+      store.getState().setSearchModalQuery(null);
+    }
+
+    if (!searchInfo || seededQuery !== null) {
+      setQuery(seededQuery ?? '');
       setShowAdvanced(false);
       form.reset();
       return;

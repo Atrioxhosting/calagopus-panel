@@ -8,6 +8,7 @@ import {
   faMagnifyingGlassChart,
   faPlus,
   faRotate,
+  faSliders,
   faUpload,
   faXmark,
 } from '@fortawesome/free-solid-svg-icons';
@@ -42,6 +43,7 @@ interface FileTreeToolbarProps {
   onOpenSearch: () => void;
   onCloseSearch: () => void;
   onSearchChange: (query: string) => void;
+  onOpenAdvancedSearch: () => void;
   onOpenCreateMenu: (x: number, y: number) => void;
   onUploadFiles: () => void;
   onUploadDirectory: () => void;
@@ -69,6 +71,7 @@ export default function FileTreeToolbar({
   onOpenSearch,
   onCloseSearch,
   onSearchChange,
+  onOpenAdvancedSearch,
   onOpenCreateMenu,
   onUploadFiles,
   onUploadDirectory,
@@ -295,24 +298,38 @@ export default function FileTreeToolbar({
             error={searchError}
             placeholder={t('pages.server.files.tree.searchPlaceholder', {})}
             leftSection={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+            rightSectionWidth={searchQuery ? 52 : 28}
             rightSection={
-              searchQuery ? (
+              <div className='flex items-center gap-0.5'>
+                {searchQuery && (
+                  <ActionIcon
+                    type='button'
+                    size='xs'
+                    variant='subtle'
+                    color='gray'
+                    loading={searchLoading}
+                    title={t('common.button.close', {})}
+                    aria-label={t('common.button.close', {})}
+                    onClick={() => {
+                      onSearchChange('');
+                      searchInputRef.current?.focus();
+                    }}
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </ActionIcon>
+                )}
                 <ActionIcon
                   type='button'
                   size='xs'
                   variant='subtle'
                   color='gray'
-                  loading={searchLoading}
-                  title={t('common.button.close', {})}
-                  aria-label={t('common.button.close', {})}
-                  onClick={() => {
-                    onSearchChange('');
-                    searchInputRef.current?.focus();
-                  }}
+                  title={t('pages.server.files.tooltip.advancedSearch', {})}
+                  aria-label={t('pages.server.files.tooltip.advancedSearch', {})}
+                  onClick={onOpenAdvancedSearch}
                 >
-                  <FontAwesomeIcon icon={faXmark} />
+                  <FontAwesomeIcon icon={faSliders} />
                 </ActionIcon>
-              ) : undefined
+              </div>
             }
             onChange={(event) => onSearchChange(event.currentTarget.value)}
             onKeyDown={(event) => {

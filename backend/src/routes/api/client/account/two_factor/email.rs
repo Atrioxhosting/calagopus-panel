@@ -49,6 +49,7 @@ mod post {
         }
 
         permissions.has_user_permission("account.two-factor")?;
+        permissions.deny_while_impersonating()?;
 
         if user.email_two_factor_enabled {
             return ApiResponse::error("email two-factor authentication is already enabled")
@@ -161,6 +162,7 @@ mod delete {
         }
 
         permissions.has_user_permission("account.two-factor")?;
+        permissions.deny_while_impersonating()?;
 
         if !user.email_two_factor_enabled {
             return ApiResponse::error("email two-factor authentication is not enabled")

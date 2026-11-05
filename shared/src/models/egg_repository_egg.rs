@@ -175,44 +175,28 @@ impl EggRepositoryEgg {
         per_page: i64,
         search: Option<&str>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-            r#"
-            SELECT {}, COUNT(*) OVER() AS total_count
-            FROM egg_repository_eggs
-            WHERE egg_repository_eggs.egg_repository_uuid = $1 AND {search}
-            ORDER BY egg_repository_eggs.exported_egg->>'name'
-            LIMIT $3 OFFSET $4
-            "#,
+        super::PaginatedQueryBuilder::new(
             Self::columns_sql(None),
-            search = super::search_sql(
-                2,
-                &[
-                    "egg_repository_eggs.path",
-                    "egg_repository_eggs.exported_egg->>'name'"
-                ],
-                &["egg_repository_eggs.uuid"]
-            )
-        )))
+            format!(
+                r#"
+                FROM egg_repository_eggs
+                WHERE egg_repository_eggs.egg_repository_uuid = $1 AND {search}
+                "#,
+                search = super::search_sql(
+                    2,
+                    &[
+                        "egg_repository_eggs.path",
+                        "egg_repository_eggs.exported_egg->>'name'"
+                    ],
+                    &["egg_repository_eggs.uuid"]
+                ),
+            ),
+            "egg_repository_eggs.exported_egg->>'name'",
+        )
         .bind(egg_repository_uuid)
         .bind(search)
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(database.read())
-        .await?;
-
-        Ok(super::Pagination {
-            total: rows
-                .first()
-                .map_or(Ok(0), |row| row.try_get("total_count"))?,
-            per_page,
-            page,
-            data: rows
-                .into_iter()
-                .map(|row| Self::map(None, &row))
-                .try_collect_vec()?,
-        })
+        .fetch(database, page, per_page)
+        .await
     }
 
     pub async fn all_with_pagination(
@@ -221,43 +205,27 @@ impl EggRepositoryEgg {
         per_page: i64,
         search: Option<&str>,
     ) -> Result<super::Pagination<Self>, crate::database::DatabaseError> {
-        let offset = (page - 1) * per_page;
-
-        let rows = sqlx::query(sqlx::AssertSqlSafe(format!(
-            r#"
-            SELECT {}, COUNT(*) OVER() AS total_count
-            FROM egg_repository_eggs
-            WHERE {search}
-            ORDER BY egg_repository_eggs.exported_egg->>'name', egg_repository_eggs.path
-            LIMIT $2 OFFSET $3
-            "#,
+        super::PaginatedQueryBuilder::new(
             Self::columns_sql(None),
-            search = super::search_sql(
-                1,
-                &[
-                    "egg_repository_eggs.path",
-                    "egg_repository_eggs.exported_egg->>'name'"
-                ],
-                &["egg_repository_eggs.uuid"]
-            )
-        )))
+            format!(
+                r#"
+                FROM egg_repository_eggs
+                WHERE {search}
+                "#,
+                search = super::search_sql(
+                    1,
+                    &[
+                        "egg_repository_eggs.path",
+                        "egg_repository_eggs.exported_egg->>'name'"
+                    ],
+                    &["egg_repository_eggs.uuid"]
+                ),
+            ),
+            "egg_repository_eggs.exported_egg->>'name', egg_repository_eggs.path",
+        )
         .bind(search)
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(database.read())
-        .await?;
-
-        Ok(super::Pagination {
-            total: rows
-                .first()
-                .map_or(Ok(0), |row| row.try_get("total_count"))?,
-            per_page,
-            page,
-            data: rows
-                .into_iter()
-                .map(|row| Self::map(None, &row))
-                .try_collect_vec()?,
-        })
+        .fetch(database, page, per_page)
+        .await
     }
 
     pub async fn installed_eggs_by_uuids(
@@ -275,7 +243,7 @@ impl EggRepositoryEgg {
             FROM nest_eggs
             JOIN nests ON nests.uuid = nest_eggs.nest_uuid
             WHERE nest_eggs.egg_repository_egg_uuid = ANY($1)
-            ORDER BY nest_eggs.created
+            ORDER BY nest_eggs.created, nest_eggs.uuid
             "#,
             super::nest::Nest::columns_sql(Some("nest_"))
         )))

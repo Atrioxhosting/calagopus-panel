@@ -167,6 +167,7 @@ mod delete {
 }
 
 mod patch {
+    use axum::http::StatusCode;
     use serde::Serialize;
     use shared::{
         ApiError, GetState,
@@ -211,6 +212,19 @@ mod patch {
         shared::Payload(data): shared::Payload<UpdateServerScheduleOptions>,
     ) -> ApiResponseResult {
         permissions.has_server_permission("schedules.update")?;
+
+        if let Some(permission) = permissions.missing_server_permission(
+            data.triggers
+                .iter()
+                .flatten()
+                .flat_map(|trigger| trigger.permissions()),
+        ) {
+            return ApiResponse::error(format!(
+                "unable to update schedule trigger that requires permission: {permission}"
+            ))
+            .with_status(StatusCode::FORBIDDEN)
+            .ok();
+        }
 
         schedule.update(&state, data).await?;
 

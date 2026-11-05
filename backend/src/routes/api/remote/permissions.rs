@@ -11,7 +11,7 @@ mod post {
             ByUuid,
             node::GetNode,
             server::Server,
-            user::{CredentialScope, User},
+            user::{CredentialScope, PermissionManager, User},
         },
         response::{ApiResponse, ApiResponseResult},
     };
@@ -81,12 +81,14 @@ mod post {
             };
 
             let access = match user {
-                Some(user) => {
-                    Server::by_user_identifier(&state.database, user, &entry.server.to_string())
-                        .await?
-                        .filter(|server| server.node.uuid == node.uuid)
-                        .map(|server| (user, server))
-                }
+                Some(user) => Server::by_user_identifier(
+                    &state.database,
+                    &PermissionManager::new(user, CredentialScope::Session),
+                    &entry.server.to_string(),
+                )
+                .await?
+                .filter(|server| server.node.uuid == node.uuid)
+                .map(|server| (user, server)),
                 None => None,
             };
 

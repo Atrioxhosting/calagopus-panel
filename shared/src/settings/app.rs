@@ -281,8 +281,9 @@ mod tests {
             assert_eq!(settings.name, name);
 
             // Browser metadata and mail templates use the serialized app settings.
-            let context =
-                minijinja::context! { settings => serde_json::json!({ "app": &settings }) };
+            let context = minijinja::context! {
+                settings => minijinja::value::Serde(serde_json::json!({ "app": &settings }))
+            };
             let rendered = minijinja::Environment::new()
                 .render_str("{{ settings.app.name }}", context)
                 .unwrap();

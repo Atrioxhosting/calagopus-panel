@@ -1,6 +1,6 @@
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Ref } from 'react';
+import { Ref, useState } from 'react';
 import { httpErrorToHuman } from '@/api/axios.ts';
 import createAllocation from '@/api/server/allocations/createAllocation.ts';
 import getAllocations from '@/api/server/allocations/getAllocations.ts';
@@ -41,10 +41,11 @@ export default function ServerNetwork() {
     search,
     setSearch,
     setPage,
+    setPerPage,
     refetch,
   } = useSearchablePaginatedTable({
     queryKey: queryKeys.server(server.uuid).network.all(),
-    fetcher: (page, search) => getAllocations(server.uuid, page, search),
+    fetcher: (page, search, perPage) => getAllocations(server.uuid, page, search, perPage),
     canRequest: canReadAllocations,
   });
 
@@ -57,7 +58,10 @@ export default function ServerNetwork() {
     selectionAreaProps,
   } = useTableSelection({ items: allocations?.data, shortcuts: canDelete });
 
+  const [adding, setAdding] = useState(false);
+
   const doAdd = () => {
+    setAdding(true);
     createAllocation(server.uuid)
       .then(() => {
         refetch();
@@ -65,7 +69,8 @@ export default function ServerNetwork() {
       })
       .catch((msg) => {
         addToast(httpErrorToHuman(msg), 'error');
-      });
+      })
+      .finally(() => setAdding(false));
   };
 
   if (!canReadAllocations) {
@@ -76,7 +81,7 @@ export default function ServerNetwork() {
     <ServerContentContainer
       title={t('pages.server.network.allocations.title', {})}
       subtitle={t('pages.server.network.subtitle', {
-        current: allocations?.total ?? 0,
+        current: allocations?.total ?? '…',
         max: server.featureLimits.allocations,
       })}
       search={search}
@@ -88,7 +93,8 @@ export default function ServerNetwork() {
             label={t('pages.server.network.tooltip.limitReached', { max: server.featureLimits.allocations })}
           >
             <Button
-              disabled={(allocations?.total ?? 0) >= server.featureLimits.allocations}
+              disabled={!allocations || allocations.total >= server.featureLimits.allocations}
+              loading={adding}
               onClick={doAdd}
               color='blue'
               leftSection={<FontAwesomeIcon icon={faPlus} />}
@@ -131,6 +137,7 @@ export default function ServerNetwork() {
           loading={loading}
           pagination={allocations}
           onPageSelect={setPage}
+          onPerPageSelect={setPerPage}
           error={error}
         >
           {allocations?.data.map((allocation) => (
@@ -141,7 +148,9 @@ export default function ServerNetwork() {
                   ipv6={ipv6?.applied_address ?? ipv6?.address ?? undefined}
                   ref={innerRef as Ref<HTMLTableRowElement>}
                   isSelected={selectedAllocations.has(allocation.uuid)}
-                  onSelectionChange={canDelete ? (selected) => toggleAllocation(allocation, selected) : undefined}
+                  onSelectionChange={
+                    canDelete ? (selected, range) => toggleAllocation(allocation, selected, range) : undefined
+                  }
                 />
               )}
             </SelectionArea.Selectable>

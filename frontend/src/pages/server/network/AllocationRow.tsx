@@ -30,7 +30,7 @@ interface AllocationRowProps {
   allocation: z.infer<typeof serverAllocationSchema>;
   ipv6?: string;
   isSelected?: boolean;
-  onSelectionChange?: (selected: boolean) => void;
+  onSelectionChange?: (selected: boolean, range?: boolean) => void;
 }
 
 function AllocationValue({ value, redact = false }: { value: string; redact?: boolean }) {
@@ -194,7 +194,7 @@ const AllocationRow = forwardRef<HTMLTableRowElement, AllocationRowProps>(functi
             <td className='relative w-10 text-center'>
               {allocation.isPrimary && (
                 <Tooltip label={t('common.tooltip.primary', {})}>
-                  <FontAwesomeIcon icon={faStar} className='text-yellow-500 ml-3' />
+                  <FontAwesomeIcon icon={faStar} className='text-(--mantine-color-yellow-text) ml-3' />
                 </Tooltip>
               )}
             </td>

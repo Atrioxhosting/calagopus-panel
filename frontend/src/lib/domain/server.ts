@@ -13,7 +13,7 @@ export function isConflictingState(
   server: z.infer<typeof serverSchema>,
   user: z.infer<typeof fullUserSchema> | null = null,
 ): boolean {
-  return (server.isSuspended && !isAdmin(user)) || server.status !== null || server.isTransferring;
+  return (server.isSuspended && !isAdmin(user, 'servers.update')) || server.status !== null || server.isTransferring;
 }
 
 export function getDisabledServerRoutePaths(

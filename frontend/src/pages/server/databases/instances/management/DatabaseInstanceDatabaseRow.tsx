@@ -202,7 +202,7 @@ export default function DatabaseInstanceDatabaseRow({
               </CopyOnClick>
               {!hasUser && (
                 <Tooltip label={t('pages.server.databases.instance.databases.tooltip.noUser', {})}>
-                  <FontAwesomeIcon icon={faWarning} className='ml-2 text-yellow-400' />
+                  <FontAwesomeIcon icon={faWarning} className='ml-2 text-(--mantine-color-yellow-text)' />
                 </Tooltip>
               )}
             </TableData>

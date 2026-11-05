@@ -26,7 +26,7 @@ interface ScheduleRowProps {
   schedule: z.infer<typeof serverScheduleSchema>;
   atLimit?: boolean;
   isSelected?: boolean;
-  onSelectionChange?: (selected: boolean) => void;
+  onSelectionChange?: (selected: boolean, range?: boolean) => void;
   onClick?: (event: React.MouseEvent) => void;
 }
 

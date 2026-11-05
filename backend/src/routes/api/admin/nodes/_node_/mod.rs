@@ -30,6 +30,7 @@ mod system;
 mod token;
 mod transfers;
 mod tunnel;
+mod upgrade;
 
 pub async fn auth(
     state: GetState,
@@ -206,6 +207,14 @@ mod patch {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("nodes.update")?;
 
+        if data.url.as_ref().is_some_and(|url| {
+            reqwest::Url::parse(url)
+                .ok()
+                .is_none_or(|url| url != node.url)
+        }) {
+            permissions.has_admin_permission("nodes.read-token")?;
+        }
+
         let sync_bandwidth = data
             .bandwidth_per_gib
             .is_some_and(|value| value != node.bandwidth_per_gib);
@@ -294,6 +303,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .nest("/enrollment", enrollment::router(state))
         .nest("/pair", pair::router(state))
         .nest("/token", token::router(state))
+        .nest("/upgrade", upgrade::router(state))
         .nest("/tunnel", tunnel::router(state))
         .nest("/allocations", allocations::router(state))
         .nest("/game-network", game_network::router(state))

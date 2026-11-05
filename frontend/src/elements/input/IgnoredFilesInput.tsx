@@ -114,6 +114,7 @@ function MatchGutter({
     placeholderData: keepPreviousData,
     staleTime: 60_000,
     retry: false,
+    meta: { progress: false },
   });
 
   if (!canReadFiles) return null;

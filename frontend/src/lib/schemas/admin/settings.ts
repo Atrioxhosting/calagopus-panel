@@ -311,6 +311,11 @@ export const adminSettingsMetadataSchema = z.object({
   indexable: z.boolean(),
 });
 
+export const adminSettingsUpdatesSchema = z.object({
+  wingsReleaseToken: z.preprocess(nullableString, z.string().min(1).max(1024).nullable()),
+  dbAgentReleaseToken: z.preprocess(nullableString, z.string().min(1).max(1024).nullable()),
+});
+
 export const twoFactorRequirement = z.enum(['admins', 'all_users', 'none']);
 
 export const adminSettingsSchema = z.object({
@@ -327,4 +332,5 @@ export const adminSettingsSchema = z.object({
   user: adminSettingsUserSchema,
   activity: adminSettingsActivitySchema,
   ratelimits: adminSettingsRatelimitsSchema,
+  updates: adminSettingsUpdatesSchema,
 });

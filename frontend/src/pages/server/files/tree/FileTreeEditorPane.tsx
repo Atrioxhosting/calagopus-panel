@@ -59,6 +59,7 @@ import useFileTreeTabQuickActions from '@/pages/server/files/tree/useFileTreeTab
 import { useServerCan } from '@/plugins/usePermissions.ts';
 import { useToast } from '@/providers/ToastProvider.tsx';
 import { useTranslations } from '@/providers/TranslationProvider.tsx';
+import { trackActivity } from '@/stores/activity.ts';
 import { useFileManagerStore } from '@/stores/fileManager.ts';
 import { useServerStore } from '@/stores/server.ts';
 
@@ -271,7 +272,7 @@ export default function FileTreeEditorPane({
     resetContent(initialDraftContentRef.current !== undefined);
     setLoading(true);
 
-    getFileContent(server.uuid, filePath)
+    trackActivity(getFileContent(server.uuid, filePath))
       .then(async (blob) => {
         if (matchedAction?.contentType === 'blob') return blob;
         if (selection.action === 'image' || selection.action === 'audio') {

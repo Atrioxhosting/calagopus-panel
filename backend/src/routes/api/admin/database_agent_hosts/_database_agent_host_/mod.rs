@@ -20,6 +20,7 @@ mod reset_token;
 mod system;
 mod test;
 mod token;
+mod upgrade;
 
 pub type GetDatabaseAgentHost = shared::extract::ConsumingExtension<DatabaseAgentHost>;
 
@@ -241,6 +242,14 @@ mod patch {
     ) -> ApiResponseResult {
         permissions.has_admin_permission("database-agent-hosts.update")?;
 
+        if data.url.as_ref().is_some_and(|url| {
+            reqwest::Url::parse(url)
+                .ok()
+                .is_none_or(|url| url != database_agent_host.url)
+        }) {
+            permissions.has_admin_permission("database-agent-hosts.read-token")?;
+        }
+
         match database_agent_host.update(&state, data).await {
             Ok(_) => {}
             Err(err) if err.is_unique_violation() => {
@@ -281,6 +290,7 @@ pub fn router(state: &State) -> OpenApiRouter<State> {
         .nest("/config", config::router(state))
         .nest("/test", test::router(state))
         .nest("/system", system::router(state))
+        .nest("/upgrade", upgrade::router(state))
         .route_layer(axum::middleware::from_fn_with_state(state.clone(), auth))
         .with_state(state.clone())
 }

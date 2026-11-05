@@ -141,12 +141,12 @@ export default function TwoFactorSetupButton() {
               <Spinner.Centered />
             ) : (
               <div className='flex flex-col items-center justify-center my-4'>
-                <div className='flex items-center justify-center w-56 h-56 p-2 bg-gray-50 shadow'>
+                <div className='flex items-center justify-center w-56 h-56 p-2 bg-white rounded-md'>
                   <canvas ref={setCanvasRef}></canvas>
                 </div>
                 <div className='mt-2'>
                   <CopyOnClick content={token.secret}>
-                    <Code>{token.secret.match(/.{1,4}/g)!.join(' ') || 'Loading...'}</Code>
+                    <Code>{token.secret.match(/.{1,4}/g)?.join(' ')}</Code>
                   </CopyOnClick>
                 </div>
               </div>
